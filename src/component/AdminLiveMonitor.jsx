@@ -1,38 +1,50 @@
 import { useEffect, useState } from "react";
 import io from "socket.io-client";
 
-const socket = io("https://swordgame-5.onrender.com");
-
 export default function AdminLiveMonitor() {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    socket.on("activity:event", (event) => {
-      setEvents((prev) => [event, ...prev]); // newest on top
+    const socket = io("https://swordgame-5.onrender.com/admin", {
+      withCredentials: true,
     });
 
-    return () => socket.off("activity:event");
+    socket.on("activity:event", (event) => {
+      setEvents((prev) => [event, ...prev]);
+    });
+
+    socket.on("connect", () => {
+      console.log("✅ Admin socket connected");
+    });
+
+    socket.on("disconnect", () => {
+      console.log("❌ Admin socket disconnected");
+    });
+
+    return () => {
+      socket.disconnect(); // ✅ VERY important cleanup
+    };
   }, []);
 
   const renderEvent = (event) => {
     switch (event.type) {
       case "USER_ONLINE":
-        return `🟢 ${event.user} came online`;
+        return `🟢 ${event.username} came online`;
 
       case "USER_OFFLINE":
-        return `🟣 ${event.user} went offline`;
+        return `🟣 ${event.username} went offline`;
 
       case "BET_PLACED":
-        return `🎯 ${event.user} placed ${event.amount} coins`;
+        return `🎯 ${event.username} placed ${event.amount} coins`;
 
       case "GAME_CREATED":
-        return `🎮 ${event.user} created a game`;
+        return `🎮 ${event.username} created a game`;
 
       case "GAME_RESULT":
-        return `🏆 ${event.user} ${event.result}`;
+        return `🏆 ${event.username} ${event.result}`;
 
       case "COINS_CREDITED":
-        return `💰 ${event.user} credited ${event.amount}`;
+        return `💰 ${event.username} credited ${event.amount}`;
 
       default:
         return `⚡ Unknown activity`;

@@ -22,32 +22,37 @@ export default function AdminLayout() {
      SOCKET INITIALIZATION
   ========================================================= */
   useEffect(() => {
-    const socket = io("https://swordgame-5.onrender.com/admin", {
-      withCredentials: true,
-    });
+  const socket = io("https://swordgame-5.onrender.com/admin", {
+    withCredentials: true,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 3000,
+  });
 
-    socketRef.current = socket;
+  socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("🛡 Admin socket connected");
-      socket.emit("admin:getUsers");
-    });
+  socket.on("connect", () => {
+    console.log("🛡 Admin socket connected");
+    socket.emit("admin:getUsers");
+  });
 
-    socket.on("users:list", setUsers);
+  socket.on("users:list", setUsers);
 
-    socket.on("user:status", ({ userId, online }) => {
-      setUsers((prev) =>
-        prev.map((u) => (u._id === userId ? { ...u, online } : u))
-      );
-    });
+  socket.on("user:status", ({ userId, online }) => {
+    setUsers(prev =>
+      prev.map(u => (u._id === userId ? { ...u, online } : u))
+    );
+  });
 
-    /* ================= ACTIVITY EVENTS ================= */
-    socket.on("activity:event", (event) => {
-      setEvents((prev) => [event, ...prev]);
+  socket.on("activity:event", (event) => {
+    setEvents(prev => [event, ...prev]);
 
-      // Track games intelligently
-      if (event.type === "GAME_CREATED") {
-        setGames((prev) => [
+    if (event.type === "GAME_CREATED") {
+      setGames(prev => {
+        if (prev.some(g => g.gameId === event.gameId)) return prev;
+
+        return [
           {
             gameId: event.gameId,
             userId: event.userId,
@@ -55,42 +60,42 @@ export default function AdminLayout() {
             status: event.status,
           },
           ...prev,
-        ]);
-      }
+        ];
+      });
+    }
 
-      if (event.type === "GAME_STARTED") {
-        setGames((prev) =>
-          prev.map((g) =>
-            g.gameId === event.gameId
-              ? { ...g, status: "started" }
-              : g
-          )
-        );
-      }
+    if (event.type === "GAME_STARTED") {
+      setGames(prev =>
+        prev.map(g =>
+          g.gameId === event.gameId ? { ...g, status: "started" } : g
+        )
+      );
+    }
 
-      if (event.type === "GAME_RESULT") {
-        setGames((prev) =>
-          prev.map((g) =>
-            g.gameId === event.gameId
-              ? { ...g, status: "finished" }
-              : g
-          )
-        );
-      }
+    if (event.type === "GAME_RESULT") {
+      setGames(prev =>
+        prev.map(g =>
+          g.gameId === event.gameId ? { ...g, status: "finished" } : g
+        )
+      );
+    }
 
-      if (event.type === "ADMIN_ADD_POT") {
-        setGames((prev) =>
-          prev.map((g) =>
-            g.gameId === event.gameId
-              ? { ...g, pot: event.newPot }
-              : g
-          )
-        );
-      }
-    });
+    if (event.type === "ADMIN_ADD_POT") {
+      setGames(prev =>
+        prev.map(g =>
+          g.gameId === event.gameId ? { ...g, pot: event.newPot } : g
+        )
+      );
+    }
+  });
 
-    return () => socket.disconnect();
-  }, []);
+  return () => {
+    socket.off("users:list");
+    socket.off("user:status");
+    socket.off("activity:event");
+    socket.disconnect();
+  };
+}, []);
 
   /* =========================================================
      UI
