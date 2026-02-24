@@ -1,3 +1,4 @@
+// src/components/AdminMonitor.jsx
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
@@ -7,37 +8,24 @@ export default function AdminMonitor() {
   const camera = useRef({ zoom: 1, offsetX: 0, offsetY: 0 });
 
   useEffect(() => {
+    const token = localStorage.getItem("token"); // ✅ token from login
+    if (!token) {
+      console.warn("⚠️ No token found. Please log in.");
+      return;
+    }
+
+    const API_URL = import.meta.env.VITE_API_URL || "https://swordgame-5.onrender.com";
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     const SCALE = 10;
 
     // =========================
-    // ENV VARS (fallback)
-    // =========================
-    const API_URL =
-      import.meta.env.VITE_API_URL ||
-      import.meta.env.PORT || // fallback if VITE_API_URL missing
-      "https://swordgame-5.onrender.com"; // ultimate fallback
-
-    if (!API_URL) {
-      console.error("❌ No API URL provided!");
-      return;
-    }
-
-    // =========================
-    // HELPER FUNCTIONS
+    // Helper functions
     // =========================
     const worldToScreen = (x, z) => ({
-      x:
-        x * SCALE * camera.current.zoom +
-        canvas.width / 2 +
-        camera.current.offsetX,
-      y:
-        z * SCALE * camera.current.zoom +
-        canvas.height / 2 +
-        camera.current.offsetY,
+      x: x * SCALE * camera.current.zoom + canvas.width / 2 + camera.current.offsetX,
+      y: z * SCALE * camera.current.zoom + canvas.height / 2 + camera.current.offsetY,
     });
 
     const drawGrid = () => {
@@ -51,7 +39,6 @@ export default function AdminMonitor() {
         ctx.lineTo(x + (camera.current.offsetX % spacing), canvas.height);
         ctx.stroke();
       }
-
       for (let y = 0; y < canvas.height; y += spacing) {
         ctx.beginPath();
         ctx.moveTo(0, y + (camera.current.offsetY % spacing));
@@ -68,8 +55,7 @@ export default function AdminMonitor() {
     };
 
     const getRoomColor = (room) =>
-      ({ arena1: "#ffd700", arena2: "#00bfff", arena3: "#ff4d4d" })[room] ||
-      "yellow";
+      ({ arena1: "#ffd700", arena2: "#00bfff", arena3: "#ff4d4d" }[room] || "yellow");
 
     const drawHealthBar = (x, y, health) => {
       const width = 30;
@@ -109,30 +95,24 @@ export default function AdminMonitor() {
     drawBoard();
 
     // =========================
-    // SOCKET.IO CONNECTION
+    // Socket.IO Connection
     // =========================
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("❌ No token found in localStorage");
-      return;
-    }
     socketRef.current = io(`${API_URL}/admin`, {
       transports: ["websocket", "polling"],
       withCredentials: true,
-      auth: { token },
+      auth: { token }, // ✅ send token to backend
     });
 
     socketRef.current.on("connect", () =>
-      console.log("🛡 Admin monitor connected:", socketRef.current.id),
+      console.log("🛡 Admin monitor connected:", socketRef.current.id)
     );
 
     socketRef.current.on("connect_error", (err) =>
-      console.error("⚠️ Connection failed:", err.message),
+      console.error("⚠️ Connection failed:", err.message)
     );
 
     socketRef.current.on("disconnect", (reason) =>
-      console.log("❌ Socket disconnected:", reason),
+      console.log("❌ Socket disconnected:", reason)
     );
 
     socketRef.current.on("tacticalUpdate", ({ players = [] }) => {
@@ -142,14 +122,13 @@ export default function AdminMonitor() {
     });
 
     // =========================
-    // ZOOM CONTROL
+    // Zoom control
     // =========================
     const handleWheel = (e) => {
       e.preventDefault();
       camera.current.zoom += e.deltaY * -0.001;
       camera.current.zoom = Math.min(Math.max(0.5, camera.current.zoom), 2);
     };
-
     canvas.addEventListener("wheel", handleWheel);
 
     return () => {

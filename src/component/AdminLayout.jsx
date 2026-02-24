@@ -22,12 +22,22 @@ export default function AdminLayout() {
      SOCKET INITIALIZATION
   ========================================================= */
   useEffect(() => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    console.warn("⚠️ No token found. Admin socket not started.");
+    return;
+  }
+
   const socket = io("https://swordgame-5.onrender.com/admin", {
     withCredentials: true,
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 500,
     reconnectionDelayMax: 3000,
+
+    // ✅ CRITICAL FIX
+    auth: { token },
   });
 
   socketRef.current = socket;
@@ -35,6 +45,10 @@ export default function AdminLayout() {
   socket.on("connect", () => {
     console.log("🛡 Admin socket connected");
     socket.emit("admin:getUsers");
+  });
+
+  socket.on("connect_error", (err) => {
+    console.error("❌ Admin socket error:", err.message);
   });
 
   socket.on("users:list", setUsers);
