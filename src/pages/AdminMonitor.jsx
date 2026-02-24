@@ -14,11 +14,9 @@ export default function AdminMonitor() {
     const ctx = canvas.getContext("2d");
     const SCALE = 10;
 
-    const API_URL = import.meta.env.VITE_API_URL;
-    if (!API_URL) {
-      console.error("❌ VITE_API_URL is missing");
-      return;
-    }
+    // ✅ Auto-detect backend URL
+    const API_URL =
+      import.meta.env.VITE_API_URL || window.location.origin;
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -121,7 +119,7 @@ export default function AdminMonitor() {
         ctx.fillStyle = p.health > 0 ? getRoomColor(p.room) : "gray";
         ctx.fill();
 
-        // Name
+        // Player name
         ctx.fillStyle = "white";
         ctx.font = "12px Arial";
         ctx.fillText(p.username, x - 15, y - 15);
@@ -140,7 +138,6 @@ export default function AdminMonitor() {
       camera.current.zoom += e.deltaY * -0.001;
       camera.current.zoom = Math.min(Math.max(0.5, camera.current.zoom), 2);
     };
-
     canvas.addEventListener("wheel", handleWheel);
 
     return () => {
