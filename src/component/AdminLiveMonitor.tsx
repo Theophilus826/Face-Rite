@@ -5,8 +5,11 @@ export default function AdminLiveMonitor() {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
+    const token = localStorage.getItem("token"); // ✅ from login
+
     const socket = io("https://swordgame-5.onrender.com/admin", {
-      withCredentials: true,
+      auth: { token },                 // ✅ explicit auth
+      transports: ["websocket", "polling"], // ✅ allow fallback
     });
 
     socket.on("activity:event", (event) => {
@@ -17,12 +20,16 @@ export default function AdminLiveMonitor() {
       console.log("✅ Admin socket connected");
     });
 
-    socket.on("disconnect", () => {
-      console.log("❌ Admin socket disconnected");
+    socket.on("connect_error", (err) => {
+      console.log("❌ Socket error:", err.message);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("❌ Admin socket disconnected:", reason);
     });
 
     return () => {
-      socket.disconnect(); // ✅ VERY important cleanup
+      socket.disconnect();
     };
   }, []);
 

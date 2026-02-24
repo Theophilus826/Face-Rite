@@ -3,15 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://Theophilus826/Face-Rite", 
+   
   
-  "scripts": {
+"scripts": {
   "dev": "vite",
   "build": "tsc -b && vite build",
   "lint": "eslint .",
-  "preview": "vite preview",
-  "predeploy": "npm run build",
-  "deploy": "npm run build && npx netlify deploy --prod --dir=dist"
+  "preview": "vite preview"
 },
   "dependencies": {
     "@babylonjs/core": "^8.51.1",
