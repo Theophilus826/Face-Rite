@@ -7,6 +7,7 @@ import { io } from "socket.io-client";
 export default function AdminLayout() {
   const dispatch = useDispatch();
   const socketRef = useRef(null);
+  const gamesContainerRef = useRef(null); // ← ref for scrolling
 
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
@@ -82,6 +83,28 @@ export default function AdminLayout() {
       socket.disconnect();
     };
   }, []);
+
+  /* =========================================================
+     FETCH / RELOAD GAMES
+  ========================================================= */
+  const fetchGames = async () => {
+    try {
+      const res = await fetch("/api/admin/games");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to fetch games");
+
+      const updatedGames = data.games.map(g => ({ ...g, enemiesConfigured: g.enemies?.length > 0 }));
+      setGames(updatedGames);
+
+      // Auto-scroll to top when new games are loaded
+      if (gamesContainerRef.current) {
+        gamesContainerRef.current.scrollTop = 0;
+      }
+    } catch (err) {
+      console.error("Error fetching games:", err.message);
+      alert(err.message);
+    }
+  };
 
   /* =========================================================
      START GAME FUNCTION
@@ -171,63 +194,71 @@ export default function AdminLayout() {
 
       {/* LIVE GAME CONTROLLER */}
       <section className="mt-4 bg-white p-4 shadow rounded">
-        <h2 className="text-lg font-semibold mb-3">🎮 Live Game Controller</h2>
-        {games.length === 0 && <p className="text-gray-500">No active games</p>}
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-semibold">🎮 Live Game Controller</h2>
+          <button
+            onClick={fetchGames}
+            className="px-3 py-1 text-white bg-indigo-600 rounded text-sm"
+          >
+            🔄 Reload Games
+          </button>
+        </div>
 
-        {games.map(game => (
-          <div key={game.gameId} className="flex justify-between items-center p-2 mb-2 bg-gray-50 rounded">
-            <div>
-              <div className="text-sm font-semibold">Game {game.gameId.slice(0, 6)}</div>
-              <div className="text-xs text-gray-500">Player: {game.userId}</div>
-            </div>
+        <div ref={gamesContainerRef} className="max-h-[400px] overflow-y-auto">
+          {games.length === 0 && <p className="text-gray-500">No active games</p>}
 
-            <div className="flex items-center gap-2">
-              <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
+          {games.map(game => (
+            <div key={game.gameId} className="flex justify-between items-center p-2 mb-2 bg-gray-50 rounded">
+              <div>
+                <div className="text-sm font-semibold">Game {game.gameId.slice(0, 6)}</div>
+                <div className="text-xs text-gray-500">Player: {game.userId}</div>
+              </div>
 
-              <div className="flex gap-2">
-                <div
-                  className={`text-xs px-2 py-1 rounded ${
-                    game.status === "waiting"
+              <div className="flex items-center gap-2">
+                <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
+                <div className="flex gap-2">
+                  <div
+                    className={`text-xs px-2 py-1 rounded ${
+                      game.status === "waiting"
+                        ? game.enemiesConfigured
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-yellow-100 text-yellow-700"
+                        : game.status === "started"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {game.status === "waiting"
                       ? game.enemiesConfigured
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-yellow-100 text-yellow-700"
+                        ? "Ready to start"
+                        : "Waiting for enemies"
                       : game.status === "started"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-200 text-gray-600"
-                  }`}
-                >
-                  {game.status === "waiting"
-                    ? game.enemiesConfigured
-                      ? "Ready to start"
-                      : "Waiting for enemies"
-                    : game.status === "started"
-                    ? "Started"
-                    : "Finished"}
+                      ? "Started"
+                      : "Finished"}
+                  </div>
+
+                  {game.status === "waiting" && !game.enemiesConfigured && (
+                    <button
+                      onClick={() => configureEnemies(game.gameId)}
+                      className="px-3 py-1 text-white bg-blue-600 rounded text-xs"
+                    >
+                      Configure Enemies
+                    </button>
+                  )}
+
+                  {game.status === "waiting" && game.enemiesConfigured && (
+                    <button
+                      onClick={() => startGame(game.gameId)}
+                      className="px-3 py-1 text-white bg-green-600 rounded text-xs"
+                    >
+                      Start Game
+                    </button>
+                  )}
                 </div>
-
-                {/* CONFIGURE ENEMIES BUTTON */}
-                {game.status === "waiting" && !game.enemiesConfigured && (
-                  <button
-                    onClick={() => configureEnemies(game.gameId)}
-                    className="px-3 py-1 text-white bg-blue-600 rounded text-xs"
-                  >
-                    Configure Enemies
-                  </button>
-                )}
-
-                {/* START GAME BUTTON */}
-                {game.status === "waiting" && game.enemiesConfigured && (
-                  <button
-                    onClick={() => startGame(game.gameId)}
-                    className="px-3 py-1 text-white bg-green-600 rounded text-xs"
-                  >
-                    Start Game
-                  </button>
-                )}
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
 
       {/* SIDEBAR */}
