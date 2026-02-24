@@ -1,4 +1,4 @@
-import axios from 'axios';
+
 import API from "../features/Api";
 
 const API_URL = "/users/";
@@ -10,11 +10,13 @@ const register = async (userData) => {
 };
 
 const login = async (userData) => {
-  const res = await axios.post(`${API_URL}login`, userData);
-  // ✅ Store token for API requests and Socket.IO
+  const res = await API.post("/users/login", userData);
+
   if (res.data?.token) {
     localStorage.setItem("token", res.data.token);
+    localStorage.setItem("user", JSON.stringify(res.data));
   }
+
   return res.data;
 };
 
