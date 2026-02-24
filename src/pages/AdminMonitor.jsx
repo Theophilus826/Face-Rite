@@ -4,7 +4,6 @@ import { io } from "socket.io-client";
 export default function AdminMonitor() {
   const canvasRef = useRef(null);
   const socketRef = useRef(null);
-
   const camera = useRef({ zoom: 1, offsetX: 0, offsetY: 0 });
 
   useEffect(() => {
@@ -14,20 +13,27 @@ export default function AdminMonitor() {
     const ctx = canvas.getContext("2d");
     const SCALE = 10;
 
-    const API_URL = import.meta.env.VITE_API_URL;
+    // =========================
+    // ENV VARS (fallback)
+    // =========================
+    const API_URL =
+      import.meta.env.VITE_API_URL ||
+      import.meta.env.PORT || // fallback if VITE_API_URL missing
+      "https://swordgame-5.onrender.com"; // ultimate fallback
+
     if (!API_URL) {
-      console.error("❌ VITE_API_URL is missing");
+      console.error("❌ No API URL provided!");
       return;
     }
 
+    // =========================
+    // HELPER FUNCTIONS
+    // =========================
     const worldToScreen = (x, z) => ({
       x: x * SCALE * camera.current.zoom + canvas.width / 2 + camera.current.offsetX,
       y: z * SCALE * camera.current.zoom + canvas.height / 2 + camera.current.offsetY,
     });
 
-    // =========================
-    // DRAW FUNCTIONS
-    // =========================
     const drawGrid = () => {
       const spacing = 50 * camera.current.zoom;
       ctx.strokeStyle = "rgba(255,255,255,0.05)";
@@ -55,11 +61,8 @@ export default function AdminMonitor() {
       drawGrid();
     };
 
-    const getRoomColor = (room) => ({
-      arena1: "#ffd700",
-      arena2: "#00bfff",
-      arena3: "#ff4d4d",
-    }[room] || "yellow");
+    const getRoomColor = (room) =>
+      ({ arena1: "#ffd700", arena2: "#00bfff", arena3: "#ff4d4d" }[room] || "yellow");
 
     const drawHealthBar = (x, y, health) => {
       const width = 30;
@@ -81,6 +84,21 @@ export default function AdminMonitor() {
       ctx.fillText(`🔎 Zoom: ${camera.current.zoom.toFixed(2)}`, 20, 75);
     };
 
+    const drawPlayer = (p) => {
+      if (!p.position) return;
+      const { x, y } = worldToScreen(p.position.x, p.position.z);
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.fillStyle = p.health > 0 ? getRoomColor(p.room) : "gray";
+      ctx.fill();
+
+      ctx.fillStyle = "white";
+      ctx.font = "12px Arial";
+      ctx.fillText(p.username, x - 15, y - 15);
+
+      drawHealthBar(x, y + 12, p.health);
+    };
+
     drawBoard();
 
     // =========================
@@ -88,11 +106,12 @@ export default function AdminMonitor() {
     // =========================
     socketRef.current = io(`${API_URL}/admin`, {
       transports: ["websocket", "polling"],
-      withCredentials: true, // ✅ send cookie automatically
+      withCredentials: true,
+      auth: { token: localStorage.getItem("token") },
     });
 
     socketRef.current.on("connect", () =>
-      console.log("🛡️ Admin monitor connected:", socketRef.current.id)
+      console.log("🛡 Admin monitor connected:", socketRef.current.id)
     );
 
     socketRef.current.on("connect_error", (err) =>
@@ -105,21 +124,7 @@ export default function AdminMonitor() {
 
     socketRef.current.on("tacticalUpdate", ({ players = [] }) => {
       drawBoard();
-      players.forEach((p) => {
-        if (!p.position) return;
-        const { x, y } = worldToScreen(p.position.x, p.position.z);
-
-        ctx.beginPath();
-        ctx.arc(x, y, 10, 0, Math.PI * 2);
-        ctx.fillStyle = p.health > 0 ? getRoomColor(p.room) : "gray";
-        ctx.fill();
-
-        ctx.fillStyle = "white";
-        ctx.font = "12px Arial";
-        ctx.fillText(p.username, x - 15, y - 15);
-
-        drawHealthBar(x, y + 12, p.health);
-      });
+      players.forEach(drawPlayer);
       drawOverlay(players);
     });
 
