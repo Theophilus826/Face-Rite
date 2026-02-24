@@ -5,11 +5,7 @@ export default function AdminMonitor() {
   const canvasRef = useRef(null);
   const socketRef = useRef(null);
 
-  const camera = useRef({
-    zoom: 1,
-    offsetX: 0,
-    offsetY: 0,
-  });
+  const camera = useRef({ zoom: 1, offsetX: 0, offsetY: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -19,30 +15,21 @@ export default function AdminMonitor() {
     const SCALE = 10;
 
     const API_URL = import.meta.env.VITE_API_URL;
-
     if (!API_URL) {
       console.error("❌ VITE_API_URL is missing");
       return;
     }
 
     const worldToScreen = (x, z) => ({
-      x:
-        x * SCALE * camera.current.zoom +
-        canvas.width / 2 +
-        camera.current.offsetX,
-
-      y:
-        z * SCALE * camera.current.zoom +
-        canvas.height / 2 +
-        camera.current.offsetY,
+      x: x * SCALE * camera.current.zoom + canvas.width / 2 + camera.current.offsetX,
+      y: z * SCALE * camera.current.zoom + canvas.height / 2 + camera.current.offsetY,
     });
 
     // =========================
-    // DRAWING
+    // DRAW FUNCTIONS
     // =========================
     const drawGrid = () => {
       const spacing = 50 * camera.current.zoom;
-
       ctx.strokeStyle = "rgba(255,255,255,0.05)";
       ctx.lineWidth = 1;
 
@@ -63,29 +50,22 @@ export default function AdminMonitor() {
 
     const drawBoard = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       ctx.fillStyle = "#0a7f4f";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-
       drawGrid();
     };
 
-    const getRoomColor = (room) => {
-      const colors = {
-        arena1: "#ffd700",
-        arena2: "#00bfff",
-        arena3: "#ff4d4d",
-      };
-      return colors[room] || "yellow";
-    };
+    const getRoomColor = (room) => ({
+      arena1: "#ffd700",
+      arena2: "#00bfff",
+      arena3: "#ff4d4d",
+    }[room] || "yellow");
 
     const drawHealthBar = (x, y, health) => {
       const width = 30;
       const height = 4;
-
       ctx.fillStyle = "red";
       ctx.fillRect(x - width / 2, y, width, height);
-
       ctx.fillStyle = "lime";
       ctx.fillRect(x - width / 2, y, (health / 100) * width, height);
     };
@@ -93,95 +73,63 @@ export default function AdminMonitor() {
     const drawOverlay = (players) => {
       ctx.fillStyle = "rgba(0,0,0,0.4)";
       ctx.fillRect(10, 10, 200, 80);
-
       ctx.fillStyle = "white";
       ctx.font = "14px Arial";
-
       ctx.fillText(`👥 Players: ${players.length}`, 20, 35);
-
       const alive = players.filter((p) => p.health > 0).length;
       ctx.fillText(`❤️ Alive: ${alive}`, 20, 55);
-
-      ctx.fillText(
-        `🔎 Zoom: ${camera.current.zoom.toFixed(2)}`,
-        20,
-        75
-      );
+      ctx.fillText(`🔎 Zoom: ${camera.current.zoom.toFixed(2)}`, 20, 75);
     };
 
     drawBoard();
 
     // =========================
-    // SOCKET CONNECTION
+    // SOCKET.IO CONNECTION
     // =========================
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("❌ No admin token found");
-      return;
-    }
-
-    socketRef.current = io(API_URL + "/admin", {
-      auth: { token },                      // ✅ explicit auth
-      transports: ["websocket", "polling"],  // ✅ Render-safe
+    socketRef.current = io(`${API_URL}/admin`, {
+      transports: ["websocket", "polling"],
+      withCredentials: true, // ✅ send cookie automatically
     });
 
-    socketRef.current.on("connect", () => {
-      console.log("🛡️ Admin monitor connected:", socketRef.current.id);
-    });
+    socketRef.current.on("connect", () =>
+      console.log("🛡️ Admin monitor connected:", socketRef.current.id)
+    );
 
-    socketRef.current.on("connect_error", (err) => {
-      console.error("⚠️ Connection failed:", err.message);
-    });
+    socketRef.current.on("connect_error", (err) =>
+      console.error("⚠️ Connection failed:", err.message)
+    );
 
-    socketRef.current.on("disconnect", (reason) => {
-      console.log("❌ Socket disconnected:", reason);
-    });
+    socketRef.current.on("disconnect", (reason) =>
+      console.log("❌ Socket disconnected:", reason)
+    );
 
     socketRef.current.on("tacticalUpdate", ({ players = [] }) => {
       drawBoard();
-
       players.forEach((p) => {
         if (!p.position) return;
+        const { x, y } = worldToScreen(p.position.x, p.position.z);
 
-        const { x, y } = worldToScreen(
-          p.position.x,
-          p.position.z
-        );
-
-        // Player dot
         ctx.beginPath();
         ctx.arc(x, y, 10, 0, Math.PI * 2);
-
-        ctx.fillStyle =
-          p.health > 0 ? getRoomColor(p.room) : "gray";
-
+        ctx.fillStyle = p.health > 0 ? getRoomColor(p.room) : "gray";
         ctx.fill();
 
-        // Name
         ctx.fillStyle = "white";
         ctx.font = "12px Arial";
         ctx.fillText(p.username, x - 15, y - 15);
 
-        // Health bar
         drawHealthBar(x, y + 12, p.health);
       });
-
       drawOverlay(players);
     });
 
     // =========================
-    // ZOOM
+    // ZOOM CONTROL
     // =========================
     const handleWheel = (e) => {
       e.preventDefault();
-
       camera.current.zoom += e.deltaY * -0.001;
-
-      camera.current.zoom = Math.min(
-        Math.max(0.5, camera.current.zoom),
-        2
-      );
+      camera.current.zoom = Math.min(Math.max(0.5, camera.current.zoom), 2);
     };
 
     canvas.addEventListener("wheel", handleWheel);

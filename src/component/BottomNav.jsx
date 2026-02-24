@@ -7,7 +7,7 @@ export default function BottomNav() {
   const inactive = "text-gray-400";
 
   return (
-    <div className="fixed bottom-0 left-0 w-full bg-gray-900 border-t border-gray-800 block md:hidden z-50">
+    <div className="fixed bottom-0 left-0 w-full bg-gray-900 border-t border-gray-800 z-50">
       <div className="flex justify-around py-3">
         <NavLink to="/" className={({ isActive }) => `${base} ${isActive ? active : inactive}`}>
           <FaHome className="text-xl mb-1" />
