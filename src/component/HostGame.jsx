@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { io } from "socket.io-client";
 
 import { buyItem } from "../features/coins/CoinSlice.js";
-import { hostGame, addToPot } from "../features/gameSlice/gameSlice";
+import { hostGame, hostGameAsync, addToPot } from "../features/gameSlice/gameSlice";
 import gameScene from "../scenes/gameScene.ts";
 
 export default function HostGame() {
@@ -27,7 +27,7 @@ export default function HostGame() {
   const [game, setGame] = useState(null);
 
   /* =========================================================
-     CREATE GAME (NOW WAITS FOR ADMIN)
+     CREATE GAME (LOCAL + BACKEND)
   ========================================================= */
   const handlePlaySolo = async () => {
     if (!user?._id) return toast.error("User session error");
@@ -37,15 +37,19 @@ export default function HostGame() {
     try {
       setLoading(true);
 
+      // Deduct coins locally
       await dispatch(buyItem({ itemName: "Play Game", cost: amount }));
 
-      const action = await dispatch(
-        hostGame({ hostId: user._id, amount })
-      );
+      // 1️⃣ Instant local feedback
+      const tempAction = await dispatch(hostGame({ hostId: user._id, amount }));
+      const tempGame = tempAction.payload;
+      setGame(tempGame);
 
-      const newGame = action.payload;
+      // 2️⃣ Send to backend
+      const backendAction = await dispatch(hostGameAsync({ userId: user._id, pot: amount }));
+      const backendGame = backendAction.payload;
 
-      setGame(newGame);
+      setGame(backendGame || tempGame); // fallback to temp if backend fails
 
       toast.info("⌛ Waiting for admin to start the battle...");
     } catch (err) {
@@ -65,9 +69,7 @@ export default function HostGame() {
     const socket = io("http://localhost:5000");
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("🎮 Player socket connected");
-    });
+    socket.on("connect", () => console.log("🎮 Player socket connected"));
 
     socket.on("game:started", ({ gameId }) => {
       if (gameId === game.id) {
@@ -159,17 +161,9 @@ export default function HostGame() {
   if (game && !gameStarted) {
     return (
       <div className="h-screen flex flex-col justify-center items-center text-white">
-        <div className="animate-pulse text-xl mb-4">
-          ⌛ Preparing battlefield...
-        </div>
-
-        <div className="text-gray-400">
-          Waiting for admin to deploy enemies
-        </div>
-
-        <div className="mt-6 text-yellow-400">
-          Current Pot: {game.pot} coins
-        </div>
+        <div className="animate-pulse text-xl mb-4">⌛ Preparing battlefield...</div>
+        <div className="text-gray-400">Waiting for admin to deploy enemies</div>
+        <div className="mt-6 text-yellow-400">Current Pot: {game.pot} coins</div>
       </div>
     );
   }
@@ -184,7 +178,6 @@ export default function HostGame() {
           ref={canvasRef}
           style={{ width: "100vw", height: "100vh", display: "block" }}
         />
-
         <div className="absolute top-4 right-4 flex gap-2">
           <button
             className="px-4 py-2 bg-yellow-600 rounded"
@@ -192,7 +185,6 @@ export default function HostGame() {
           >
             +10 Pot
           </button>
-
           <button
             className="px-4 py-2 bg-yellow-600 rounded"
             onClick={() => handleAddToPot(50)}
@@ -210,7 +202,6 @@ export default function HostGame() {
   return (
     <div className="max-w-xl mx-auto text-white mt-10">
       <h2 className="text-2xl mb-4">Solo Game</h2>
-
       <div className="flex items-center gap-4">
         <input
           type="number"
@@ -219,7 +210,6 @@ export default function HostGame() {
           onChange={(e) => setAmount(+e.target.value)}
           className="text-black px-3 py-2 rounded w-32"
         />
-
         <button
           onClick={handlePlaySolo}
           disabled={loading}
