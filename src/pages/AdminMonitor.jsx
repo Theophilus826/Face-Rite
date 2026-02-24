@@ -107,7 +107,7 @@ export default function AdminMonitor() {
     socketRef.current = io(`${API_URL}/admin`, {
       transports: ["websocket", "polling"],
       withCredentials: true,
-      auth: { token: localStorage.getItem("token") },
+      auth: { token },
     });
 
     socketRef.current.on("connect", () =>
