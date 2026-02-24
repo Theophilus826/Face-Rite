@@ -14,13 +14,9 @@ export default function AdminMonitor() {
     const ctx = canvas.getContext("2d");
     const SCALE = 10;
 
-    // ✅ Auto-detect backend URL
-    const API_URL =
-      import.meta.env.VITE_API_URL || window.location.origin;
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("❌ No admin token found");
+    const API_URL = import.meta.env.VITE_API_URL;
+    if (!API_URL) {
+      console.error("❌ VITE_API_URL is missing");
       return;
     }
 
@@ -43,6 +39,7 @@ export default function AdminMonitor() {
         ctx.lineTo(x + (camera.current.offsetX % spacing), canvas.height);
         ctx.stroke();
       }
+
       for (let y = 0; y < canvas.height; y += spacing) {
         ctx.beginPath();
         ctx.moveTo(0, y + (camera.current.offsetY % spacing));
@@ -90,9 +87,8 @@ export default function AdminMonitor() {
     // SOCKET.IO CONNECTION
     // =========================
     socketRef.current = io(`${API_URL}/admin`, {
-      auth: { token },
       transports: ["websocket", "polling"],
-      withCredentials: true,
+      withCredentials: true, // ✅ send cookie automatically
     });
 
     socketRef.current.on("connect", () =>
@@ -113,18 +109,15 @@ export default function AdminMonitor() {
         if (!p.position) return;
         const { x, y } = worldToScreen(p.position.x, p.position.z);
 
-        // Player dot
         ctx.beginPath();
         ctx.arc(x, y, 10, 0, Math.PI * 2);
         ctx.fillStyle = p.health > 0 ? getRoomColor(p.room) : "gray";
         ctx.fill();
 
-        // Player name
         ctx.fillStyle = "white";
         ctx.font = "12px Arial";
         ctx.fillText(p.username, x - 15, y - 15);
 
-        // Health bar
         drawHealthBar(x, y + 12, p.health);
       });
       drawOverlay(players);
@@ -138,6 +131,7 @@ export default function AdminMonitor() {
       camera.current.zoom += e.deltaY * -0.001;
       camera.current.zoom = Math.min(Math.max(0.5, camera.current.zoom), 2);
     };
+
     canvas.addEventListener("wheel", handleWheel);
 
     return () => {
