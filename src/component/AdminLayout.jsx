@@ -88,23 +88,34 @@ export default function AdminLayout() {
      FETCH / RELOAD GAMES
   ========================================================= */
   const fetchGames = async () => {
-    try {
-      const res = await fetch("/api/admin/games");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to fetch games");
+  try {
+    const res = await fetch("/api/admin/games");
 
-      const updatedGames = data.games.map(g => ({ ...g, enemiesConfigured: g.enemies?.length > 0 }));
-      setGames(updatedGames);
-
-      // Auto-scroll to top when new games are loaded
-      if (gamesContainerRef.current) {
-        gamesContainerRef.current.scrollTop = 0;
-      }
-    } catch (err) {
-      console.error("Error fetching games:", err.message);
-      alert(err.message);
+    // ✅ Handle non-JSON errors (404 / proxy / server crash)
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Failed to fetch games");
     }
-  };
+
+    const data = await res.json();  // ✅ Now safe
+
+    const updatedGames = data.games.map(g => ({
+      ...g,
+      enemiesConfigured: g.enemies?.length > 0,
+    }));
+
+    setGames(updatedGames);
+
+    // Auto-scroll to top when new games are loaded
+    if (gamesContainerRef.current) {
+      gamesContainerRef.current.scrollTop = 0;
+    }
+
+  } catch (err) {
+    console.error("Error fetching games:", err.message);
+    alert(err.message);
+  }
+};
 
   /* =========================================================
      START GAME FUNCTION
