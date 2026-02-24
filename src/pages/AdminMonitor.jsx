@@ -30,8 +30,14 @@ export default function AdminMonitor() {
     // HELPER FUNCTIONS
     // =========================
     const worldToScreen = (x, z) => ({
-      x: x * SCALE * camera.current.zoom + canvas.width / 2 + camera.current.offsetX,
-      y: z * SCALE * camera.current.zoom + canvas.height / 2 + camera.current.offsetY,
+      x:
+        x * SCALE * camera.current.zoom +
+        canvas.width / 2 +
+        camera.current.offsetX,
+      y:
+        z * SCALE * camera.current.zoom +
+        canvas.height / 2 +
+        camera.current.offsetY,
     });
 
     const drawGrid = () => {
@@ -62,7 +68,8 @@ export default function AdminMonitor() {
     };
 
     const getRoomColor = (room) =>
-      ({ arena1: "#ffd700", arena2: "#00bfff", arena3: "#ff4d4d" }[room] || "yellow");
+      ({ arena1: "#ffd700", arena2: "#00bfff", arena3: "#ff4d4d" })[room] ||
+      "yellow";
 
     const drawHealthBar = (x, y, health) => {
       const width = 30;
@@ -104,6 +111,12 @@ export default function AdminMonitor() {
     // =========================
     // SOCKET.IO CONNECTION
     // =========================
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      console.error("❌ No token found in localStorage");
+      return;
+    }
     socketRef.current = io(`${API_URL}/admin`, {
       transports: ["websocket", "polling"],
       withCredentials: true,
@@ -111,15 +124,15 @@ export default function AdminMonitor() {
     });
 
     socketRef.current.on("connect", () =>
-      console.log("🛡 Admin monitor connected:", socketRef.current.id)
+      console.log("🛡 Admin monitor connected:", socketRef.current.id),
     );
 
     socketRef.current.on("connect_error", (err) =>
-      console.error("⚠️ Connection failed:", err.message)
+      console.error("⚠️ Connection failed:", err.message),
     );
 
     socketRef.current.on("disconnect", (reason) =>
-      console.log("❌ Socket disconnected:", reason)
+      console.log("❌ Socket disconnected:", reason),
     );
 
     socketRef.current.on("tacticalUpdate", ({ players = [] }) => {
