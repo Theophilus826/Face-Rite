@@ -63,26 +63,55 @@ export default function HostGame() {
   };
 
   /* ================= SOCKET.IO ================= */
-  useEffect(() => {
+useEffect(() => {
   if (!game) return;
 
+  // Initialize socket
   const socket = io("https://swordgame-5.onrender.com", {
-    withCredentials: true,
-    transports: ["polling", "websocket"],
+    withCredentials: true,              // send cookies for auth
+    transports: ["polling", "websocket"], // polling first, then websocket
+    reconnection: true,                 // auto reconnect
+    upgrade: true,                      // allow websocket upgrade
   });
 
   socketRef.current = socket;
 
+  // Successful connection
   socket.on("connect", () => {
-    console.log("🎮 Player socket connected");
+    console.log("🎮 Player socket connected (ID:", socket.id, ")");
     socket.emit("joinGameRoom", game.id);
   });
 
+  // Connection errors (e.g., WebSocket upgrade fails)
+  socket.on("connect_error", (err) => {
+    console.error("🚨 Socket connect error:", err.message);
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.warn("⚠️ Socket disconnected:", reason);
+  });
+
+  // Admin / game events
+  socket.on("game:enemiesConfigured", ({ gameId }) => {
+    if (gameId === game.id) {
+      toast.info("⚔️ Enemies deployed! Waiting for start...");
+    }
+  });
+
+  socket.on("game:started", ({ gameId }) => {
+    if (gameId === game.id) {
+      toast.success("🚀 Battle started!");
+      setGameStarted(true);
+    }
+  });
+
+  // Cleanup on unmount or game change
   return () => {
-    socket.removeAllListeners();  // 👈 prevents ghost listeners
+    socket.removeAllListeners();
     socket.disconnect();
+    socketRef.current = null;
   };
-}, [game?.id]);  // 👈 subtle but cleaner dependency
+}, [game?.id]);
   /* ================= ADD TO POT ================= */
   const handleAddToPot = async (amountToAdd) => {
     if (!game) return toast.error("No active game");
