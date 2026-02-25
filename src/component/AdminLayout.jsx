@@ -89,7 +89,7 @@ export default function AdminLayout() {
   ========================================================= */
   const fetchGames = async () => {
   try {
-    const res = await fetch("/api/admin/games");
+    const res = await fetch(`${API_URL}/api/admin/games`);
 
     // ✅ Handle non-JSON errors (404 / proxy / server crash)
     if (!res.ok) {
