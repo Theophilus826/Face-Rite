@@ -21,7 +21,7 @@ export default function AdminLayout() {
      SOCKET INITIALIZATION
   ========================================================= */
   useEffect(() => {
-    const socket = io("http://localhost:5000/admin", {
+    const socket = io("https://swordgame-5.onrender.com/admin", {
       withCredentials: true,
     });
 
