@@ -26,13 +26,9 @@ export default function HostGame() {
   const [game, setGame] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
 
-<<<<<<< HEAD
-  /* ================= CREATE GAME ================= */
-=======
   /* =========================================================
      CREATE GAME (LOCAL + BACKEND)
   ========================================================= */
->>>>>>> 2f4afdd6c3687c2dad2de888074a5d53b2ee4f9d
   const handlePlaySolo = async () => {
     if (!user?._id) return toast.error("User session error");
     if (amount <= 0) return toast.error("Invalid amount");
@@ -41,49 +37,23 @@ export default function HostGame() {
     try {
       setLoading(true);
 
-      // Deduct coins locally
       await dispatch(buyItem({ itemName: "Play Game", cost: amount }));
 
-<<<<<<< HEAD
-      // Create game on backend
-      const res = await fetch("/api/game/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hostId: user._id, amount }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-
-      setGame(data.game);
-
-      // Optional: update Redux for local UI
-      dispatch(
-        hostGame({
-          hostId: user._id,
-          amount,
-          id: data.game.id,
-          status: data.game.status,
-          pot: data.game.amount,
-          enemies: [],
-        })
-      );
-
-      toast.info("⌛ Waiting for admin to configure enemies...");
-=======
-      // 1️⃣ Instant local feedback
+      // Instant UI feedback
       const tempAction = await dispatch(hostGame({ hostId: user._id, amount }));
       const tempGame = tempAction.payload;
       setGame(tempGame);
 
-      // 2️⃣ Send to backend
-      const backendAction = await dispatch(hostGameAsync({ userId: user._id, pot: amount }));
+      // Backend persistence
+      const backendAction = await dispatch(
+        hostGameAsync({ userId: user._id, pot: amount })
+      );
+
       const backendGame = backendAction.payload;
 
-      setGame(backendGame || tempGame); // fallback to temp if backend fails
+      setGame(backendGame || tempGame);
 
       toast.info("⌛ Waiting for admin to start the battle...");
->>>>>>> 2f4afdd6c3687c2dad2de888074a5d53b2ee4f9d
     } catch (err) {
       console.error("🔥 ERROR:", err);
       toast.error(err?.message || "Failed to create game");
@@ -99,23 +69,16 @@ export default function HostGame() {
     const socket = io("https://swordgame-5.onrender.com");
     socketRef.current = socket;
 
-<<<<<<< HEAD
-    socket.on("connect", () => {
-      console.log("🎮 Player socket connected");
-      socket.emit("joinGameRoom", game.id); // optional: join room for game
-    });
-=======
-    socket.on("connect", () => console.log("🎮 Player socket connected"));
->>>>>>> 2f4afdd6c3687c2dad2de888074a5d53b2ee4f9d
+    socket.on("connect", () =>
+      console.log("🎮 Player socket connected")
+    );
 
-    // Admin has configured enemies
     socket.on("game:enemiesConfigured", ({ gameId }) => {
       if (gameId === game.id) {
         toast.info("⚔️ Enemies deployed! Waiting for start...");
       }
     });
 
-    // Admin started game
     socket.on("game:started", ({ gameId }) => {
       if (gameId === game.id) {
         toast.success("🚀 Battle started!");
@@ -141,7 +104,9 @@ export default function HostGame() {
       if (!res.ok) throw new Error(data.message);
 
       toast.success(`Added ${amountToAdd} coins to pot`);
+
       setGame((prev) => ({ ...prev, pot: data.pot }));
+
       dispatch(addToPot({ gameId: game.id, amount: amountToAdd }));
     } catch (err) {
       toast.error(err.message);
@@ -174,8 +139,13 @@ export default function HostGame() {
         });
 
         scene.onDisposeObservable.add(() => {
-          if (scene.lastWinnerId === user._id && scene.lastWinAmount > 0) {
-            toast.success(`🎉 Coins credited: +${scene.lastWinAmount}`);
+          if (
+            scene.lastWinnerId === user._id &&
+            scene.lastWinAmount > 0
+          ) {
+            toast.success(
+              `🎉 Coins credited: +${scene.lastWinAmount}`
+            );
           }
         });
       } catch (err) {
@@ -199,15 +169,15 @@ export default function HostGame() {
   if (game && !gameStarted) {
     return (
       <div className="h-screen flex flex-col justify-center items-center text-white">
-<<<<<<< HEAD
         <div className="animate-pulse text-xl mb-4">
           ⌛ Preparing battlefield...
         </div>
-=======
-        <div className="animate-pulse text-xl mb-4">⌛ Preparing battlefield...</div>
->>>>>>> 2f4afdd6c3687c2dad2de888074a5d53b2ee4f9d
-        <div className="text-gray-400">Waiting for admin to deploy enemies</div>
-        <div className="mt-6 text-yellow-400">Current Pot: {game.pot} coins</div>
+        <div className="text-gray-400">
+          Waiting for admin to deploy enemies
+        </div>
+        <div className="mt-6 text-yellow-400">
+          Current Pot: {game.pot} coins
+        </div>
       </div>
     );
   }
@@ -218,8 +188,13 @@ export default function HostGame() {
       <>
         <canvas
           ref={canvasRef}
-          style={{ width: "100vw", height: "100vh", display: "block" }}
+          style={{
+            width: "100vw",
+            height: "100vh",
+            display: "block",
+          }}
         />
+
         <div className="absolute top-4 right-4 flex gap-2">
           <button
             className="px-4 py-2 bg-yellow-600 rounded"
@@ -227,6 +202,7 @@ export default function HostGame() {
           >
             +10 Pot
           </button>
+
           <button
             className="px-4 py-2 bg-yellow-600 rounded"
             onClick={() => handleAddToPot(50)}
@@ -242,6 +218,7 @@ export default function HostGame() {
   return (
     <div className="max-w-xl mx-auto text-white mt-10">
       <h2 className="text-2xl mb-4">Solo Game</h2>
+
       <div className="flex items-center gap-4">
         <input
           type="number"
@@ -250,6 +227,7 @@ export default function HostGame() {
           onChange={(e) => setAmount(+e.target.value)}
           className="text-black px-3 py-2 rounded w-32"
         />
+
         <button
           onClick={handlePlaySolo}
           disabled={loading}
