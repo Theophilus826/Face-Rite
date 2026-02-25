@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { io } from "socket.io-client";
 
 import { buyItem } from "../features/coins/CoinSlice.js";
-import { hostGame, addToPot } from "../features/gameSlice/gameSlice";
+import { hostGame, hostGameAsync, addToPot } from "../features/gameSlice/gameSlice";
 import gameScene from "../scenes/gameScene.ts";
 
 export default function HostGame() {
@@ -26,7 +26,13 @@ export default function HostGame() {
   const [game, setGame] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
 
+<<<<<<< HEAD
   /* ================= CREATE GAME ================= */
+=======
+  /* =========================================================
+     CREATE GAME (LOCAL + BACKEND)
+  ========================================================= */
+>>>>>>> 2f4afdd6c3687c2dad2de888074a5d53b2ee4f9d
   const handlePlaySolo = async () => {
     if (!user?._id) return toast.error("User session error");
     if (amount <= 0) return toast.error("Invalid amount");
@@ -38,6 +44,7 @@ export default function HostGame() {
       // Deduct coins locally
       await dispatch(buyItem({ itemName: "Play Game", cost: amount }));
 
+<<<<<<< HEAD
       // Create game on backend
       const res = await fetch("/api/game/create", {
         method: "POST",
@@ -63,6 +70,20 @@ export default function HostGame() {
       );
 
       toast.info("⌛ Waiting for admin to configure enemies...");
+=======
+      // 1️⃣ Instant local feedback
+      const tempAction = await dispatch(hostGame({ hostId: user._id, amount }));
+      const tempGame = tempAction.payload;
+      setGame(tempGame);
+
+      // 2️⃣ Send to backend
+      const backendAction = await dispatch(hostGameAsync({ userId: user._id, pot: amount }));
+      const backendGame = backendAction.payload;
+
+      setGame(backendGame || tempGame); // fallback to temp if backend fails
+
+      toast.info("⌛ Waiting for admin to start the battle...");
+>>>>>>> 2f4afdd6c3687c2dad2de888074a5d53b2ee4f9d
     } catch (err) {
       console.error("🔥 ERROR:", err);
       toast.error(err?.message || "Failed to create game");
@@ -75,13 +96,17 @@ export default function HostGame() {
   useEffect(() => {
     if (!game) return;
 
-    const socket = io("http://localhost:5000");
+    const socket = io("https://swordgame-5.onrender.com");
     socketRef.current = socket;
 
+<<<<<<< HEAD
     socket.on("connect", () => {
       console.log("🎮 Player socket connected");
       socket.emit("joinGameRoom", game.id); // optional: join room for game
     });
+=======
+    socket.on("connect", () => console.log("🎮 Player socket connected"));
+>>>>>>> 2f4afdd6c3687c2dad2de888074a5d53b2ee4f9d
 
     // Admin has configured enemies
     socket.on("game:enemiesConfigured", ({ gameId }) => {
@@ -174,9 +199,13 @@ export default function HostGame() {
   if (game && !gameStarted) {
     return (
       <div className="h-screen flex flex-col justify-center items-center text-white">
+<<<<<<< HEAD
         <div className="animate-pulse text-xl mb-4">
           ⌛ Preparing battlefield...
         </div>
+=======
+        <div className="animate-pulse text-xl mb-4">⌛ Preparing battlefield...</div>
+>>>>>>> 2f4afdd6c3687c2dad2de888074a5d53b2ee4f9d
         <div className="text-gray-400">Waiting for admin to deploy enemies</div>
         <div className="mt-6 text-yellow-400">Current Pot: {game.pot} coins</div>
       </div>
