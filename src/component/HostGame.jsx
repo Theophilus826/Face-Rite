@@ -66,7 +66,7 @@ export default function HostGame() {
   useEffect(() => {
     if (!game) return;
 
-    const socket = io("https://swordgame-5.onrender.com");
+    const socket = io("https://swordgame-5.onrender.com/admin");
     socketRef.current = socket;
 
     socket.on("connect", () =>
