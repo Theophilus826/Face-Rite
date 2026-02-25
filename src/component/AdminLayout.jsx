@@ -6,7 +6,6 @@ import { io } from "socket.io-client";
 
 export default function AdminLayout() {
   const dispatch = useDispatch();
-
   const socketRef = useRef(null);
 
   const [users, setUsers] = useState([]);
@@ -22,132 +21,111 @@ export default function AdminLayout() {
      SOCKET INITIALIZATION
   ========================================================= */
   useEffect(() => {
-  const socket = io("https://swordgame-5.onrender.com/admin", {
-    withCredentials: true,
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 500,
-    reconnectionDelayMax: 3000,
-  });
+    const socket = io("https://swordgame-5.onrender.com/admin", {
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
+    });
 
-  socketRef.current = socket;
+    socketRef.current = socket;
 
-  socket.on("connect", () => {
-    console.log("🛡 Admin socket connected");
-    socket.emit("admin:getUsers");
-  });
+    socket.on("connect", () => {
+      console.log("🛡 Admin socket connected");
+      socket.emit("admin:getUsers");
+      socket.emit("admin:getGames"); // fetch existing games
+    });
 
-  socket.on("users:list", setUsers);
-
-  socket.on("user:status", ({ userId, online }) => {
-    setUsers(prev =>
-      prev.map(u => (u._id === userId ? { ...u, online } : u))
+    // ====== Users ======
+    socket.on("users:list", setUsers);
+    socket.on("user:status", ({ userId, online }) =>
+      setUsers((prev) =>
+        prev.map((u) => (u._id === userId ? { ...u, online } : u))
+      )
     );
-  });
 
-  socket.on("activity:event", (event) => {
-    setEvents(prev => [event, ...prev]);
+    // ====== Game events ======
+    socket.on("game:created", (game) => {
+      setEvents((prev) => [{ ...game, type: "GAME_CREATED" }, ...prev]);
+      setGames((prev) => [game, ...prev]);
+    });
 
-    if (event.type === "GAME_CREATED") {
-      setGames(prev => {
-        if (prev.some(g => g.gameId === event.gameId)) return prev;
+    socket.on("game:enemiesConfigured", ({ gameId, enemies }) => {
+      setEvents((prev) => [
+        { type: "ADMIN_CONFIG_ENEMIES", gameId, numEnemies: enemies.length, timestamp: Date.now() },
+        ...prev,
+      ]);
+      setGames((prev) =>
+        prev.map((g) => (g.gameId === gameId ? { ...g, enemies } : g))
+      );
+    });
 
-<<<<<<< Updated upstream
-        return [
-          {
-            gameId: event.gameId,
-            userId: event.userId,
-            pot: event.pot,
-            status: event.status,
-          },
-          ...prev,
-        ];
-=======
+    socket.on("game:started", ({ gameId }) => {
+      setEvents((prev) => [
+        { type: "GAME_STARTED", gameId, timestamp: Date.now() },
+        ...prev,
+      ]);
+      setGames((prev) =>
+        prev.map((g) => (g.gameId === gameId ? { ...g, status: "started" } : g))
+      );
+    });
+
+    socket.on("game:finished", ({ gameId, winnerId, creditedCoins }) => {
+      setEvents((prev) => [
+        { type: "GAME_RESULT", gameId, winnerId, creditedCoins, timestamp: Date.now() },
+        ...prev,
+      ]);
+      setGames((prev) =>
+        prev.map((g) =>
+          g.gameId === gameId ? { ...g, status: "finished", winnerId } : g
+        )
+      );
+    });
+
+    socket.on("game:potUpdated", ({ gameId, newPot }) => {
+      setEvents((prev) => [
+        { type: "ADMIN_ADD_POT", gameId, newPot, timestamp: Date.now() },
+        ...prev,
+      ]);
+      setGames((prev) =>
+        prev.map((g) => (g.gameId === gameId ? { ...g, pot: newPot } : g))
+      );
+    });
+
     return () => {
-      socket.off("activity:event", handleEvent);
-      socket.off("game:event", handleEvent);
+      socket.off("users:list");
+      socket.off("user:status");
+      socket.off("game:created");
+      socket.off("game:enemiesConfigured");
+      socket.off("game:started");
+      socket.off("game:finished");
+      socket.off("game:potUpdated");
       socket.disconnect();
     };
   }, []);
 
   /* =========================================================
-     FETCH / RELOAD GAMES
+     EVENT RENDERING
   ========================================================= */
-  const fetchGames = async () => {
-  try {
-    const res = await fetch(`${API_URL}/api/admin/games`);
-
-    // ✅ Handle non-JSON errors (404 / proxy / server crash)
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Failed to fetch games");
+  function renderEvent(event) {
+    switch (event.type) {
+      case "GAME_CREATED":
+        return `🎮 Game created by ${event.userId} (pot: ${event.pot})`;
+      case "ADMIN_CONFIG_ENEMIES":
+        return `👾 Enemies configured (${event.numEnemies})`;
+      case "GAME_STARTED":
+        return `🚀 Game ${event.gameId} started`;
+      case "PLAYER_ATTACK":
+        return `⚔️ Enemy hit for ${event.damage} (HP: ${event.remainingHealth})`;
+      case "ADMIN_ADD_POT":
+        return `💰 Pot updated → ${event.newPot}`;
+      case "GAME_RESULT":
+        return `🏆 Winner: ${event.winnerId} (+${event.creditedCoins})`;
+      default:
+        return `⚡ ${event.type}`;
     }
-
-    const data = await res.json();  // ✅ Now safe
-
-    const updatedGames = data.games.map(g => ({
-      ...g,
-      enemiesConfigured: g.enemies?.length > 0,
-    }));
-
-    setGames(updatedGames);
-
-    // Auto-scroll to top when new games are loaded
-    if (gamesContainerRef.current) {
-      gamesContainerRef.current.scrollTop = 0;
-    }
-
-  } catch (err) {
-    console.error("Error fetching games:", err.message);
-    alert(err.message);
   }
-};
-
-  /* =========================================================
-     START GAME FUNCTION
-  ========================================================= */
-  const startGame = async (gameId) => {
-    try {
-      const res = await fetch("/api/admin/start-game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameId }),
->>>>>>> Stashed changes
-      });
-    }
-
-    if (event.type === "GAME_STARTED") {
-      setGames(prev =>
-        prev.map(g =>
-          g.gameId === event.gameId ? { ...g, status: "started" } : g
-        )
-      );
-    }
-
-    if (event.type === "GAME_RESULT") {
-      setGames(prev =>
-        prev.map(g =>
-          g.gameId === event.gameId ? { ...g, status: "finished" } : g
-        )
-      );
-    }
-
-    if (event.type === "ADMIN_ADD_POT") {
-      setGames(prev =>
-        prev.map(g =>
-          g.gameId === event.gameId ? { ...g, pot: event.newPot } : g
-        )
-      );
-    }
-  });
-
-  return () => {
-    socket.off("users:list");
-    socket.off("user:status");
-    socket.off("activity:event");
-    socket.disconnect();
-  };
-}, []);
 
   /* =========================================================
      UI
@@ -156,30 +134,18 @@ export default function AdminLayout() {
     <>
       {/* ================= USERS + ACTIVITY ================= */}
       <section className="flex gap-4">
-
         {/* USERS PANEL */}
         <div className="bg-white p-4 shadow rounded w-1/3">
           <h1 className="text-xl font-bold mb-3">Welcome Admin</h1>
           <h2 className="text-lg font-semibold mb-2">Users</h2>
-
           <ul className="space-y-2">
             {users.map((user) => (
-              <li
-                key={user._id}
-                className="flex items-center justify-between p-2 bg-gray-50 rounded"
-              >
+              <li key={user._id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                 <div className="flex items-center gap-3">
-                  <span
-                    className={`w-3 h-3 rounded-full ${
-                      user.online ? "bg-green-500" : "bg-purple-500"
-                    }`}
-                  />
+                  <span className={`w-3 h-3 rounded-full ${user.online ? "bg-green-500" : "bg-purple-500"}`} />
                   <span className="text-gray-800">{user.name}</span>
                 </div>
-
-                <span className="text-sm text-gray-500">
-                  {user.online ? "Online" : "Offline"}
-                </span>
+                <span className="text-sm text-gray-500">{user.online ? "Online" : "Offline"}</span>
               </li>
             ))}
           </ul>
@@ -187,21 +153,12 @@ export default function AdminLayout() {
 
         {/* ACTIVITY FEED */}
         <div className="bg-white p-4 shadow rounded w-2/3 h-[500px] overflow-y-auto">
-          <h2 className="text-lg font-semibold mb-3">
-            🔥 Live Activity Monitor
-          </h2>
-
-          {events.length === 0 && (
-            <p className="text-gray-500">Waiting for activity...</p>
-          )}
-
+          <h2 className="text-lg font-semibold mb-3">🔥 Live Activity Monitor</h2>
+          {events.length === 0 && <p className="text-gray-500">Waiting for activity...</p>}
           {events.map((event, idx) => (
             <div key={idx} className="p-2 mb-2 bg-gray-50 border rounded">
               <p className="text-sm">{renderEvent(event)}</p>
-
-              <span className="text-xs text-gray-400">
-                {new Date(event.timestamp).toLocaleTimeString()}
-              </span>
+              <span className="text-xs text-gray-400">{new Date(event.timestamp).toLocaleTimeString()}</span>
             </div>
           ))}
         </div>
@@ -209,35 +166,16 @@ export default function AdminLayout() {
 
       {/* ================= GAME CONTROLLER ================= */}
       <section className="mt-4 bg-white p-4 shadow rounded">
-        <h2 className="text-lg font-semibold mb-3">
-          🎮 Live Game Controller
-        </h2>
-
-        {games.length === 0 && (
-          <p className="text-gray-500">No active games</p>
-        )}
-
+        <h2 className="text-lg font-semibold mb-3">🎮 Live Game Controller</h2>
+        {games.length === 0 && <p className="text-gray-500">No active games</p>}
         {games.map((game) => (
-          <div
-            key={game.gameId}
-            className="flex justify-between items-center p-2 mb-2 bg-gray-50 rounded"
-          >
+          <div key={game.gameId} className="flex justify-between items-center p-2 mb-2 bg-gray-50 rounded">
             <div>
-              <div className="text-sm font-semibold">
-                Game {game.gameId.slice(0, 6)}
-              </div>
-
-              <div className="text-xs text-gray-500">
-                Player: {game.userId}
-              </div>
+              <div className="text-sm font-semibold">Game {game.gameId.slice(0, 6)}</div>
+              <div className="text-xs text-gray-500">Player: {game.userId}</div>
             </div>
-
             <div className="flex items-center gap-4">
-
-              <div className="text-yellow-600 text-sm">
-                Pot: {game.pot}
-              </div>
-
+              <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
               <div
                 className={`text-xs px-2 py-1 rounded ${
                   game.status === "waiting"
@@ -258,36 +196,15 @@ export default function AdminLayout() {
       <section>
         <div className="flex min-h-screen bg-gray-100 mt-4">
           <aside className="w-64 bg-white shadow-lg p-4">
-            <h1 className="text-xl font-bold mb-6 text-center">
-              🛡 Admin Panel
-            </h1>
-
+            <h1 className="text-xl font-bold mb-6 text-center">🛡 Admin Panel</h1>
             <nav className="space-y-2">
-              <NavLink to="/admin/monitor" className={linkClass}>
-                🎮 Live Monitor
-              </NavLink>
-
-              <NavLink to="/admin/credit-coins" className={linkClass}>
-                💰 Credit/Debit Coins
-              </NavLink>
-
-              <NavLink to="/admin/host-game" className={linkClass}>
-                🎲 Host 1v1 Game
-              </NavLink>
-
-              <NavLink to="/admin/transactions" className={linkClass}>
-                📜 Transaction History
-              </NavLink>
+              <NavLink to="/admin/monitor" className={linkClass}>🎮 Live Monitor</NavLink>
+              <NavLink to="/admin/credit-coins" className={linkClass}>💰 Credit/Debit Coins</NavLink>
+              <NavLink to="/admin/host-game" className={linkClass}>🎲 Host 1v1 Game</NavLink>
+              <NavLink to="/admin/transactions" className={linkClass}>📜 Transaction History</NavLink>
             </nav>
-
-            <button
-              onClick={() => dispatch(logout())}
-              className="mt-10 w-full bg-red-500 text-white py-2 rounded"
-            >
-              Logout
-            </button>
+            <button onClick={() => dispatch(logout())} className="mt-10 w-full bg-red-500 text-white py-2 rounded">Logout</button>
           </aside>
-
           <main className="flex-1 p-6">
             <Outlet />
           </main>
@@ -295,32 +212,4 @@ export default function AdminLayout() {
       </section>
     </>
   );
-
-  /* =========================================================
-     EVENT RENDERING (UPDATED FOR NEW LIFECYCLE)
-  ========================================================= */
-  function renderEvent(event) {
-    switch (event.type) {
-      case "GAME_CREATED":
-        return `🎮 Game created by ${event.userId} (pot: ${event.pot})`;
-
-      case "ADMIN_CONFIG_ENEMIES":
-        return `👾 Enemies configured (${event.numEnemies})`;
-
-      case "GAME_STARTED":
-        return `🚀 Game ${event.gameId} started`;
-
-      case "PLAYER_ATTACK":
-        return `⚔️ Enemy hit for ${event.damage} (HP: ${event.remainingHealth})`;
-
-      case "ADMIN_ADD_POT":
-        return `💰 Pot increased (+${event.amount}) → ${event.newPot}`;
-
-      case "GAME_RESULT":
-        return `🏆 Winner: ${event.winnerId} (+${event.creditedCoins})`;
-
-      default:
-        return `⚡ ${event.type}`;
-    }
-  }
 }

@@ -23,12 +23,10 @@ export default function HostGame() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const [gameStarted, setGameStarted] = useState(false);
   const [game, setGame] = useState(null);
+  const [gameStarted, setGameStarted] = useState(false);
 
-  /* =========================================================
-     CREATE GAME (NOW WAITS FOR ADMIN)
-  ========================================================= */
+  /* ================= CREATE GAME ================= */
   const handlePlaySolo = async () => {
     if (!user?._id) return toast.error("User session error");
     if (amount <= 0) return toast.error("Invalid amount");
@@ -37,17 +35,34 @@ export default function HostGame() {
     try {
       setLoading(true);
 
+      // Deduct coins locally
       await dispatch(buyItem({ itemName: "Play Game", cost: amount }));
 
-      const action = await dispatch(
-        hostGame({ hostId: user._id, amount })
+      // Create game on backend
+      const res = await fetch("/api/game/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostId: user._id, amount }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      setGame(data.game);
+
+      // Optional: update Redux for local UI
+      dispatch(
+        hostGame({
+          hostId: user._id,
+          amount,
+          id: data.game.id,
+          status: data.game.status,
+          pot: data.game.amount,
+          enemies: [],
+        })
       );
 
-      const newGame = action.payload;
-
-      setGame(newGame);
-
-      toast.info("⌛ Waiting for admin to start the battle...");
+      toast.info("⌛ Waiting for admin to configure enemies...");
     } catch (err) {
       console.error("🔥 ERROR:", err);
       toast.error(err?.message || "Failed to create game");
@@ -56,9 +71,7 @@ export default function HostGame() {
     }
   };
 
-  /* =========================================================
-     SOCKET LISTENER (ADMIN STARTS GAME)
-  ========================================================= */
+  /* ================= SOCKET.IO ================= */
   useEffect(() => {
     if (!game) return;
 
@@ -67,8 +80,17 @@ export default function HostGame() {
 
     socket.on("connect", () => {
       console.log("🎮 Player socket connected");
+      socket.emit("joinGameRoom", game.id); // optional: join room for game
     });
 
+    // Admin has configured enemies
+    socket.on("game:enemiesConfigured", ({ gameId }) => {
+      if (gameId === game.id) {
+        toast.info("⚔️ Enemies deployed! Waiting for start...");
+      }
+    });
+
+    // Admin started game
     socket.on("game:started", ({ gameId }) => {
       if (gameId === game.id) {
         toast.success("🚀 Battle started!");
@@ -79,9 +101,7 @@ export default function HostGame() {
     return () => socket.disconnect();
   }, [game]);
 
-  /* =========================================================
-     ADD TO POT (Still Works)
-  ========================================================= */
+  /* ================= ADD TO POT ================= */
   const handleAddToPot = async (amountToAdd) => {
     if (!game) return toast.error("No active game");
 
@@ -97,16 +117,13 @@ export default function HostGame() {
 
       toast.success(`Added ${amountToAdd} coins to pot`);
       setGame((prev) => ({ ...prev, pot: data.pot }));
-
       dispatch(addToPot({ gameId: game.id, amount: amountToAdd }));
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  /* =========================================================
-     LOAD BABYLON SCENE (ONLY AFTER START)
-  ========================================================= */
+  /* ================= LOAD BABYLON SCENE ================= */
   useEffect(() => {
     if (!gameStarted || !canvasRef.current || !game || !user) return;
 
@@ -153,30 +170,20 @@ export default function HostGame() {
     };
   }, [gameStarted, game, user, dispatch]);
 
-  /* =========================================================
-     WAITING SCREEN
-  ========================================================= */
+  /* ================= WAITING SCREEN ================= */
   if (game && !gameStarted) {
     return (
       <div className="h-screen flex flex-col justify-center items-center text-white">
         <div className="animate-pulse text-xl mb-4">
           ⌛ Preparing battlefield...
         </div>
-
-        <div className="text-gray-400">
-          Waiting for admin to deploy enemies
-        </div>
-
-        <div className="mt-6 text-yellow-400">
-          Current Pot: {game.pot} coins
-        </div>
+        <div className="text-gray-400">Waiting for admin to deploy enemies</div>
+        <div className="mt-6 text-yellow-400">Current Pot: {game.pot} coins</div>
       </div>
     );
   }
 
-  /* =========================================================
-     GAME VIEW
-  ========================================================= */
+  /* ================= GAME VIEW ================= */
   if (gameStarted) {
     return (
       <>
@@ -184,7 +191,6 @@ export default function HostGame() {
           ref={canvasRef}
           style={{ width: "100vw", height: "100vh", display: "block" }}
         />
-
         <div className="absolute top-4 right-4 flex gap-2">
           <button
             className="px-4 py-2 bg-yellow-600 rounded"
@@ -192,7 +198,6 @@ export default function HostGame() {
           >
             +10 Pot
           </button>
-
           <button
             className="px-4 py-2 bg-yellow-600 rounded"
             onClick={() => handleAddToPot(50)}
@@ -204,13 +209,10 @@ export default function HostGame() {
     );
   }
 
-  /* =========================================================
-     HOST UI
-  ========================================================= */
+  /* ================= HOST UI ================= */
   return (
     <div className="max-w-xl mx-auto text-white mt-10">
       <h2 className="text-2xl mb-4">Solo Game</h2>
-
       <div className="flex items-center gap-4">
         <input
           type="number"
@@ -219,7 +221,6 @@ export default function HostGame() {
           onChange={(e) => setAmount(+e.target.value)}
           className="text-black px-3 py-2 rounded w-32"
         />
-
         <button
           onClick={handlePlaySolo}
           disabled={loading}
