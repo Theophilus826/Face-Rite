@@ -64,31 +64,25 @@ export default function HostGame() {
 
   /* ================= SOCKET.IO ================= */
   useEffect(() => {
-    if (!game) return;
+  if (!game) return;
 
-    const socket = io("https://swordgame-5.onrender.com");
-    socketRef.current = socket;
+  const socket = io("https://swordgame-5.onrender.com", {
+    withCredentials: true,
+    transports: ["polling", "websocket"],
+  });
 
-    socket.on("connect", () =>
-      console.log("🎮 Player socket connected")
-    );
+  socketRef.current = socket;
 
-    socket.on("game:enemiesConfigured", ({ gameId }) => {
-      if (gameId === game.id) {
-        toast.info("⚔️ Enemies deployed! Waiting for start...");
-      }
-    });
+  socket.on("connect", () => {
+    console.log("🎮 Player socket connected");
+    socket.emit("joinGameRoom", game.id);
+  });
 
-    socket.on("game:started", ({ gameId }) => {
-      if (gameId === game.id) {
-        toast.success("🚀 Battle started!");
-        setGameStarted(true);
-      }
-    });
-
-    return () => socket.disconnect();
-  }, [game]);
-
+  return () => {
+    socket.removeAllListeners();  // 👈 prevents ghost listeners
+    socket.disconnect();
+  };
+}, [game?.id]);  // 👈 subtle but cleaner dependency
   /* ================= ADD TO POT ================= */
   const handleAddToPot = async (amountToAdd) => {
     if (!game) return toast.error("No active game");
