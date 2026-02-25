@@ -52,6 +52,7 @@ export default function AdminLayout() {
       setGames(prev => {
         if (prev.some(g => g.gameId === event.gameId)) return prev;
 
+<<<<<<< Updated upstream
         return [
           {
             gameId: event.gameId,
@@ -61,6 +62,57 @@ export default function AdminLayout() {
           },
           ...prev,
         ];
+=======
+    return () => {
+      socket.off("activity:event", handleEvent);
+      socket.off("game:event", handleEvent);
+      socket.disconnect();
+    };
+  }, []);
+
+  /* =========================================================
+     FETCH / RELOAD GAMES
+  ========================================================= */
+  const fetchGames = async () => {
+  try {
+    const res = await fetch(`${API_URL}/api/admin/games`);
+
+    // ✅ Handle non-JSON errors (404 / proxy / server crash)
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Failed to fetch games");
+    }
+
+    const data = await res.json();  // ✅ Now safe
+
+    const updatedGames = data.games.map(g => ({
+      ...g,
+      enemiesConfigured: g.enemies?.length > 0,
+    }));
+
+    setGames(updatedGames);
+
+    // Auto-scroll to top when new games are loaded
+    if (gamesContainerRef.current) {
+      gamesContainerRef.current.scrollTop = 0;
+    }
+
+  } catch (err) {
+    console.error("Error fetching games:", err.message);
+    alert(err.message);
+  }
+};
+
+  /* =========================================================
+     START GAME FUNCTION
+  ========================================================= */
+  const startGame = async (gameId) => {
+    try {
+      const res = await fetch("/api/admin/start-game", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId }),
+>>>>>>> Stashed changes
       });
     }
 
