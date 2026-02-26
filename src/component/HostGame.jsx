@@ -72,35 +72,49 @@ export default function HostGame() {
   };
 
   /* ================= SOCKET.IO ================= */
-  useEffect(() => {
-    if (!game) return;
+useEffect(() => {
+  if (!game) return;
 
-    const socket = io("http://localhost:5000");
-    socketRef.current = socket;
+  const token = localStorage.getItem("token"); // 🔑 JWT from login
 
-    socket.on("connect", () => {
-      console.log("🎮 Player socket connected");
-      socket.emit("joinGameRoom", game.id); // optional: join room for game
-    });
+  const socket = io("https://swordgame-5.onrender.com", {
+    transports: ["polling", "websocket"],
+    auth: { token }, 
+    reconnection: true,
+  });
 
-    // Admin has configured enemies
-    socket.on("game:enemiesConfigured", ({ gameId }) => {
-      if (gameId === game.id) {
-        toast.info("⚔️ Enemies deployed! Waiting for start...");
-      }
-    });
+  socketRef.current = socket;
 
-    // Admin started game
-    socket.on("game:started", ({ gameId }) => {
-      if (gameId === game.id) {
-        toast.success("🚀 Battle started!");
-        setGameStarted(true);
-      }
-    });
+  socket.on("connect", () => {
+    console.log("🎮 Player socket connected:", socket.id);
+   socket.emit("joinRoom", game.id);
+  });
 
-    return () => socket.disconnect();
-  }, [game]);
+  socket.on("connect_error", (err) => {
+    console.error("🚨 Socket connect error:", err.message);
+  });
 
+  socket.on("disconnect", (reason) => {
+    console.warn("⚠️ Socket disconnected:", reason);
+  });
+
+  socket.on("game:enemiesConfigured", ({ gameId }) => {
+    if (gameId === game.id) toast.info("⚔️ Enemies deployed!");
+  });
+
+  socket.on("game:started", ({ gameId }) => {
+    if (gameId === game.id) {
+      toast.success("🚀 Battle started!");
+      setGameStarted(true);
+    }
+  });
+
+  return () => {
+    socket.removeAllListeners();
+    socket.disconnect();
+    socketRef.current = null;
+  };
+}, [game?.id]);
   /* ================= ADD TO POT ================= */
   const handleAddToPot = async (amountToAdd) => {
     if (!game) return toast.error("No active game");
