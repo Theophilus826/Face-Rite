@@ -14,7 +14,8 @@ export default function AdminLayout() {
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
   const [games, setGames] = useState([]);
-  const [joinInputs, setJoinInputs] = useState({}); // 🔥 per-game join input
+  const [joinInputs, setJoinInputs] = useState({});
+  const [gameControls, setGameControls] = useState({}); // 🔥 NEW
 
   const linkClass = ({ isActive }) =>
     `block px-4 py-2 rounded ${
@@ -42,10 +43,6 @@ export default function AdminLayout() {
       socket.emit("admin:getUsers");
     });
 
-    socket.on("connect_error", (err) =>
-      console.error("Socket Error:", err.message)
-    );
-
     socket.on("users:list", setUsers);
 
     socket.on("user:status", ({ userId, online }) => {
@@ -71,25 +68,10 @@ export default function AdminLayout() {
                 userId: event.userId,
                 pot: event.pot || 0,
                 status: "waiting",
-                enemiesConfigured: false,
                 players: [event.userId],
               },
               ...prev,
             ];
-
-          case "ADMIN_CONFIG_ENEMIES":
-            return prev.map((g) =>
-              g.gameId === event.gameId
-                ? { ...g, enemiesConfigured: true }
-                : g
-            );
-
-          case "GAME_STARTED":
-            return prev.map((g) =>
-              g.gameId === event.gameId
-                ? { ...g, status: "started" }
-                : g
-            );
 
           case "ADMIN_ADD_POT":
             return prev.map((g) =>
@@ -98,15 +80,10 @@ export default function AdminLayout() {
                 : g
             );
 
-          case "GAME_RESULT":
+          case "GAME_STARTED":
             return prev.map((g) =>
               g.gameId === event.gameId
-                ? {
-                    ...g,
-                    status: "finished",
-                    winnerId: event.winnerId,
-                    creditedCoins: event.creditedCoins,
-                  }
+                ? { ...g, status: "started" }
                 : g
             );
 
@@ -134,90 +111,66 @@ export default function AdminLayout() {
     socket.on("activity:event", handleEvent);
     socket.on("game:event", handleEvent);
 
-    return () => {
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, []);
 
   /* =========================================================
-     FETCH GAMES
+     ADMIN SETUP + START GAME
   ========================================================= */
-  const fetchGames = async () => {
+  const setupAndStartGame = async (gameId) => {
+    const controls = gameControls[gameId];
+
+    if (!controls)
+      return alert("Enter enemies & pot");
+
+    const numEnemies = Number(controls.enemies);
+    const potAmount = Number(controls.pot);
+
+    if (!numEnemies || numEnemies <= 0)
+      return alert("Invalid enemies number");
+
+    if (!potAmount || potAmount <= 0)
+      return alert("Invalid pot amount");
+
     try {
-      const res = await fetch(`${API_URL}/api/admin/games`);
-      if (!res.ok) throw new Error(await res.text());
+      // 1️⃣ Configure enemies
+      await fetch(`${API_URL}/api/admin/configure-enemies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId, numEnemies }),
+      });
 
-      const data = await res.json();
+      // 2️⃣ Add pot
+      await fetch(`${API_URL}/api/admin/add-pot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId, amount: potAmount }),
+      });
 
-      const updated = data.games.map((g) => ({
-        ...g,
-        enemiesConfigured: g.enemies?.length > 0,
+      // 3️⃣ Start game
+      await fetch(`${API_URL}/api/admin/start-game`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId }),
+      });
+
+      // Clear inputs
+      setGameControls((prev) => ({
+        ...prev,
+        [gameId]: { enemies: "", pot: "" },
       }));
 
-      setGames(updated);
-
-      if (gamesContainerRef.current) {
-        gamesContainerRef.current.scrollTop = 0;
-      }
     } catch (err) {
-      console.error(err.message);
-      alert(err.message);
+      alert("Failed to setup game");
     }
   };
 
   /* =========================================================
-     START GAME
-  ========================================================= */
-  const startGame = async (gameId) => {
-    try {
-      const res = await fetch(
-        `${API_URL}/api/admin/start-game`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ gameId }),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
-  /* =========================================================
-     CONFIGURE ENEMIES
-  ========================================================= */
-  const configureEnemies = async (
-    gameId,
-    numEnemies = 3
-  ) => {
-    try {
-      const res = await fetch(
-        `${API_URL}/api/admin/configure-enemies`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ gameId, numEnemies }),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
-  /* =========================================================
-     FORCE JOIN PLAYER (SOCKET)
+     FORCE JOIN PLAYER
   ========================================================= */
   const forceJoinPlayer = (gameId) => {
     const playerId = joinInputs[gameId];
-
-    if (!playerId)
-      return alert("Enter Player ID");
+    if (!playerId) return alert("Enter Player ID");
 
     socketRef.current.emit("admin:forceJoin", {
       gameId,
@@ -228,24 +181,6 @@ export default function AdminLayout() {
       ...prev,
       [gameId]: "",
     }));
-  };
-
-  /* =========================================================
-     EVENT RENDER
-  ========================================================= */
-  const renderEvent = (event) => {
-    switch (event.type) {
-      case "GAME_CREATED":
-        return `🎮 Game created by ${event.userId}`;
-      case "GAME_STARTED":
-        return `🚀 Game started`;
-      case "PLAYER_JOINED":
-        return `👤 Player ${event.playerId} joined`;
-      case "GAME_RESULT":
-        return `🏆 Winner: ${event.winnerId}`;
-      default:
-        return `⚡ ${event.type}`;
-    }
   };
 
   /* =========================================================
@@ -262,21 +197,10 @@ export default function AdminLayout() {
 
           <ul className="space-y-2">
             {users.map((u) => (
-              <li
-                key={u._id}
-                className="flex justify-between p-2 bg-gray-50 rounded"
-              >
+              <li key={u._id} className="flex justify-between p-2 bg-gray-50 rounded">
                 <span>{u.name}</span>
-                <span
-                  className={`text-sm ${
-                    u.online
-                      ? "text-green-600"
-                      : "text-gray-400"
-                  }`}
-                >
-                  {u.online
-                    ? "Online"
-                    : "Offline"}
+                <span className={`text-sm ${u.online ? "text-green-600" : "text-gray-400"}`}>
+                  {u.online ? "Online" : "Offline"}
                 </span>
               </li>
             ))}
@@ -284,16 +208,11 @@ export default function AdminLayout() {
         </div>
 
         <div className="bg-white p-4 shadow rounded w-2/3 h-[500px] overflow-y-auto">
-          <h2 className="font-semibold mb-2">
-            🔥 Live Activity
-          </h2>
+          <h2 className="font-semibold mb-2">🔥 Live Activity</h2>
 
           {events.map((event, i) => (
-            <div
-              key={i}
-              className="text-sm border p-2 mb-2 rounded bg-gray-50"
-            >
-              {renderEvent(event)}
+            <div key={i} className="text-sm border p-2 mb-2 rounded bg-gray-50">
+              {event.type}
             </div>
           ))}
         </div>
@@ -301,32 +220,14 @@ export default function AdminLayout() {
 
       {/* LIVE GAME CONTROLLER */}
       <section className="mt-4 bg-white p-4 shadow rounded">
-        <div className="flex justify-between mb-3">
-          <h2 className="font-semibold">
-            🎮 Live Game Controller
-          </h2>
+        <h2 className="font-semibold mb-3">
+          🎮 Live Game Controller
+        </h2>
 
-          <button
-            onClick={fetchGames}
-            className="px-3 py-1 bg-indigo-600 text-white rounded text-sm"
-          >
-            Reload
-          </button>
-        </div>
-
-        <div
-          ref={gamesContainerRef}
-          className="max-h-[400px] overflow-y-auto"
-        >
-          {games.length === 0 && (
-            <p>No active games</p>
-          )}
-
+        <div ref={gamesContainerRef} className="max-h-[400px] overflow-y-auto">
           {games.map((game) => (
-            <div
-              key={game.gameId}
-              className="p-3 mb-3 bg-gray-50 rounded border"
-            >
+            <div key={game.gameId} className="p-3 mb-3 bg-gray-50 rounded border">
+
               <div className="font-semibold">
                 Game {game.gameId.slice(0, 6)}
               </div>
@@ -340,9 +241,7 @@ export default function AdminLayout() {
               </div>
 
               <div className="text-xs mt-1">
-                Players:{" "}
-                {game.players?.join(", ") ||
-                  "None"}
+                Players: {game.players?.join(", ") || "None"}
               </div>
 
               {/* JOIN PLAYER */}
@@ -351,25 +250,18 @@ export default function AdminLayout() {
                   <input
                     type="text"
                     placeholder="Player ID"
-                    value={
-                      joinInputs[game.gameId] || ""
-                    }
+                    value={joinInputs[game.gameId] || ""}
                     onChange={(e) =>
                       setJoinInputs((prev) => ({
                         ...prev,
-                        [game.gameId]:
-                          e.target.value,
+                        [game.gameId]: e.target.value,
                       }))
                     }
                     className="border px-2 py-1 text-xs rounded"
                   />
 
                   <button
-                    onClick={() =>
-                      forceJoinPlayer(
-                        game.gameId
-                      )
-                    }
+                    onClick={() => forceJoinPlayer(game.gameId)}
                     className="bg-purple-600 text-white px-2 py-1 text-xs rounded"
                   >
                     ➕ Join
@@ -377,35 +269,49 @@ export default function AdminLayout() {
                 </div>
               )}
 
-              <div className="flex gap-2 mt-2">
-                {!game.enemiesConfigured && (
-                  <button
-                    onClick={() =>
-                      configureEnemies(
-                        game.gameId
-                      )
+              {/* ADMIN SETUP PANEL */}
+              {game.status === "waiting" && (
+                <div className="flex flex-col gap-2 mt-3">
+                  <input
+                    type="number"
+                    placeholder="Number of Enemies"
+                    value={gameControls[game.gameId]?.enemies || ""}
+                    onChange={(e) =>
+                      setGameControls((prev) => ({
+                        ...prev,
+                        [game.gameId]: {
+                          ...prev[game.gameId],
+                          enemies: e.target.value,
+                        },
+                      }))
                     }
-                    className="bg-blue-600 text-white px-2 py-1 text-xs rounded"
-                  >
-                    Configure Enemies
-                  </button>
-                )}
+                    className="border px-2 py-1 text-xs rounded"
+                  />
 
-                {game.enemiesConfigured &&
-                  game.status ===
-                    "waiting" && (
-                    <button
-                      onClick={() =>
-                        startGame(
-                          game.gameId
-                        )
-                      }
-                      className="bg-green-600 text-white px-2 py-1 text-xs rounded"
-                    >
-                      Start Game
-                    </button>
-                  )}
-              </div>
+                  <input
+                    type="number"
+                    placeholder="Pot Amount"
+                    value={gameControls[game.gameId]?.pot || ""}
+                    onChange={(e) =>
+                      setGameControls((prev) => ({
+                        ...prev,
+                        [game.gameId]: {
+                          ...prev[game.gameId],
+                          pot: e.target.value,
+                        },
+                      }))
+                    }
+                    className="border px-2 py-1 text-xs rounded"
+                  />
+
+                  <button
+                    onClick={() => setupAndStartGame(game.gameId)}
+                    className="bg-green-600 text-white px-3 py-1 text-xs rounded"
+                  >
+                    🎮 Setup & Start Game
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -420,36 +326,14 @@ export default function AdminLayout() {
             </h1>
 
             <nav className="space-y-2">
-              <NavLink
-                to="/admin/monitor"
-                className={linkClass}
-              >
-                🎮 Live Monitor
-              </NavLink>
-              <NavLink
-                to="/admin/credit-coins"
-                className={linkClass}
-              >
-                💰 Credit/Debit Coins
-              </NavLink>
-              <NavLink
-                to="/admin/host-game"
-                className={linkClass}
-              >
-                🎲 Host 1v1 Game
-              </NavLink>
-              <NavLink
-                to="/admin/transactions"
-                className={linkClass}
-              >
-                📜 Transactions
-              </NavLink>
+              <NavLink to="/admin/monitor" className={linkClass}>🎮 Live Monitor</NavLink>
+              <NavLink to="/admin/credit-coins" className={linkClass}>💰 Credit/Debit Coins</NavLink>
+              <NavLink to="/admin/host-game" className={linkClass}>🎲 Host 1v1 Game</NavLink>
+              <NavLink to="/admin/transactions" className={linkClass}>📜 Transactions</NavLink>
             </nav>
 
             <button
-              onClick={() =>
-                dispatch(logout())
-              }
+              onClick={() => dispatch(logout())}
               className="mt-10 w-full bg-red-500 text-white py-2 rounded"
             >
               Logout
