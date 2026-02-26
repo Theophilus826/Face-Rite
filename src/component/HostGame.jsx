@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { io } from "socket.io-client";
 
 import { buyItem } from "../features/coins/CoinSlice.js";
-import { hostGame, hostGameAsync, addToPot } from "../features/gameSlice/gameSlice";
+import { hostGame, addToPot } from "../features/gameSlice/gameSlice";
 import gameScene from "../scenes/gameScene.ts";
 
 export default function HostGame() {
@@ -26,9 +26,7 @@ export default function HostGame() {
   const [game, setGame] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
 
-  /* =========================================================
-     CREATE GAME (LOCAL + BACKEND)
-  ========================================================= */
+  /* ================= CREATE GAME ================= */
   const handlePlaySolo = async () => {
     if (!user?._id) return toast.error("User session error");
     if (amount <= 0) return toast.error("Invalid amount");
@@ -36,24 +34,31 @@ export default function HostGame() {
 
     try {
       setLoading(true);
-
       await dispatch(buyItem({ itemName: "Play Game", cost: amount }));
 
-      // Instant UI feedback
-      const tempAction = await dispatch(hostGame({ hostId: user._id, amount }));
-      const tempGame = tempAction.payload;
-      setGame(tempGame);
+      const res = await fetch("/api/game/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostId: user._id, amount }),
+      });
 
-      // Backend persistence
-      const backendAction = await dispatch(
-        hostGameAsync({ userId: user._id, pot: amount })
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      setGame(data.game);
+
+      dispatch(
+        hostGame({
+          hostId: user._id,
+          amount,
+          id: data.game.id,
+          status: data.game.status,
+          pot: data.game.amount,
+          enemies: [],
+        })
       );
 
-      const backendGame = backendAction.payload;
-
-      setGame(backendGame || tempGame);
-
-      toast.info("⌛ Waiting for admin to start the battle...");
+      toast.info("⌛ Waiting for admin to configure enemies...");
     } catch (err) {
       console.error("🔥 ERROR:", err);
       toast.error(err?.message || "Failed to create game");
@@ -63,49 +68,50 @@ export default function HostGame() {
   };
 
   /* ================= SOCKET.IO ================= */
-useEffect(() => {
-  if (!game) return;
+  useEffect(() => {
+    if (!game) return;
 
-  const token = localStorage.getItem("token"); // 🔑 JWT from login
+    const token = localStorage.getItem("token");
+    const socket = io("https://swordgame-5.onrender.com", {
+      transports: ["polling", "websocket"],
+      auth: { token },
+      reconnection: true,
+    });
 
-  const socket = io("https://swordgame-5.onrender.com", {
-    transports: ["polling", "websocket"],
-    auth: { token }, 
-    reconnection: true,
-  });
+    socketRef.current = socket;
 
-  socketRef.current = socket;
+    socket.on("connect", () => {
+      console.log("🎮 Player socket connected:", socket.id);
+      socket.emit("joinRoom", game.id);
+    });
 
-  socket.on("connect", () => {
-    console.log("🎮 Player socket connected:", socket.id);
-    socket.emit("joinRoom", game.id);
-  });
+    socket.on("connect_error", (err) => console.error("🚨", err.message));
+    socket.on("disconnect", (reason) => console.warn("⚠️ Socket disconnected:", reason));
 
-  socket.on("connect_error", (err) => {
-    console.error("🚨 Socket connect error:", err.message);
-  });
+    socket.on("game:enemiesConfigured", ({ gameId }) => {
+      if (gameId === game.id) toast.info("⚔️ Enemies deployed!");
+    });
 
-  socket.on("disconnect", (reason) => {
-    console.warn("⚠️ Socket disconnected:", reason);
-  });
+    socket.on("game:started", ({ gameId }) => {
+      if (gameId === game.id) {
+        toast.success("🚀 Battle started!");
+        setGameStarted(true);
+      }
+    });
 
-  socket.on("game:enemiesConfigured", ({ gameId }) => {
-    if (gameId === game.id) toast.info("⚔️ Enemies deployed!");
-  });
+    socket.on("game:ended", ({ gameId, winnerId, creditedCoins }) => {
+      if (gameId === game.id && winnerId === user._id) {
+        toast.success(`🎉 You won ${creditedCoins} coins!`);
+      }
+    });
 
-  socket.on("game:started", ({ gameId }) => {
-    if (gameId === game.id) {
-      toast.success("🚀 Battle started!");
-      setGameStarted(true);
-    }
-  });
+    return () => {
+      socket.removeAllListeners();
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [game?.id, user?._id]);
 
-  return () => {
-    socket.removeAllListeners();
-    socket.disconnect();
-    socketRef.current = null;
-  };
-}, [game?.id]);
   /* ================= ADD TO POT ================= */
   const handleAddToPot = async (amountToAdd) => {
     if (!game) return toast.error("No active game");
@@ -121,10 +127,14 @@ useEffect(() => {
       if (!res.ok) throw new Error(data.message);
 
       toast.success(`Added ${amountToAdd} coins to pot`);
-
       setGame((prev) => ({ ...prev, pot: data.pot }));
-
       dispatch(addToPot({ gameId: game.id, amount: amountToAdd }));
+
+      socketRef.current?.emit("host:addToPot", {
+        gameId: game.id,
+        amount: amountToAdd,
+        newPot: data.pot,
+      });
     } catch (err) {
       toast.error(err.message);
     }
@@ -143,7 +153,7 @@ useEffect(() => {
           BABYLON,
           engine,
           null,
-          (p) => setProgress(p),
+          (p) => setProgress(p), // update progress
           dispatch,
           game,
           user
@@ -156,13 +166,20 @@ useEffect(() => {
         });
 
         scene.onDisposeObservable.add(() => {
-          if (
-            scene.lastWinnerId === user._id &&
-            scene.lastWinAmount > 0
-          ) {
-            toast.success(
-              `🎉 Coins credited: +${scene.lastWinAmount}`
-            );
+          if (scene.lastWinnerId) {
+            const winnerId = scene.lastWinnerId;
+            const creditedCoins = scene.lastWinAmount || 0;
+
+            socketRef.current?.emit("host:endGame", {
+              gameId: game.id,
+              winnerId,
+              creditedCoins,
+              pot: game.pot,
+            });
+
+            if (winnerId === user._id && creditedCoins > 0) {
+              toast.success(`🎉 Coins credited: +${creditedCoins}`);
+            }
           }
         });
       } catch (err) {
@@ -182,50 +199,40 @@ useEffect(() => {
     };
   }, [gameStarted, game, user, dispatch]);
 
-  /* ================= WAITING SCREEN ================= */
+  /* ================= WAITING / LOADING SCREEN ================= */
   if (game && !gameStarted) {
     return (
       <div className="h-screen flex flex-col justify-center items-center text-white">
-        <div className="animate-pulse text-xl mb-4">
-          ⌛ Preparing battlefield...
+        <div className="animate-pulse text-xl mb-4">⌛ Preparing battlefield...</div>
+        <div className="text-gray-400">Waiting for admin to deploy enemies</div>
+        <div className="mt-6 text-yellow-400">Current Pot: {game.pot} coins</div>
+      </div>
+    );
+  }
+
+  if (gameStarted && progress < 100) {
+    return (
+      <div className="h-screen flex flex-col justify-center items-center text-white">
+        <div className="text-xl mb-4">🛡 Loading battlefield...</div>
+        <div className="w-64 h-4 bg-gray-700 rounded">
+          <div
+            className="h-4 bg-yellow-500 rounded"
+            style={{ width: `${progress}%` }}
+          />
         </div>
-        <div className="text-gray-400">
-          Waiting for admin to deploy enemies
-        </div>
-        <div className="mt-6 text-yellow-400">
-          Current Pot: {game.pot} coins
-        </div>
+        <div className="mt-2 text-gray-400">{progress}%</div>
       </div>
     );
   }
 
   /* ================= GAME VIEW ================= */
-  if (gameStarted) {
+  if (gameStarted && progress >= 100) {
     return (
       <>
-        <canvas
-          ref={canvasRef}
-          style={{
-            width: "100vw",
-            height: "100vh",
-            display: "block",
-          }}
-        />
-
+        <canvas ref={canvasRef} style={{ width: "100vw", height: "100vh", display: "block" }} />
         <div className="absolute top-4 right-4 flex gap-2">
-          <button
-            className="px-4 py-2 bg-yellow-600 rounded"
-            onClick={() => handleAddToPot(10)}
-          >
-            +10 Pot
-          </button>
-
-          <button
-            className="px-4 py-2 bg-yellow-600 rounded"
-            onClick={() => handleAddToPot(50)}
-          >
-            +50 Pot
-          </button>
+          <button className="px-4 py-2 bg-yellow-600 rounded" onClick={() => handleAddToPot(10)}>+10 Pot</button>
+          <button className="px-4 py-2 bg-yellow-600 rounded" onClick={() => handleAddToPot(50)}>+50 Pot</button>
         </div>
       </>
     );
@@ -235,7 +242,6 @@ useEffect(() => {
   return (
     <div className="max-w-xl mx-auto text-white mt-10">
       <h2 className="text-2xl mb-4">Solo Game</h2>
-
       <div className="flex items-center gap-4">
         <input
           type="number"
@@ -244,12 +250,7 @@ useEffect(() => {
           onChange={(e) => setAmount(+e.target.value)}
           className="text-black px-3 py-2 rounded w-32"
         />
-
-        <button
-          onClick={handlePlaySolo}
-          disabled={loading}
-          className="px-4 py-2 bg-green-600 rounded"
-        >
+        <button onClick={handlePlaySolo} disabled={loading} className="px-4 py-2 bg-green-600 rounded">
           {loading ? "Creating..." : "Play 🎮"}
         </button>
       </div>
