@@ -78,7 +78,7 @@ useEffect(() => {
 
   socket.on("connect", () => {
     console.log("🎮 Player socket connected:", socket.id);
-    socket.emit("joinGameRoom", game.id);
+    socket.emit("joinRoom", game.id);
   });
 
   socket.on("connect_error", (err) => {
