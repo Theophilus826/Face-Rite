@@ -42,8 +42,16 @@ export default function HostGame() {
         body: JSON.stringify({ hostId: user._id, amount }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        const text = await res.text();
+        console.error("🔥 Invalid JSON response:", text);
+        throw new Error("Server returned invalid JSON.");
+      }
+
+      if (!res.ok) throw new Error(data?.message || "Failed to create game");
 
       setGame(data.game);
 
@@ -129,8 +137,16 @@ export default function HostGame() {
         body: JSON.stringify({ gameId: game.id, amount: amountToAdd }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+      let data;
+      try {
+        data = await res.json();
+      } catch (err) {
+        const text = await res.text();
+        console.error("🔥 Invalid JSON response:", text);
+        throw new Error("Server returned invalid JSON.");
+      }
+
+      if (!res.ok) throw new Error(data?.message || "Failed to add to pot");
 
       toast.success(`Added ${amountToAdd} coins to pot`);
       setGame((prev) => ({ ...prev, pot: data.pot }));
@@ -142,7 +158,8 @@ export default function HostGame() {
         newPot: data.pot,
       });
     } catch (err) {
-      toast.error(err.message);
+      console.error("🔥 ERROR:", err);
+      toast.error(err?.message || "Failed to add to pot");
     }
   };
 
