@@ -19,70 +19,108 @@ export default function AdminLayout() {
   /* =========================================================
      SOCKET INITIALIZATION
   ========================================================= */
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+ useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
 
-    const socket = io("https://swordgame-5.onrender.com/admin", {
-      withCredentials: true,
-      auth: { token },
-    });
-    socketRef.current = socket;
+  const socket = io("https://swordgame-5.onrender.com/admin", {
+    withCredentials: true,
+    auth: { token },
+  });
+  socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("🛡 Admin socket connected");
-      socket.emit("admin:getUsers");
-    });
+  // Initial connection
+  socket.on("connect", () => {
+    console.log("🛡 Admin socket connected");
+    socket.emit("admin:getUsers");
+  });
 
-    socket.on("connect_error", (err) => console.error(err.message));
-    socket.on("users:list", setUsers);
-    socket.on("user:status", ({ userId, online }) =>
-      setUsers(prev => prev.map(u => u._id === userId ? { ...u, online } : u))
-    );
+  socket.on("connect_error", (err) => console.error("Socket Error:", err.message));
 
-    const handleEvent = (event) => {
-      setEvents(prev => [event, ...prev]);
+  // Update users
+  socket.on("users:list", setUsers);
+  socket.on("user:status", ({ userId, online }) => {
+    setUsers(prev => prev.map(u => u._id === userId ? { ...u, online } : u));
+  });
+
+  // Universal event handler
+  const handleEvent = (event) => {
+    // 1️⃣ Always add to activity monitor
+    setEvents(prev => [event, ...prev]);
+
+    // 2️⃣ Update live games
+    setGames(prev => {
       switch (event.type) {
         case "GAME_CREATED":
-          setGames(prev => {
-            if (prev.some(g => g.gameId === event.gameId)) return prev;
-            return [{ gameId: event.gameId, userId: event.userId, pot: event.pot, status: event.status, enemiesConfigured: false }, ...prev];
-          });
-          break;
+          // Avoid duplicates
+          if (prev.some(g => g.gameId === event.gameId)) return prev;
+          return [
+            {
+              gameId: event.gameId,
+              userId: event.userId,
+              pot: event.pot || 0,
+              status: "waiting",
+              enemiesConfigured: false,
+              players: [event.userId],
+            },
+            ...prev
+          ];
+
         case "ADMIN_CONFIG_ENEMIES":
-          setGames(prev =>
-            prev.map(g => g.gameId === event.gameId ? { ...g, enemiesConfigured: true, status: "waiting" } : g)
+          return prev.map(g =>
+            g.gameId === event.gameId
+              ? { ...g, enemiesConfigured: true, status: "waiting" }
+              : g
           );
-          break;
+
         case "GAME_STARTED":
-          setGames(prev =>
-            prev.map(g => g.gameId === event.gameId ? { ...g, status: "started" } : g)
+          return prev.map(g =>
+            g.gameId === event.gameId
+              ? { ...g, status: "started" }
+              : g
           );
-          break;
-        case "GAME_RESULT":
-          setGames(prev =>
-            prev.map(g => g.gameId === event.gameId ? { ...g, status: "finished" } : g)
-          );
-          break;
+
         case "ADMIN_ADD_POT":
-          setGames(prev =>
-            prev.map(g => g.gameId === event.gameId ? { ...g, pot: event.newPot } : g)
+          return prev.map(g =>
+            g.gameId === event.gameId
+              ? { ...g, pot: event.newPot }
+              : g
           );
-          break;
+
+        case "GAME_RESULT":
+          return prev.map(g =>
+            g.gameId === event.gameId
+              ? { ...g, status: "finished", winnerId: event.winnerId, creditedCoins: event.creditedCoins }
+              : g
+          );
+
+        case "PLAYER_JOINED":
+          return prev.map(g =>
+            g.gameId === event.gameId
+              ? { ...g, players: [...new Set([...(g.players || []), event.playerId])] }
+              : g
+          );
+
+        case "ROOM_CHANGED":
+          // Optional: handle room info updates if needed
+          return prev;
+
         default:
-          break;
+          return prev;
       }
-    };
+    });
+  };
 
-    socket.on("activity:event", handleEvent);
-    socket.on("game:event", handleEvent);
+  // Listen to activity & game events
+  socket.on("activity:event", handleEvent);
+  socket.on("game:event", handleEvent);
 
-    return () => {
-      socket.off("activity:event", handleEvent);
-      socket.off("game:event", handleEvent);
-      socket.disconnect();
-    };
-  }, []);
+  return () => {
+    socket.off("activity:event", handleEvent);
+    socket.off("game:event", handleEvent);
+    socket.disconnect();
+  };
+}, []);
 
   /* =========================================================
      FETCH / RELOAD GAMES
