@@ -43,10 +43,11 @@ export default function HostGame() {
       });
 
       let data;
+      let text;
       try {
-        data = await res.json();
+        text = await res.text(); // read body once
+        data = JSON.parse(text); // try parse as JSON
       } catch (err) {
-        const text = await res.text();
         console.error("🔥 Invalid JSON response:", text);
         throw new Error("Server returned invalid JSON.");
       }
@@ -138,10 +139,11 @@ export default function HostGame() {
       });
 
       let data;
+      let text;
       try {
-        data = await res.json();
+        text = await res.text(); // read body once
+        data = JSON.parse(text);
       } catch (err) {
-        const text = await res.text();
         console.error("🔥 Invalid JSON response:", text);
         throw new Error("Server returned invalid JSON.");
       }
