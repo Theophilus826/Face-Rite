@@ -6,7 +6,7 @@ import { io } from "socket.io-client";
 
 import { buyItem } from "../features/coins/CoinSlice.js";
 import { hostGame, addToPot } from "../features/gameSlice/gameSlice";
-import gameScene from "../scenes/gameScene.ts";
+import gameScene from "../scenes/gameScene.js";
 
 export default function HostGame() {
   const dispatch = useDispatch();
@@ -23,10 +23,12 @@ export default function HostGame() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const [game, setGame] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
+  const [game, setGame] = useState(null);
 
-  /* ================= CREATE GAME ================= */
+  /* =========================================================
+     CREATE GAME (NOW WAITS FOR ADMIN)
+  ========================================================= */
   const handlePlaySolo = async () => {
     if (!user?._id) return toast.error("User session error");
     if (amount <= 0) return toast.error("Invalid amount");
@@ -34,40 +36,18 @@ export default function HostGame() {
 
     try {
       setLoading(true);
+
       await dispatch(buyItem({ itemName: "Play Game", cost: amount }));
 
-      const res = await fetch("/api/game/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hostId: user._id, amount }),
-      });
-
-      let data;
-      let text;
-      try {
-        text = await res.text(); // read body once
-        data = JSON.parse(text); // try parse as JSON
-      } catch (err) {
-        console.error("🔥 Invalid JSON response:", text);
-        throw new Error("Server returned invalid JSON.");
-      }
-
-      if (!res.ok) throw new Error(data?.message || "Failed to create game");
-
-      setGame(data.game);
-
-      dispatch(
-        hostGame({
-          hostId: user._id,
-          amount,
-          id: data.game.id,
-          status: data.game.status,
-          pot: data.game.amount,
-          enemies: [],
-        })
+      const action = await dispatch(
+        hostGame({ hostId: user._id, amount })
       );
 
-      toast.info("⌛ Waiting for admin to configure enemies...");
+      const newGame = action.payload;
+
+      setGame(newGame);
+
+      toast.info("⌛ Waiting for admin to start the battle...");
     } catch (err) {
       console.error("🔥 ERROR:", err);
       toast.error(err?.message || "Failed to create game");
@@ -76,7 +56,9 @@ export default function HostGame() {
     }
   };
 
-  /* ================= SOCKET.IO ================= */
+  /* =========================================================
+     SOCKET LISTENER (ADMIN STARTS GAME)
+  ========================================================= */
   useEffect(() => {
     if (!game) return;
 
@@ -127,7 +109,9 @@ export default function HostGame() {
     };
   }, [game?.id, user?._id]);
 
-  /* ================= ADD TO POT ================= */
+  /* =========================================================
+     ADD TO POT (Still Works)
+  ========================================================= */
   const handleAddToPot = async (amountToAdd) => {
     if (!game) return toast.error("No active game");
 
@@ -138,34 +122,21 @@ export default function HostGame() {
         body: JSON.stringify({ gameId: game.id, amount: amountToAdd }),
       });
 
-      let data;
-      let text;
-      try {
-        text = await res.text(); // read body once
-        data = JSON.parse(text);
-      } catch (err) {
-        console.error("🔥 Invalid JSON response:", text);
-        throw new Error("Server returned invalid JSON.");
-      }
-
-      if (!res.ok) throw new Error(data?.message || "Failed to add to pot");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
 
       toast.success(`Added ${amountToAdd} coins to pot`);
       setGame((prev) => ({ ...prev, pot: data.pot }));
-      dispatch(addToPot({ gameId: game.id, amount: amountToAdd }));
 
-      socketRef.current?.emit("host:addToPot", {
-        gameId: game.id,
-        amount: amountToAdd,
-        newPot: data.pot,
-      });
+      dispatch(addToPot({ gameId: game.id, amount: amountToAdd }));
     } catch (err) {
-      console.error("🔥 ERROR:", err);
-      toast.error(err?.message || "Failed to add to pot");
+      toast.error(err.message);
     }
   };
 
-  /* ================= LOAD BABYLON SCENE ================= */
+  /* =========================================================
+     LOAD BABYLON SCENE (ONLY AFTER START)
+  ========================================================= */
   useEffect(() => {
     if (!gameStarted || !canvasRef.current || !game || !user) return;
 
@@ -191,20 +162,8 @@ export default function HostGame() {
         });
 
         scene.onDisposeObservable.add(() => {
-          if (scene.lastWinnerId) {
-            const winnerId = scene.lastWinnerId;
-            const creditedCoins = scene.lastWinAmount || 0;
-
-            socketRef.current?.emit("host:endGame", {
-              gameId: game.id,
-              winnerId,
-              creditedCoins,
-              pot: game.pot,
-            });
-
-            if (winnerId === user._id && creditedCoins > 0) {
-              toast.success(`🎉 Coins credited: +${creditedCoins}`);
-            }
+          if (scene.lastWinnerId === user._id && scene.lastWinAmount > 0) {
+            toast.success(`🎉 Coins credited: +${scene.lastWinAmount}`);
           }
         });
       } catch (err) {
@@ -224,40 +183,38 @@ export default function HostGame() {
     };
   }, [gameStarted, game, user, dispatch]);
 
-  /* ================= WAITING / LOADING SCREEN ================= */
+  /* =========================================================
+     WAITING SCREEN
+  ========================================================= */
   if (game && !gameStarted) {
     return (
       <div className="h-screen flex flex-col justify-center items-center text-white">
-        <div className="animate-pulse text-xl mb-4">⌛ Preparing battlefield...</div>
-        <div className="text-gray-400">Waiting for admin to deploy enemies</div>
-        <div className="mt-6 text-yellow-400">Current Pot: {game.pot} coins</div>
-      </div>
-    );
-  }
-
-  if (gameStarted && progress < 100) {
-    return (
-      <div className="h-screen flex flex-col justify-center items-center text-white">
-        <div className="text-xl mb-4">🛡 Loading battlefield...</div>
-        <div className="w-64 h-4 bg-gray-700 rounded">
-          <div
-            className="h-4 bg-yellow-500 rounded"
-            style={{ width: `${progress}%` }}
-          />
+        <div className="animate-pulse text-xl mb-4">
+          ⌛ Preparing battlefield...
         </div>
-        <div className="mt-2 text-gray-400">{progress}%</div>
+
+        <div className="text-gray-400">
+          Waiting for admin to deploy enemies
+        </div>
+
+        <div className="mt-6 text-yellow-400">
+          Current Pot: {game.pot} coins
+        </div>
       </div>
     );
   }
 
-  /* ================= GAME VIEW ================= */
-  if (gameStarted && progress >= 100) {
+  /* =========================================================
+     GAME VIEW
+  ========================================================= */
+  if (gameStarted) {
     return (
       <>
         <canvas
           ref={canvasRef}
           style={{ width: "100vw", height: "100vh", display: "block" }}
         />
+
         <div className="absolute top-4 right-4 flex gap-2">
           <button
             className="px-4 py-2 bg-yellow-600 rounded"
@@ -265,6 +222,7 @@ export default function HostGame() {
           >
             +10 Pot
           </button>
+
           <button
             className="px-4 py-2 bg-yellow-600 rounded"
             onClick={() => handleAddToPot(50)}
@@ -276,10 +234,13 @@ export default function HostGame() {
     );
   }
 
-  /* ================= HOST UI ================= */
+  /* =========================================================
+     HOST UI
+  ========================================================= */
   return (
     <div className="max-w-xl mx-auto text-white mt-10">
       <h2 className="text-2xl mb-4">Solo Game</h2>
+
       <div className="flex items-center gap-4">
         <input
           type="number"
@@ -288,6 +249,7 @@ export default function HostGame() {
           onChange={(e) => setAmount(+e.target.value)}
           className="text-black px-3 py-2 rounded w-32"
         />
+
         <button
           onClick={handlePlaySolo}
           disabled={loading}
