@@ -68,28 +68,11 @@ export default function HostGame() {
   };
 
   /* ================= SOCKET.IO ================= */
-useEffect(() => {
-  if (!game) return;
-  
-  const token = localStorage.getItem("token"); // 🔑 JWT from login
+  useEffect(() => {
+    if (!game) return;
 
-  const socket = io("https://swordgame-5.onrender.com", {
-    transports: ["polling", "websocket"],
-    auth: { token }, 
-    reconnection: true,
-  });
+    const token = localStorage.getItem("token");
 
-  socketRef.current = socket;
-
-  socket.on("connect", () => {
-    console.log("🎮 Player socket connected:", socket.id);
-   socket.emit("joinRoom", game.id);
-  });
-
-  socket.on("connect_error", (err) => {
-    console.error("🚨 Socket connect error:", err.message);
-  });
-  const token = localStorage.getItem("token");
     const socket = io("https://swordgame-5.onrender.com", {
       transports: ["polling", "websocket"],
       auth: { token },
@@ -103,8 +86,13 @@ useEffect(() => {
       socket.emit("joinRoom", game.id);
     });
 
-    socket.on("connect_error", (err) => console.error("🚨", err.message));
-    socket.on("disconnect", (reason) => console.warn("⚠️ Socket disconnected:", reason));
+    socket.on("connect_error", (err) => {
+      console.error("🚨 Socket connect error:", err.message);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.warn("⚠️ Socket disconnected:", reason);
+    });
 
     socket.on("game:enemiesConfigured", ({ gameId }) => {
       if (gameId === game.id) toast.info("⚔️ Enemies deployed!");
@@ -129,29 +117,7 @@ useEffect(() => {
       socketRef.current = null;
     };
   }, [game?.id, user?._id]);
->>>>>>> b55ab2cd1db294546faf18bcc750a1712f6bed9e
 
-  socket.on("disconnect", (reason) => {
-    console.warn("⚠️ Socket disconnected:", reason);
-  });
-
-  socket.on("game:enemiesConfigured", ({ gameId }) => {
-    if (gameId === game.id) toast.info("⚔️ Enemies deployed!");
-  });
-
-  socket.on("game:started", ({ gameId }) => {
-    if (gameId === game.id) {
-      toast.success("🚀 Battle started!");
-      setGameStarted(true);
-    }
-  });
-
-  return () => {
-    socket.removeAllListeners();
-    socket.disconnect();
-    socketRef.current = null;
-  };
-}, [game?.id]);
   /* ================= ADD TO POT ================= */
   const handleAddToPot = async (amountToAdd) => {
     if (!game) return toast.error("No active game");
@@ -193,7 +159,7 @@ useEffect(() => {
           BABYLON,
           engine,
           null,
-          (p) => setProgress(p), // update progress
+          (p) => setProgress(p),
           dispatch,
           game,
           user
@@ -269,10 +235,23 @@ useEffect(() => {
   if (gameStarted && progress >= 100) {
     return (
       <>
-        <canvas ref={canvasRef} style={{ width: "100vw", height: "100vh", display: "block" }} />
+        <canvas
+          ref={canvasRef}
+          style={{ width: "100vw", height: "100vh", display: "block" }}
+        />
         <div className="absolute top-4 right-4 flex gap-2">
-          <button className="px-4 py-2 bg-yellow-600 rounded" onClick={() => handleAddToPot(10)}>+10 Pot</button>
-          <button className="px-4 py-2 bg-yellow-600 rounded" onClick={() => handleAddToPot(50)}>+50 Pot</button>
+          <button
+            className="px-4 py-2 bg-yellow-600 rounded"
+            onClick={() => handleAddToPot(10)}
+          >
+            +10 Pot
+          </button>
+          <button
+            className="px-4 py-2 bg-yellow-600 rounded"
+            onClick={() => handleAddToPot(50)}
+          >
+            +50 Pot
+          </button>
         </div>
       </>
     );
@@ -290,7 +269,11 @@ useEffect(() => {
           onChange={(e) => setAmount(+e.target.value)}
           className="text-black px-3 py-2 rounded w-32"
         />
-        <button onClick={handlePlaySolo} disabled={loading} className="px-4 py-2 bg-green-600 rounded">
+        <button
+          onClick={handlePlaySolo}
+          disabled={loading}
+          className="px-4 py-2 bg-green-600 rounded"
+        >
           {loading ? "Creating..." : "Play 🎮"}
         </button>
       </div>
