@@ -59,55 +59,70 @@ export default function HostGame() {
   /* =========================================================
      SOCKET LISTENER (ADMIN STARTS GAME)
   ========================================================= */
-  useEffect(() => {
-    if (!game) return;
+useEffect(() => {
+  if (!game) return;
 
-    const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
 
-    const socket = io("https://swordgame-5.onrender.com", {
-      transports: ["polling", "websocket"],
-      auth: { token },
-      reconnection: true,
-    });
+  const socket = io("https://swordgame-5.onrender.com", {
+    transports: ["websocket", "polling"],
+    auth: { token },
+    reconnection: true,
+  });
 
-    socketRef.current = socket;
+  socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("🎮 Player socket connected:", socket.id);
-      socket.emit("joinRoom", game.id);
-    });
+  socket.on("connect", () => {
+    console.log("🎮 Player socket connected:", socket.id);
+    socket.emit("joinRoom", game.id);
+  });
 
-    socket.on("connect_error", (err) => {
-      console.error("🚨 Socket connect error:", err.message);
-    });
+  socket.on("connect_error", (err) => console.error("🚨 Socket connect error:", err.message));
+  socket.on("disconnect", (reason) => console.warn("⚠️ Socket disconnected:", reason));
 
-    socket.on("disconnect", (reason) => {
-      console.warn("⚠️ Socket disconnected:", reason);
-    });
+  // ✅ Unified game:event listener
+  socket.on("game:event", (data) => {
+    if (data.gameId !== game.id) return;
 
-    socket.on("game:enemiesConfigured", ({ gameId }) => {
-      if (gameId === game.id) toast.info("⚔️ Enemies deployed!");
-    });
+    switch (data.type) {
+      case "ADMIN_CONFIG_ENEMIES":
+        toast.info("⚔️ Enemies deployed!");
+        break;
 
-    socket.on("game:started", ({ gameId }) => {
-      if (gameId === game.id) {
+      case "GAME_STARTED":
         toast.success("🚀 Battle started!");
         setGameStarted(true);
-      }
-    });
+        break;
 
-    socket.on("game:ended", ({ gameId, winnerId, creditedCoins }) => {
-      if (gameId === game.id && winnerId === user._id) {
-        toast.success(`🎉 You won ${creditedCoins} coins!`);
-      }
-    });
+      case "ADMIN_ADD_POT":
+        toast.info(`Pot increased: +${data.amount}`);
+        setGame((prev) => ({ ...prev, pot: data.newPot }));
+        break;
 
-    return () => {
-      socket.removeAllListeners();
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [game?.id, user?._id]);
+      case "GAME_RESULT":
+        setGameStarted(false);
+        setGame((prev) => ({ ...prev, winnerId: data.winnerId }));
+        if (data.winnerId === user._id) {
+          toast.success(`🎉 You won ${data.creditedCoins} coins!`);
+        }
+        break;
+
+      case "PLAYER_ATTACK":
+        // Optional: update enemy health UI or log attacks
+        console.log("Player attacked enemy:", data);
+        break;
+
+      default:
+        console.log("Unhandled game:event:", data);
+    }
+  });
+
+  return () => {
+    socket.removeAllListeners();
+    socket.disconnect();
+    socketRef.current = null;
+  };
+}, [game?.id, user?._id]);
 
   /* =========================================================
      ADD TO POT (Still Works)
