@@ -25,95 +25,110 @@ export default function AdminLayout() {
     }`;
 
   /* =========================================================
-     SOCKET INITIALIZATION
-  ========================================================= */
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+   SOCKET INITIALIZATION
+========================================================= */
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
 
-    const socket = io("https://swordgame-5.onrender.com/admin", {
-      withCredentials: true,
-      auth: { token },
+  const socket = io("https://swordgame-5.onrender.com/admin", {
+    withCredentials: true,
+    auth: { token },
+  });
+
+  socketRef.current = socket;
+
+  socket.on("connect", () => {
+    console.log("🛡 Admin socket connected");
+    socket.emit("admin:getUsers");
+  });
+
+  socket.on("users:list", setUsers);
+
+  socket.on("user:status", ({ userId, online }) => {
+    setUsers((prev) =>
+      prev.map((u) =>
+        u._id === userId ? { ...u, online } : u
+      )
+    );
+  });
+
+  const handleEvent = (event) => {
+    // 1️⃣ Always log events in Live Activity
+    setEvents((prev) => [event, ...prev]);
+
+    // 2️⃣ Update games array for any event that has a gameId
+    if (!event.gameId) return;
+
+    setGames((prev) => {
+      switch (event.type) {
+        case "GAME_CREATED":
+          if (prev.some((g) => g.gameId === event.gameId)) return prev;
+          return [
+            {
+              gameId: event.gameId,
+              userId: event.userId,
+              pot: event.pot || 0,
+              status: "waiting",
+              players: [event.userId],
+            },
+            ...prev,
+          ];
+
+        case "ADMIN_ADD_POT":
+          return prev.map((g) =>
+            g.gameId === event.gameId
+              ? { ...g, pot: event.newPot }
+              : g
+          );
+
+        case "GAME_STARTED":
+          return prev.map((g) =>
+            g.gameId === event.gameId
+              ? { ...g, status: "started" }
+              : g
+          );
+
+        case "PLAYER_JOINED":
+          return prev.map((g) =>
+            g.gameId === event.gameId
+              ? {
+                  ...g,
+                  players: [...new Set([...(g.players || []), event.playerId])],
+                }
+              : g
+          );
+
+        case "ADMIN_CONFIG_ENEMIES":
+          return prev.map((g) =>
+            g.gameId === event.gameId
+              ? { ...g, numEnemies: event.numEnemies || g.numEnemies }
+              : g
+          );
+
+        case "GAME_RESULT":
+          return prev.map((g) =>
+            g.gameId === event.gameId
+              ? { ...g, status: "finished", winnerId: event.winnerId }
+              : g
+          );
+
+        case "PLAYER_ATTACK":
+          // Optional: track attacks in game object if needed
+          return prev;
+
+        default:
+          return prev;
+      }
     });
+  };
 
-    socketRef.current = socket;
+  // Listen to both admin + game events
+  socket.on("activity:event", handleEvent);
+  socket.on("game:event", handleEvent);
 
-    socket.on("connect", () => {
-      console.log("🛡 Admin socket connected");
-      socket.emit("admin:getUsers");
-    });
-
-    socket.on("users:list", setUsers);
-
-    socket.on("user:status", ({ userId, online }) => {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u._id === userId ? { ...u, online } : u
-        )
-      );
-    });
-
-    const handleEvent = (event) => {
-      setEvents((prev) => [event, ...prev]);
-
-      setGames((prev) => {
-        switch (event.type) {
-          case "GAME_CREATED":
-            if (prev.some((g) => g.gameId === event.gameId))
-              return prev;
-
-            return [
-              {
-                gameId: event.gameId,
-                userId: event.userId,
-                pot: event.pot || 0,
-                status: "waiting",
-                players: [event.userId],
-              },
-              ...prev,
-            ];
-
-          case "ADMIN_ADD_POT":
-            return prev.map((g) =>
-              g.gameId === event.gameId
-                ? { ...g, pot: event.newPot }
-                : g
-            );
-
-          case "GAME_STARTED":
-            return prev.map((g) =>
-              g.gameId === event.gameId
-                ? { ...g, status: "started" }
-                : g
-            );
-
-          case "PLAYER_JOINED":
-            return prev.map((g) =>
-              g.gameId === event.gameId
-                ? {
-                    ...g,
-                    players: [
-                      ...new Set([
-                        ...(g.players || []),
-                        event.playerId,
-                      ]),
-                    ],
-                  }
-                : g
-            );
-
-          default:
-            return prev;
-        }
-      });
-    };
-
-    socket.on("activity:event", handleEvent);
-    socket.on("game:event", handleEvent);
-
-    return () => socket.disconnect();
-  }, []);
-
+  return () => socket.disconnect();
+}, []);
   /* =========================================================
      ADMIN SETUP + START GAME
   ========================================================= */
