@@ -121,38 +121,40 @@ export default function AdminLayout() {
      START GAME FUNCTION
   ========================================================= */
   const startGame = async (gameId) => {
-    try {
-      const res = await fetch("/api/admin/start-game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to start game");
-    } catch (err) {
-      console.error("Error starting game:", err.message);
-      alert(err.message);
-    }
-  };
+  try {
+    const res = await fetch(`${API_URL}/api/admin/start-game`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameId }),
+    });
 
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to start game");
+
+  } catch (err) {
+    console.error("Error starting game:", err.message);
+    alert(err.message);
+  }
+};
   /* =========================================================
      CONFIGURE ENEMIES FUNCTION
   ========================================================= */
   const configureEnemies = async (gameId, numEnemies = 3) => {
-    try {
-      const res = await fetch("/api/admin/configure-enemies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameId, numEnemies }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to configure enemies");
-    } catch (err) {
-      console.error("Error configuring enemies:", err.message);
-      alert(err.message);
-    }
-  };
+  try {
+    const res = await fetch(`${API_URL}/api/admin/configure-enemies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameId, numEnemies }),
+    });
 
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to configure enemies");
+
+  } catch (err) {
+    console.error("Error configuring enemies:", err.message);
+    alert(err.message);
+  }
+};
   /* =========================================================
      EVENT RENDERING
   ========================================================= */
