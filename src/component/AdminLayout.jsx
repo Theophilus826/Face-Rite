@@ -25,123 +25,95 @@ export default function AdminLayout() {
     }`;
 
   /* =========================================================
-   SOCKET INITIALIZATION
-========================================================= */
-useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (!token) return;
+     SOCKET INITIALIZATION
+  ========================================================= */
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  const socket = io("https://swordgame-5.onrender.com/admin", {
-    withCredentials: true,
-    auth: { token },
-  });
+    const socket = io("https://swordgame-5.onrender.com/admin", {
+      withCredentials: true,
+      auth: { token },
+    });
 
-  socketRef.current = socket;
+    socketRef.current = socket;
 
-  socket.on("connect", () => {
-    console.log("🛡 Admin socket connected");
-    socket.emit("admin:getUsers");
-  });
+    socket.on("connect", () => {
+      console.log("🛡 Admin socket connected");
+      socket.emit("admin:getUsers");
+    });
 
-  socket.on("users:list", setUsers);
+    socket.on("users:list", setUsers);
 
-  socket.on("user:status", ({ userId, online }) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u._id === userId ? { ...u, online } : u
-      )
-    );
-  });
+    socket.on("user:status", ({ userId, online }) => {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === userId ? { ...u, online } : u
+        )
+      );
+    });
 
-  const handleEvent = (event) => {
-  setEvents((prev) => [event, ...prev]);
+    const handleEvent = (event) => {
+      setEvents((prev) => [event, ...prev]);
 
-  if (!event.gameId) return;
+      setGames((prev) => {
+        switch (event.type) {
+          case "GAME_CREATED":
+            if (prev.some((g) => g.gameId === event.gameId))
+              return prev;
 
-  setGames((prev) => {
-    let updated = [...prev];
-    let gameIndex = updated.findIndex(
-      (g) => g.gameId === event.gameId
-    );
+            return [
+              {
+                gameId: event.gameId,
+                userId: event.userId,
+                pot: event.pot || 0,
+                status: "waiting",
+                players: [event.userId],
+              },
+              ...prev,
+            ];
 
-    // 🔥 AUTO-CREATE GAME IF NOT EXIST
-    if (gameIndex === -1) {
-      updated.unshift({
-        gameId: event.gameId,
-        userId: event.userId || "Unknown",
-        pot: event.pot || 0,
-        status: event.status || "waiting",
-        players: [],
-        numEnemies: 0,
-        winnerId: null,
+          case "ADMIN_ADD_POT":
+            return prev.map((g) =>
+              g.gameId === event.gameId
+                ? { ...g, pot: event.newPot }
+                : g
+            );
+
+          case "GAME_STARTED":
+            return prev.map((g) =>
+              g.gameId === event.gameId
+                ? { ...g, status: "started" }
+                : g
+            );
+
+          case "PLAYER_JOINED":
+            return prev.map((g) =>
+              g.gameId === event.gameId
+                ? {
+                    ...g,
+                    players: [
+                      ...new Set([
+                        ...(g.players || []),
+                        event.playerId,
+                      ]),
+                    ],
+                  }
+                : g
+            );
+
+          default:
+            return prev;
+        }
       });
+    };
 
-      gameIndex = 0;
-    }
+    socket.on("activity:event", handleEvent);
+    socket.on("game:event", handleEvent);
 
-    const game = updated[gameIndex];
+    return () => socket.disconnect();
+  }, []);
 
-    switch (event.type) {
-      case "GAME_CREATED":
-        updated[gameIndex] = {
-          ...game,
-          userId: event.userId,
-          players: [event.userId],
-          status: "waiting",
-        };
-        break;
-
-      case "ADMIN_CONFIG_ENEMIES":
-        updated[gameIndex] = {
-          ...game,
-          numEnemies: event.numEnemies,
-        };
-        break;
-
-      case "ADMIN_ADD_POT":
-        updated[gameIndex] = {
-          ...game,
-          pot: event.newPot,
-        };
-        break;
-
-      case "PLAYER_JOINED":
-        updated[gameIndex] = {
-          ...game,
-          players: [...new Set([...game.players, event.playerId])],
-        };
-        break;
-
-      case "GAME_STARTED":
-        updated[gameIndex] = {
-          ...game,
-          status: "started",
-        };
-        break;
-
-      case "GAME_RESULT":
-        updated[gameIndex] = {
-          ...game,
-          status: "finished",
-          winnerId: event.winnerId,
-        };
-        break;
-
-      default:
-        break;
-    }
-
-    return updated;
-  });
-};
-
-  socket.on("activity:event", handleEvent);
- socket.on("game:event", (e) => {
-  console.log("ADMIN game:event received:", e);
-  handleEvent(e);
-});
-  return () => socket.disconnect();
-}, []);
   /* =========================================================
      ADMIN SETUP + START GAME
   ========================================================= */
@@ -248,142 +220,102 @@ useEffect(() => {
 
       {/* LIVE GAME CONTROLLER */}
       <section className="mt-4 bg-white p-4 shadow rounded">
-  <h2 className="font-semibold mb-3">
-    🎮 Live Game Controller
-  </h2>
+        <h2 className="font-semibold mb-3">
+          🎮 Live Game Controller
+        </h2>
 
-  <div
-    ref={gamesContainerRef}
-    className="max-h-[400px] overflow-y-auto"
-  >
-    {games.length === 0 && (
-      <div className="text-gray-400 text-sm text-center py-10">
-        No active games yet
-      </div>
-    )}
+        <div ref={gamesContainerRef} className="max-h-[400px] overflow-y-auto">
+          {games.map((game) => (
+            <div key={game.gameId} className="p-3 mb-3 bg-gray-50 rounded border">
 
-    {games.map((game) => (
-      <div
-        key={game.gameId}
-        className="p-4 mb-3 bg-gray-50 rounded border"
-      >
-        {/* HEADER */}
-        <div className="flex justify-between items-center">
-          <div className="font-semibold">
-            Game {game.gameId.slice(0, 6)}
-          </div>
+              <div className="font-semibold">
+                Game {game.gameId.slice(0, 6)}
+              </div>
 
-          <span
-            className={`text-xs px-2 py-1 rounded font-semibold ${
-              game.status === "waiting"
-                ? "bg-gray-200 text-gray-700"
-                : game.status === "started"
-                ? "bg-blue-100 text-blue-700"
-                : "bg-green-100 text-green-700"
-            }`}
-          >
-            {game.status?.toUpperCase()}
-          </span>
+              <div className="text-sm text-gray-500">
+                Host: {game.userId}
+              </div>
+
+              <div className="text-yellow-600 text-sm">
+                Pot: {game.pot}
+              </div>
+
+              <div className="text-xs mt-1">
+                Players: {game.players?.join(", ") || "None"}
+              </div>
+
+              {/* JOIN PLAYER */}
+              {game.status === "waiting" && (
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="text"
+                    placeholder="Player ID"
+                    value={joinInputs[game.gameId] || ""}
+                    onChange={(e) =>
+                      setJoinInputs((prev) => ({
+                        ...prev,
+                        [game.gameId]: e.target.value,
+                      }))
+                    }
+                    className="border px-2 py-1 text-xs rounded"
+                  />
+
+                  <button
+                    onClick={() => forceJoinPlayer(game.gameId)}
+                    className="bg-purple-600 text-white px-2 py-1 text-xs rounded"
+                  >
+                    ➕ Join
+                  </button>
+                </div>
+              )}
+
+              {/* ADMIN SETUP PANEL */}
+              {game.status === "waiting" && (
+                <div className="flex flex-col gap-2 mt-3">
+                  <input
+                    type="number"
+                    placeholder="Number of Enemies"
+                    value={gameControls[game.gameId]?.enemies || ""}
+                    onChange={(e) =>
+                      setGameControls((prev) => ({
+                        ...prev,
+                        [game.gameId]: {
+                          ...prev[game.gameId],
+                          enemies: e.target.value,
+                        },
+                      }))
+                    }
+                    className="border px-2 py-1 text-xs rounded"
+                  />
+
+                  <input
+                    type="number"
+                    placeholder="Pot Amount"
+                    value={gameControls[game.gameId]?.pot || ""}
+                    onChange={(e) =>
+                      setGameControls((prev) => ({
+                        ...prev,
+                        [game.gameId]: {
+                          ...prev[game.gameId],
+                          pot: e.target.value,
+                        },
+                      }))
+                    }
+                    className="border px-2 py-1 text-xs rounded"
+                  />
+
+                  <button
+                    onClick={() => setupAndStartGame(game.gameId)}
+                    className="bg-green-600 text-white px-3 py-1 text-xs rounded"
+                  >
+                    🎮 Setup & Start Game
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-
-        {/* GAME INFO */}
-        <div className="text-sm text-gray-500 mt-1">
-          Host: {game.userId}
-        </div>
-
-        <div className="text-yellow-600 text-sm">
-          Pot: {game.pot}
-        </div>
-
-        <div className="text-sm text-gray-600">
-          Enemies: {game.numEnemies || 0}
-        </div>
-
-        <div className="text-xs mt-1">
-          Players: {game.players?.join(", ") || "None"}
-        </div>
-
-        {/* WINNER */}
-        {game.status === "finished" && (
-          <div className="text-green-600 text-sm mt-2 font-semibold">
-            🏆 Winner: {game.winnerId || "Unknown"}
-          </div>
-        )}
-
-        {/* JOIN PLAYER */}
-        {game.status === "waiting" && (
-          <div className="flex gap-2 mt-3">
-            <input
-              type="text"
-              placeholder="Player ID"
-              value={joinInputs[game.gameId] || ""}
-              onChange={(e) =>
-                setJoinInputs((prev) => ({
-                  ...prev,
-                  [game.gameId]: e.target.value,
-                }))
-              }
-              className="border px-2 py-1 text-xs rounded flex-1"
-            />
-
-            <button
-              onClick={() => forceJoinPlayer(game.gameId)}
-              className="bg-purple-600 text-white px-3 py-1 text-xs rounded"
-            >
-              ➕ Join
-            </button>
-          </div>
-        )}
-
-        {/* ADMIN SETUP PANEL */}
-        {game.status === "waiting" && (
-          <div className="flex flex-col gap-2 mt-3">
-            <input
-              type="number"
-              placeholder="Number of Enemies"
-              value={gameControls[game.gameId]?.enemies || ""}
-              onChange={(e) =>
-                setGameControls((prev) => ({
-                  ...prev,
-                  [game.gameId]: {
-                    ...prev[game.gameId],
-                    enemies: e.target.value,
-                  },
-                }))
-              }
-              className="border px-2 py-1 text-xs rounded"
-            />
-
-            <input
-              type="number"
-              placeholder="Pot Amount"
-              value={gameControls[game.gameId]?.pot || ""}
-              onChange={(e) =>
-                setGameControls((prev) => ({
-                  ...prev,
-                  [game.gameId]: {
-                    ...prev[game.gameId],
-                    pot: e.target.value,
-                  },
-                }))
-              }
-              className="border px-2 py-1 text-xs rounded"
-            />
-
-            <button
-              onClick={() =>
-                setupAndStartGame(game.gameId)
-              }
-              className="bg-green-600 text-white px-3 py-1 text-xs rounded hover:bg-green-700 transition"
-            >
-              🎮 Setup & Start Game
-            </button>
-          </div>
-        )}
-      </div>
-    ))}
-  </div>
-</section>
+      </section>
 
       {/* SIDEBAR */}
       <section>
