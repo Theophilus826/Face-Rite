@@ -4,18 +4,15 @@ import { useDispatch } from "react-redux";
 import { logout } from "../features/AuthSlice";
 import { io } from "socket.io-client";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 export default function AdminLayout() {
   const dispatch = useDispatch();
   const socketRef = useRef(null);
-  const gamesContainerRef = useRef(null);
 
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
   const [games, setGames] = useState([]);
   const [joinInputs, setJoinInputs] = useState({});
-  const [gameControls, setGameControls] = useState({}); // 🔥 NEW
+  const [gameControls, setGameControls] = useState({});
 
   const linkClass = ({ isActive }) =>
     `block px-4 py-2 rounded ${
@@ -39,7 +36,6 @@ export default function AdminLayout() {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("🛡 Admin socket connected");
       socket.emit("admin:getUsers");
     });
 
@@ -69,9 +65,22 @@ export default function AdminLayout() {
                 pot: event.pot || 0,
                 status: "waiting",
                 players: [event.userId],
+                enemiesConfigured: false,
+                enemies: 0,
               },
               ...prev,
             ];
+
+          case "ENEMIES_CONFIGURED":
+            return prev.map((g) =>
+              g.gameId === event.gameId
+                ? {
+                    ...g,
+                    enemiesConfigured: true,
+                    enemies: event.enemies,
+                  }
+                : g
+            );
 
           case "ADMIN_ADD_POT":
             return prev.map((g) =>
@@ -95,7 +104,7 @@ export default function AdminLayout() {
                     players: [
                       ...new Set([
                         ...(g.players || []),
-                        event.playerId,
+                        event.userId,
                       ]),
                     ],
                   }
@@ -115,54 +124,40 @@ export default function AdminLayout() {
   }, []);
 
   /* =========================================================
-     ADMIN SETUP + START GAME
+     CONFIGURE ENEMIES
   ========================================================= */
-  const setupAndStartGame = async (gameId) => {
+  const configureEnemies = (gameId) => {
     const controls = gameControls[gameId];
-
-    if (!controls)
-      return alert("Enter enemies & pot");
-
-    const numEnemies = Number(controls.enemies);
-    const potAmount = Number(controls.pot);
+    const numEnemies = Number(controls?.enemies);
 
     if (!numEnemies || numEnemies <= 0)
       return alert("Invalid enemies number");
 
+    socketRef.current.emit("host:configureEnemies", {
+      gameId,
+      numEnemies,
+    });
+  };
+
+  /* =========================================================
+     START GAME (requires enemies configured)
+  ========================================================= */
+  const startGame = (gameId) => {
+    const controls = gameControls[gameId];
+    const potAmount = Number(controls?.pot);
+
     if (!potAmount || potAmount <= 0)
       return alert("Invalid pot amount");
 
-    try {
-      // 1️⃣ Configure enemies
-      await fetch(`${API_URL}/api/admin/configure-enemies`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameId, numEnemies }),
-      });
+    socketRef.current.emit("host:startGame", {
+      gameId,
+      pot: potAmount,
+    });
 
-      // 2️⃣ Add pot
-      await fetch(`${API_URL}/api/admin/add-pot`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameId, amount: potAmount }),
-      });
-
-      // 3️⃣ Start game
-      await fetch(`${API_URL}/api/admin/start-game`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameId }),
-      });
-
-      // Clear inputs
-      setGameControls((prev) => ({
-        ...prev,
-        [gameId]: { enemies: "", pot: "" },
-      }));
-
-    } catch (err) {
-      alert("Failed to setup game");
-    }
+    setGameControls((prev) => ({
+      ...prev,
+      [gameId]: { enemies: "", pot: "" },
+    }));
   };
 
   /* =========================================================
@@ -224,7 +219,7 @@ export default function AdminLayout() {
           🎮 Live Game Controller
         </h2>
 
-        <div ref={gamesContainerRef} className="max-h-[400px] overflow-y-auto">
+        <div className="max-h-[400px] overflow-y-auto">
           {games.map((game) => (
             <div key={game.gameId} className="p-3 mb-3 bg-gray-50 rounded border">
 
@@ -241,37 +236,16 @@ export default function AdminLayout() {
               </div>
 
               <div className="text-xs mt-1">
+                Enemies: {game.enemies || 0}
+              </div>
+
+              <div className="text-xs">
                 Players: {game.players?.join(", ") || "None"}
               </div>
 
-              {/* JOIN PLAYER */}
-              {game.status === "waiting" && (
-                <div className="flex gap-2 mt-2">
-                  <input
-                    type="text"
-                    placeholder="Player ID"
-                    value={joinInputs[game.gameId] || ""}
-                    onChange={(e) =>
-                      setJoinInputs((prev) => ({
-                        ...prev,
-                        [game.gameId]: e.target.value,
-                      }))
-                    }
-                    className="border px-2 py-1 text-xs rounded"
-                  />
-
-                  <button
-                    onClick={() => forceJoinPlayer(game.gameId)}
-                    className="bg-purple-600 text-white px-2 py-1 text-xs rounded"
-                  >
-                    ➕ Join
-                  </button>
-                </div>
-              )}
-
-              {/* ADMIN SETUP PANEL */}
               {game.status === "waiting" && (
                 <div className="flex flex-col gap-2 mt-3">
+
                   <input
                     type="number"
                     placeholder="Number of Enemies"
@@ -287,6 +261,13 @@ export default function AdminLayout() {
                     }
                     className="border px-2 py-1 text-xs rounded"
                   />
+
+                  <button
+                    onClick={() => configureEnemies(game.gameId)}
+                    className="bg-blue-600 text-white px-3 py-1 text-xs rounded"
+                  >
+                    ⚔ Configure Enemies
+                  </button>
 
                   <input
                     type="number"
@@ -305,11 +286,17 @@ export default function AdminLayout() {
                   />
 
                   <button
-                    onClick={() => setupAndStartGame(game.gameId)}
-                    className="bg-green-600 text-white px-3 py-1 text-xs rounded"
+                    onClick={() => startGame(game.gameId)}
+                    disabled={!game.enemiesConfigured}
+                    className={`px-3 py-1 text-xs rounded ${
+                      game.enemiesConfigured
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-400 text-white cursor-not-allowed"
+                    }`}
                   >
-                    🎮 Setup & Start Game
+                    🚀 Start Game
                   </button>
+
                 </div>
               )}
             </div>
