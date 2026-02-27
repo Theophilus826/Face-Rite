@@ -31,7 +31,7 @@ useEffect(() => {
   const token = localStorage.getItem("token");
   if (!token) return;
 
-  const socket = io("https://swordgame-5.onrender.com", {
+  const socket = io("https://swordgame-5.onrender.com/admin", {
     withCredentials: true,
     auth: { token },
   });
