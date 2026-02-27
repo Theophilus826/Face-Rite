@@ -54,81 +54,92 @@ useEffect(() => {
   });
 
   const handleEvent = (event) => {
-    setEvents((prev) => [event, ...prev]);
+  setEvents((prev) => [event, ...prev]);
 
-    if (!event.gameId) return;
+  if (!event.gameId) return;
 
-    setGames((prev) => {
-      let game = prev.find((g) => g.gameId === event.gameId);
+  setGames((prev) => {
+    let updated = [...prev];
+    let gameIndex = updated.findIndex(
+      (g) => g.gameId === event.gameId
+    );
 
-      // 🔥 AUTO-CREATE GAME IF NOT EXIST
-      if (!game) {
-        game = {
-          gameId: event.gameId,
-          userId: event.userId || "Unknown",
-          pot: 0,
-          status: "waiting",
-          players: [],
-          numEnemies: 0,
-          winnerId: null,
-        };
-
-        prev = [game, ...prev];
-      }
-
-      return prev.map((g) => {
-        if (g.gameId !== event.gameId) return g;
-
-        switch (event.type) {
-          case "GAME_CREATED":
-            return {
-              ...g,
-              userId: event.userId,
-              players: [event.userId],
-              status: "waiting",
-            };
-
-          case "ADMIN_CONFIG_ENEMIES":
-            return {
-              ...g,
-              numEnemies: event.numEnemies,
-            };
-
-          case "ADMIN_ADD_POT":
-            return {
-              ...g,
-              pot: event.newPot,
-            };
-
-          case "PLAYER_JOINED":
-            return {
-              ...g,
-              players: [...new Set([...g.players, event.playerId])],
-            };
-
-          case "GAME_STARTED":
-            return {
-              ...g,
-              status: "started",
-            };
-
-          case "GAME_RESULT":
-            return {
-              ...g,
-              status: "finished",
-              winnerId: event.winnerId,
-            };
-
-          default:
-            return g;
-        }
+    // 🔥 AUTO-CREATE GAME IF NOT EXIST
+    if (gameIndex === -1) {
+      updated.unshift({
+        gameId: event.gameId,
+        userId: event.userId || "Unknown",
+        pot: event.pot || 0,
+        status: event.status || "waiting",
+        players: [],
+        numEnemies: 0,
+        winnerId: null,
       });
-    });
-  };
+
+      gameIndex = 0;
+    }
+
+    const game = updated[gameIndex];
+
+    switch (event.type) {
+      case "GAME_CREATED":
+        updated[gameIndex] = {
+          ...game,
+          userId: event.userId,
+          players: [event.userId],
+          status: "waiting",
+        };
+        break;
+
+      case "ADMIN_CONFIG_ENEMIES":
+        updated[gameIndex] = {
+          ...game,
+          numEnemies: event.numEnemies,
+        };
+        break;
+
+      case "ADMIN_ADD_POT":
+        updated[gameIndex] = {
+          ...game,
+          pot: event.newPot,
+        };
+        break;
+
+      case "PLAYER_JOINED":
+        updated[gameIndex] = {
+          ...game,
+          players: [...new Set([...game.players, event.playerId])],
+        };
+        break;
+
+      case "GAME_STARTED":
+        updated[gameIndex] = {
+          ...game,
+          status: "started",
+        };
+        break;
+
+      case "GAME_RESULT":
+        updated[gameIndex] = {
+          ...game,
+          status: "finished",
+          winnerId: event.winnerId,
+        };
+        break;
+
+      default:
+        break;
+    }
+
+    return updated;
+  });
+};
 
   socket.on("activity:event", handleEvent);
-  socket.on("game:event", handleEvent);
-
+ socket.on("game:event", (e) => {
+  console.log("ADMIN game:event received:", e);
+  handleEvent(e);
+});
   return () => socket.disconnect();
 }, []);
   /* =========================================================
