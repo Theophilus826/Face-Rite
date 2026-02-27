@@ -64,7 +64,7 @@ useEffect(() => {
 
   const token = localStorage.getItem("token");
 
-  const socket = io("https://swordgame-5.onrender.com", {
+  const socket = io("https://swordgame-5.onrender.com/admin", {
     transports: ["websocket", "polling"],
     auth: { token },
     reconnection: true,
