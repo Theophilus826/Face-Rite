@@ -65,6 +65,7 @@ export default function HostGame() {
   const token = localStorage.getItem("token");
 
   const socket = io("https://swordgame-5.onrender.com", {
+    path: "/socket.io",
     transports: ["websocket", "polling"],
     auth: { token },
     reconnection: true,
