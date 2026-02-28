@@ -30,14 +30,18 @@ export default function AdminLayout() {
     const socket = io("https://swordgame-5.onrender.com/admin", {
       withCredentials: true,
       auth: { token },
+      reconnection: true,
     });
 
     socketRef.current = socket;
 
-    socket.on("connect", () => {
+    const init = () => {
       console.log("🛡 Admin socket connected");
       socket.emit("admin:getUsers");
-    });
+    };
+
+    socket.on("connect", init);
+    socket.on("reconnect", init);
 
     socket.on("users:list", setUsers);
 
@@ -55,12 +59,14 @@ export default function AdminLayout() {
           case "GAME_STARTED":
           case "ADMIN_ADD_POT":
           case "PLAYER_JOINED":
+          case "ENEMIES_CONFIGURED":
             return prev.map((g) =>
               g.gameId === event.gameId
                 ? {
                     ...g,
-                    ...("newPot" in event ? { pot: event.newPot } : {}),
-                    ...("status" in event ? { status: event.status } : {}),
+                    ...(event.newPot ? { pot: event.newPot } : {}),
+                    ...(event.status ? { status: event.status } : {}),
+                    ...(event.enemies ? { enemiesConfigured: true, numEnemies: event.enemies } : {}),
                     ...(event.playerId
                       ? {
                           players: [
@@ -71,7 +77,6 @@ export default function AdminLayout() {
                   }
                 : g
             );
-
           default:
             return prev;
         }
@@ -96,6 +101,8 @@ export default function AdminLayout() {
         userId: "admin",
         pot: 0,
         status: "waiting",
+        enemiesConfigured: false,
+        numEnemies: 0,
         players: [],
       },
       ...prev,
@@ -176,6 +183,8 @@ export default function AdminLayout() {
               className="text-sm border p-2 mb-2 rounded bg-gray-50"
             >
               {event.type}
+              {event.enemies && ` - Enemies: ${event.enemies}`}
+              {event.newPot && ` - Pot: ${event.newPot}`}
             </div>
           ))}
         </div>
@@ -252,6 +261,7 @@ export default function AdminLayout() {
                       }))
                     }
                     className="border px-2 py-1 text-xs rounded"
+                    disabled={game.status !== "waiting"}
                   />
                   <input
                     type="number"
@@ -267,13 +277,22 @@ export default function AdminLayout() {
                       }))
                     }
                     className="border px-2 py-1 text-xs rounded"
+                    disabled={game.status !== "waiting"}
                   />
                   <button
                     onClick={() => setupAndStartGame(game.gameId)}
                     className="bg-green-600 text-white px-3 py-1 text-xs rounded"
+                    disabled={game.status !== "waiting"}
                   >
                     🎮 Setup & Start Game
                   </button>
+                </div>
+              )}
+
+              {/* ENEMIES DEPLOYED INFO */}
+              {game.enemiesConfigured && (
+                <div className="text-sm text-red-600 mt-2">
+                  ⚔️ Enemies deployed: {game.numEnemies}
                 </div>
               )}
             </div>
