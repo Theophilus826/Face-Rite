@@ -24,72 +24,95 @@ export default function AdminLayout() {
      SOCKET INITIALIZATION
   ========================================================= */
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+  const token = localStorage.getItem("token");
+  if (!token) return;
 
-    const socket = io("https://swordgame-5.onrender.com/admin", {
-      path: "/socket.io",
-      withCredentials: true,
-      auth: { token },
-      reconnection: true,
-    });
+  const socket = io("https://swordgame-5.onrender.com/admin", {
+    path: "/socket.io",
+    withCredentials: true,
+    auth: { token },
+    reconnection: true,
+  });
 
-    socketRef.current = socket;
+  socketRef.current = socket;
 
-    const init = () => {
-      console.log("🛡 Admin socket connected");
-      socket.emit("admin:getUsers");
-    };
+  const init = () => {
+    console.log("🛡 Admin socket connected");
+    socket.emit("admin:getUsers");
+  };
 
-    socket.on("connect", init);
-    socket.on("reconnect", init);
+  socket.on("connect", init);
+  socket.on("reconnect", init);
 
-    socket.on("users:list", setUsers);
+  // ✅ USERS
+  socket.on("users:list", setUsers);
+  socket.on("user:status", ({ userId, online }) => {
+    setUsers((prev) =>
+      prev.map((u) => (u._id === userId ? { ...u, online } : u))
+    );
+  });
 
-    socket.on("user:status", ({ userId, online }) => {
-      setUsers((prev) =>
-        prev.map((u) => (u._id === userId ? { ...u, online } : u))
-      );
-    });
+  // ✅ LIVE GAME EVENTS
+  const handleEvent = (event) => {
+    // prepend to activity log
+    setEvents((prev) => [event, ...prev]);
 
-    const handleEvent = (event) => {
-      setEvents((prev) => [event, ...prev]);
+    // update games
+    setGames((prev) =>
+      prev.map((g) => {
+        if (g.gameId !== event.gameId) return g; // skip unrelated games
 
-      setGames((prev) => {
         switch (event.type) {
-          case "GAME_STARTED":
-          case "ADMIN_ADD_POT":
           case "PLAYER_JOINED":
+            return {
+              ...g,
+              players: [...new Set([...(g.players || []), event.userId])],
+            };
+
+          case "PLAYER_DISCONNECTED":
+            return {
+              ...g,
+              players: (g.players || []).filter((id) => id !== event.userId),
+            };
+
+          case "GAME_STARTED":
+            return {
+              ...g,
+              status: event.status || "started",
+              pot: event.pot ?? g.pot,
+              enemiesConfigured: g.enemiesConfigured || false,
+              numEnemies: event.enemies ?? g.numEnemies,
+            };
+
           case "ENEMIES_CONFIGURED":
-            return prev.map((g) =>
-              g.gameId === event.gameId
-                ? {
-                    ...g,
-                    ...(event.newPot ? { pot: event.newPot } : {}),
-                    ...(event.status ? { status: event.status } : {}),
-                    ...(event.enemies ? { enemiesConfigured: true, numEnemies: event.enemies } : {}),
-                    ...(event.playerId
-                      ? {
-                          players: [
-                            ...new Set([...(g.players || []), event.playerId]),
-                          ],
-                        }
-                      : {}),
-                  }
-                : g
-            );
+            return {
+              ...g,
+              enemiesConfigured: true,
+              numEnemies: event.enemies ?? g.numEnemies,
+            };
+
+          case "ADMIN_ADD_POT":
+            return {
+              ...g,
+              pot: event.newPot ?? g.pot,
+            };
+
           default:
-            return prev;
+            return g;
         }
-      });
-    };
+      })
+    );
+  };
 
-    socket.on("activity:event", handleEvent);
-    socket.on("game:event", handleEvent);
+  socket.on("activity:event", handleEvent);
+  socket.on("game:event", handleEvent);
 
-    return () => socket.disconnect();
-  }, []);
-
+  // clean up
+  return () => {
+    socket.removeAllListeners();
+    socket.disconnect();
+  };
+}, []);
   /* =========================================================
      FRONTEND HOST: CREATE LOCAL GAME
   ========================================================= */
