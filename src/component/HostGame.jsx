@@ -59,7 +59,7 @@ export default function HostGame() {
   /* =========================================================
      SOCKET LISTENER (ADMIN STARTS GAME)
   ========================================================= */
-useEffect(() => {
+  useEffect(() => {
   if (!game) return;
 
   const token = localStorage.getItem("token");
@@ -77,8 +77,12 @@ useEffect(() => {
     socket.emit("joinRoom", game.id);
   });
 
-  socket.on("connect_error", (err) => console.error("🚨 Socket connect error:", err.message));
-  socket.on("disconnect", (reason) => console.warn("⚠️ Socket disconnected:", reason));
+  socket.on("connect_error", (err) =>
+    console.error("🚨 Socket connect error:", err.message)
+  );
+  socket.on("disconnect", (reason) =>
+    console.warn("⚠️ Socket disconnected:", reason)
+  );
 
   // ✅ Unified game:event listener
   socket.on("game:event", (data) => {
@@ -86,7 +90,10 @@ useEffect(() => {
 
     switch (data.type) {
       case "ADMIN_CONFIG_ENEMIES":
+      case "ENEMIES_CONFIGURED": // <-- Add this to cover both backend versions
         toast.info("⚔️ Enemies deployed!");
+        // Optional: mark in state that enemies are ready
+        setGame((prev) => ({ ...prev, enemiesConfigured: true, numEnemies: data.numEnemies || prev.numEnemies }));
         break;
 
       case "GAME_STARTED":
@@ -127,27 +134,19 @@ useEffect(() => {
   /* =========================================================
      ADD TO POT (Still Works)
   ========================================================= */
-  const handleAddToPot = async (amountToAdd) => {
-    if (!game) return toast.error("No active game");
+  const handleAddToPot = (amountToAdd) => {
+  if (!game) return toast.error("No active game");
+  if (!socketRef.current || !socketRef.current.connected)
+    return toast.error("Socket not connected");
 
-    try {
-      const res = await fetch("/api/game/add-to-pot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameId: game.id, amount: amountToAdd }),
-      });
+  // Emit directly to backend
+  socketRef.current.emit("host:addToPot", {
+    gameId: game.id,
+    amount: amountToAdd,
+  });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-
-      toast.success(`Added ${amountToAdd} coins to pot`);
-      setGame((prev) => ({ ...prev, pot: data.pot }));
-
-      dispatch(addToPot({ gameId: game.id, amount: amountToAdd }));
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
+  toast.info(`Adding ${amountToAdd} coins to pot...`);
+};
 
   /* =========================================================
      LOAD BABYLON SCENE (ONLY AFTER START)
