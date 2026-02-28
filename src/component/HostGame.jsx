@@ -63,6 +63,13 @@ export default function HostGame() {
   if (!game) return;
 
   const token = localStorage.getItem("token");
+  if (!token) {
+    console.error("🚨 No token found in localStorage");
+    toast.error("No token found! Cannot connect to game server.");
+    return;
+  }
+
+  console.log("🟢 Connecting socket with token:", token);
 
   const socket = io("https://swordgame-5.onrender.com", {
     path: "/socket.io",
@@ -73,28 +80,44 @@ export default function HostGame() {
 
   socketRef.current = socket;
 
+  // Connection events
   socket.on("connect", () => {
     console.log("🎮 Player socket connected:", socket.id);
+    toast.info("Socket connected ✅");
+
+    // Join the game room
     socket.emit("joinRoom", game.id);
+    console.log("➡️ Emitted joinRoom for game:", game.id);
   });
 
-  socket.on("connect_error", (err) =>
-    console.error("🚨 Socket connect error:", err.message)
-  );
-  socket.on("disconnect", (reason) =>
-    console.warn("⚠️ Socket disconnected:", reason)
-  );
+  socket.on("connect_error", (err) => {
+    console.error("🚨 Socket connect error:", err.message);
+    toast.error(`Socket connection error: ${err.message}`);
+  });
 
-  // ✅ Unified game:event listener
+  socket.on("disconnect", (reason) => {
+    console.warn("⚠️ Socket disconnected:", reason);
+    toast.warn(`Socket disconnected: ${reason}`);
+  });
+
+  // Listen to game events
   socket.on("game:event", (data) => {
-    if (data.gameId !== game.id) return;
+    console.log("📨 Received game:event:", data);
+
+    if (data.gameId !== game.id) {
+      console.log("⏭ Ignoring event for another game:", data.gameId);
+      return;
+    }
 
     switch (data.type) {
       case "ADMIN_CONFIG_ENEMIES":
-      case "ENEMIES_CONFIGURED": // <-- Add this to cover both backend versions
+      case "ENEMIES_CONFIGURED":
         toast.info("⚔️ Enemies deployed!");
-        // Optional: mark in state that enemies are ready
-        setGame((prev) => ({ ...prev, enemiesConfigured: true, numEnemies: data.numEnemies || prev.numEnemies }));
+        setGame((prev) => ({
+          ...prev,
+          enemiesConfigured: true,
+          numEnemies: data.numEnemies || prev.numEnemies,
+        }));
         break;
 
       case "GAME_STARTED":
@@ -116,7 +139,6 @@ export default function HostGame() {
         break;
 
       case "PLAYER_ATTACK":
-        // Optional: update enemy health UI or log attacks
         console.log("Player attacked enemy:", data);
         break;
 
@@ -126,12 +148,12 @@ export default function HostGame() {
   });
 
   return () => {
+    console.log("🛑 Cleaning up socket...");
     socket.removeAllListeners();
     socket.disconnect();
     socketRef.current = null;
   };
 }, [game?.id, user?._id]);
-
   /* =========================================================
      ADD TO POT (Still Works)
   ========================================================= */
