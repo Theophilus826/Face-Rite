@@ -7,7 +7,6 @@ import { io } from "socket.io-client";
 export default function AdminLayout() {
   const dispatch = useDispatch();
   const socketRef = useRef(null);
-  const gamesContainerRef = useRef(null);
 
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
@@ -37,7 +36,7 @@ export default function AdminLayout() {
     socketRef.current = socket;
 
     const init = () => {
-      console.log("🛡 Admin socket connected");
+      console.log("🛡 Admin connected");
       socket.emit("admin:getUsers");
     };
 
@@ -52,61 +51,103 @@ export default function AdminLayout() {
       );
     });
 
+    /* =========================================================
+       CENTRAL GAME + ACTIVITY HANDLER
+    ========================================================= */
     const handleEvent = (event) => {
-  setEvents((prev) => [event, ...prev]);
+      setEvents((prev) => [event, ...prev]);
 
-  setGames((prev) =>
-    prev.map((g) => {
-      if (g.gameId !== event.gameId) return g;
+      setGames((prevGames) => {
+        let updatedGames = [...prevGames];
 
-      switch (event.type) {
-        case "PLAYER_JOINED":
-          return {
-            ...g,
-            players: [...new Set([...(g.players || []), event.userId])],
-          };
+        // Auto-create game if not existing
+        let gameIndex = updatedGames.findIndex(
+          (g) => g.gameId === event.gameId
+        );
 
-        case "PLAYER_DISCONNECTED":
-          return {
-            ...g,
-            players: (g.players || []).filter(
-              (id) => id !== event.userId
-            ),
-          };
+        if (gameIndex === -1 && event.gameId) {
+          updatedGames.unshift({
+            gameId: event.gameId,
+            userId: event.hostId || "Unknown",
+            pot: 0,
+            status: "waiting",
+            enemiesConfigured: false,
+            numEnemies: 0,
+            players: [],
+          });
 
-        case "ENEMIES_CONFIGURED":
-          return {
-            ...g,
-            enemiesConfigured: true,
-            numEnemies: event.enemies,
-          };
+          gameIndex = 0;
+        }
 
-        case "GAME_STARTED":
-          return {
-            ...g,
-            status: "started",
-            pot: event.pot,
-            numEnemies: event.enemies,
-          };
+        if (gameIndex === -1) return updatedGames;
 
-        case "ADMIN_ADD_POT":
-          return {
-            ...g,
-            pot: event.newPot,
-          };
+        const game = updatedGames[gameIndex];
 
-        case "GAME_RESULT":
-          return {
-            ...g,
-            status: "finished",
-          };
+        switch (event.type) {
+          case "GAME_CREATED":
+            updatedGames[gameIndex] = {
+              ...game,
+              userId: event.hostId,
+              pot: event.pot || 0,
+              status: event.status || "waiting",
+              players: [event.hostId],
+            };
+            break;
 
-        default:
-          return g;
-      }
-    })
-  );
-};
+          case "PLAYER_JOINED":
+            updatedGames[gameIndex] = {
+              ...game,
+              players: [...new Set([...(game.players || []), event.userId])],
+            };
+            break;
+
+          case "PLAYER_DISCONNECTED":
+            updatedGames[gameIndex] = {
+              ...game,
+              players: game.players?.filter(
+                (id) => id !== event.userId
+              ),
+            };
+            break;
+
+          case "ENEMIES_CONFIGURED":
+            updatedGames[gameIndex] = {
+              ...game,
+              enemiesConfigured: true,
+              numEnemies: event.enemies,
+            };
+            break;
+
+          case "ADMIN_ADD_POT":
+            updatedGames[gameIndex] = {
+              ...game,
+              pot: event.newPot,
+            };
+            break;
+
+          case "GAME_STARTED":
+            updatedGames[gameIndex] = {
+              ...game,
+              status: "started",
+              pot: event.pot,
+              numEnemies: event.enemies,
+            };
+            break;
+
+          case "GAME_RESULT":
+            updatedGames[gameIndex] = {
+              ...game,
+              status: "finished",
+            };
+            break;
+
+          default:
+            break;
+        }
+
+        return updatedGames;
+      });
+    };
 
     socket.on("activity:event", handleEvent);
     socket.on("game:event", handleEvent);
@@ -115,27 +156,7 @@ export default function AdminLayout() {
   }, []);
 
   /* =========================================================
-     FRONTEND HOST: CREATE LOCAL GAME
-  ========================================================= */
-  const createLocalGame = () => {
-    const gameId = crypto.randomUUID();
-    socketRef.current.emit("admin:createGame", { gameId });
-    setGames((prev) => [
-      {
-        gameId,
-        userId: "admin",
-        pot: 0,
-        status: "waiting",
-        enemiesConfigured: false,
-        numEnemies: 0,
-        players: [],
-      },
-      ...prev,
-    ]);
-  };
-
-  /* =========================================================
-     ADMIN SETUP + START GAME (SOCKET ONLY)
+     ADMIN SETUP + START GAME
   ========================================================= */
   const setupAndStartGame = (gameId) => {
     const controls = gameControls[gameId];
@@ -144,8 +165,11 @@ export default function AdminLayout() {
     const numEnemies = Number(controls.enemies);
     const potAmount = Number(controls.pot);
 
-    if (!numEnemies || numEnemies <= 0) return alert("Invalid enemies number");
-    if (!potAmount || potAmount <= 0) return alert("Invalid pot amount");
+    if (!numEnemies || numEnemies <= 0)
+      return alert("Invalid enemies number");
+
+    if (!potAmount || potAmount <= 0)
+      return alert("Invalid pot amount");
 
     const socket = socketRef.current;
 
@@ -219,17 +243,7 @@ export default function AdminLayout() {
       <section className="mt-4 bg-white p-4 shadow rounded">
         <h2 className="font-semibold mb-3">🎮 Live Game Controller</h2>
 
-        <button
-          onClick={createLocalGame}
-          className="bg-blue-600 text-white px-3 py-2 text-sm rounded mb-3"
-        >
-          ➕ Create Game
-        </button>
-
-        <div
-          ref={gamesContainerRef}
-          className="max-h-[400px] overflow-y-auto"
-        >
+        <div className="max-h-[400px] overflow-y-auto">
           {games.map((game) => (
             <div
               key={game.gameId}
@@ -239,37 +253,18 @@ export default function AdminLayout() {
                 Game {game.gameId.slice(0, 6)}
               </div>
 
-              <div className="text-sm text-gray-500">Host: {game.userId}</div>
-              <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
+              <div className="text-sm text-gray-500">
+                Host: {game.userId}
+              </div>
+
+              <div className="text-yellow-600 text-sm">
+                Pot: {game.pot}
+              </div>
+
               <div className="text-xs mt-1">
                 Players: {game.players?.join(", ") || "None"}
               </div>
 
-              {/* JOIN PLAYER */}
-              {game.status === "waiting" && (
-                <div className="flex gap-2 mt-2">
-                  <input
-                    type="text"
-                    placeholder="Player ID"
-                    value={joinInputs[game.gameId] || ""}
-                    onChange={(e) =>
-                      setJoinInputs((prev) => ({
-                        ...prev,
-                        [game.gameId]: e.target.value,
-                      }))
-                    }
-                    className="border px-2 py-1 text-xs rounded"
-                  />
-                  <button
-                    onClick={() => forceJoinPlayer(game.gameId)}
-                    className="bg-purple-600 text-white px-2 py-1 text-xs rounded"
-                  >
-                    ➕ Join
-                  </button>
-                </div>
-              )}
-
-              {/* ADMIN SETUP PANEL */}
               {game.status === "waiting" && (
                 <div className="flex flex-col gap-2 mt-3">
                   <input
@@ -286,7 +281,6 @@ export default function AdminLayout() {
                       }))
                     }
                     className="border px-2 py-1 text-xs rounded"
-                    disabled={game.status !== "waiting"}
                   />
                   <input
                     type="number"
@@ -302,19 +296,16 @@ export default function AdminLayout() {
                       }))
                     }
                     className="border px-2 py-1 text-xs rounded"
-                    disabled={game.status !== "waiting"}
                   />
                   <button
                     onClick={() => setupAndStartGame(game.gameId)}
                     className="bg-green-600 text-white px-3 py-1 text-xs rounded"
-                    disabled={game.status !== "waiting"}
                   >
                     🎮 Setup & Start Game
                   </button>
                 </div>
               )}
 
-              {/* ENEMIES DEPLOYED INFO */}
               {game.enemiesConfigured && (
                 <div className="text-sm text-red-600 mt-2">
                   ⚔️ Enemies deployed: {game.numEnemies}
@@ -329,7 +320,9 @@ export default function AdminLayout() {
       <section>
         <div className="flex min-h-screen bg-gray-100 mt-4">
           <aside className="w-64 bg-white shadow-lg p-4">
-            <h1 className="text-xl font-bold text-center mb-6">🛡 Admin Panel</h1>
+            <h1 className="text-xl font-bold text-center mb-6">
+              🛡 Admin Panel
+            </h1>
 
             <nav className="space-y-2">
               <NavLink to="/admin/monitor" className={linkClass}>
