@@ -7,7 +7,6 @@ import { io } from "socket.io-client";
 export default function AdminLayout() {
   const dispatch = useDispatch();
   const socketRef = useRef(null);
-  const gamesContainerRef = useRef(null);
 
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
@@ -21,7 +20,7 @@ export default function AdminLayout() {
     }`;
 
   /* =========================================================
-     SOCKET INITIALIZATION
+     SOCKET INITIALIZATION (ONLY RECEIVE + RESPOND)
   ========================================================= */
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -37,13 +36,15 @@ export default function AdminLayout() {
     socketRef.current = socket;
 
     const init = () => {
-      console.log("🛡 Admin socket connected");
+      console.log("🛡 Admin connected");
       socket.emit("admin:getUsers");
+      socket.emit("admin:getGames"); // Request existing games from backend
     };
 
     socket.on("connect", init);
     socket.on("reconnect", init);
 
+    /* ================= USERS ================= */
     socket.on("users:list", setUsers);
 
     socket.on("user:status", ({ userId, online }) => {
@@ -52,62 +53,67 @@ export default function AdminLayout() {
       );
     });
 
+    /* ================= RECEIVE FULL GAME LIST ================= */
+    socket.on("admin:gamesList", (serverGames) => {
+      setGames(serverGames || []);
+    });
+
+    /* ================= GAME + ACTIVITY EVENTS ================= */
     const handleEvent = (event) => {
-     if (!event?.gameId) return;
       setEvents((prev) => [event, ...prev]);
 
-  setGames((prev) =>
-    prev.map((g) => {
-      if (g.gameId !== event.gameId) return g;
+      setGames((prev) =>
+        prev.map((g) => {
+          if (g.gameId !== event.gameId) return g;
 
-      switch (event.type) {
-        case "PLAYER_JOINED":
-          return {
-            ...g,
-            players: [...new Set([...(g.players || []), event.userId])],
-          };
+          switch (event.type) {
+            case "PLAYER_JOINED":
+              return {
+                ...g,
+                players: [...new Set([...(g.players || []), event.userId])],
+              };
 
-        case "PLAYER_DISCONNECTED":
-          return {
-            ...g,
-            players: (g.players || []).filter(
-              (id) => id !== event.userId
-            ),
-          };
+            case "PLAYER_DISCONNECTED":
+              return {
+                ...g,
+                players: (g.players || []).filter(
+                  (id) => id !== event.userId
+                ),
+              };
 
-        case "ENEMIES_CONFIGURED":
-          return {
-            ...g,
-            enemiesConfigured: true,
-            numEnemies: event.enemies,
-          };
+            case "ENEMIES_CONFIGURED":
+              return {
+                ...g,
+                enemiesConfigured: true,
+                numEnemies: event.enemies,
+              };
 
-        case "GAME_STARTED":
-          return {
-            ...g,
-            status: "started",
-            pot: event.pot,
-            numEnemies: event.enemies,
-          };
+            case "GAME_STARTED":
+              return {
+                ...g,
+                status: "started",
+                pot: event.pot,
+                numEnemies: event.enemies,
+              };
 
-        case "ADMIN_ADD_POT":
-          return {
-            ...g,
-            pot: event.newPot,
-          };
+            case "ADMIN_ADD_POT":
+              return {
+                ...g,
+                pot: event.newPot,
+              };
 
-        case "GAME_RESULT":
-          return {
-            ...g,
-            status: "finished",
-          };
+            case "GAME_RESULT":
+              return {
+                ...g,
+                status: "finished",
+              };
 
-        default:
-          return g;
-      }
-    })
-  );
-};
+            default:
+              return g;
+          }
+        })
+      );
+    };
 
     socket.on("activity:event", handleEvent);
     socket.on("game:event", handleEvent);
@@ -116,28 +122,13 @@ export default function AdminLayout() {
   }, []);
 
   /* =========================================================
-     FRONTEND HOST: CREATE LOCAL GAME
+     ADMIN ACTIONS (ONLY SEND SOCKET COMMANDS)
   ========================================================= */
-  const createLocalGame = () => {
-    const gameId = crypto.randomUUID();
-    socketRef.current.emit("admin:createGame", { gameId });
-    setGames((prev) => [
-      {
-        gameId,
-        userId: "admin",
-        pot: 0,
-        status: "waiting",
-        enemiesConfigured: false,
-        numEnemies: 0,
-        players: [],
-      },
-      ...prev,
-    ]);
+
+  const requestCreateGame = () => {
+    socketRef.current.emit("admin:createGame");
   };
 
-  /* =========================================================
-     ADMIN SETUP + START GAME (SOCKET ONLY)
-  ========================================================= */
   const setupAndStartGame = (gameId) => {
     const controls = gameControls[gameId];
     if (!controls) return alert("Enter enemies & pot");
@@ -148,11 +139,20 @@ export default function AdminLayout() {
     if (!numEnemies || numEnemies <= 0) return alert("Invalid enemies number");
     if (!potAmount || potAmount <= 0) return alert("Invalid pot amount");
 
-    const socket = socketRef.current;
+    socketRef.current.emit("host:configureEnemies", {
+      gameId,
+      numEnemies,
+    });
 
-    socket.emit("host:configureEnemies", { gameId, numEnemies });
-    socket.emit("host:addToPot", { gameId, amount: potAmount });
-    socket.emit("host:startGame", { gameId, pot: potAmount });
+    socketRef.current.emit("host:addToPot", {
+      gameId,
+      amount: potAmount,
+    });
+
+    socketRef.current.emit("host:startGame", {
+      gameId,
+      pot: potAmount,
+    });
 
     setGameControls((prev) => ({
       ...prev,
@@ -160,14 +160,14 @@ export default function AdminLayout() {
     }));
   };
 
-  /* =========================================================
-     FORCE JOIN PLAYER
-  ========================================================= */
   const forceJoinPlayer = (gameId) => {
     const playerId = joinInputs[gameId];
     if (!playerId) return alert("Enter Player ID");
 
-    socketRef.current.emit("admin:forceJoin", { gameId, playerId });
+    socketRef.current.emit("admin:forceJoin", {
+      gameId,
+      playerId,
+    });
 
     setJoinInputs((prev) => ({ ...prev, [gameId]: "" }));
   };
@@ -175,6 +175,7 @@ export default function AdminLayout() {
   /* =========================================================
      UI
   ========================================================= */
+
   return (
     <>
       {/* USERS + ACTIVITY */}
@@ -221,101 +222,98 @@ export default function AdminLayout() {
         <h2 className="font-semibold mb-3">🎮 Live Game Controller</h2>
 
         <button
-          onClick={createLocalGame}
+          onClick={requestCreateGame}
           className="bg-blue-600 text-white px-3 py-2 text-sm rounded mb-3"
         >
-          ➕ Create Game
+          ➕ Request New Game
         </button>
 
-        <div
-          ref={gamesContainerRef}
-          className="max-h-[400px] overflow-y-auto"
-        >
+        <div className="max-h-[400px] overflow-y-auto">
           {games.map((game) => (
             <div
               key={game.gameId}
               className="p-3 mb-3 bg-gray-50 rounded border"
             >
               <div className="font-semibold">
-                Game {game.gameId.slice(0, 6)}
+                Game {game.gameId?.slice(0, 6)}
               </div>
 
-              <div className="text-sm text-gray-500">Host: {game.userId}</div>
-              <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
+              <div className="text-sm text-gray-500">
+                Host: {game.userId}
+              </div>
+
+              <div className="text-yellow-600 text-sm">
+                Pot: {game.pot}
+              </div>
+
               <div className="text-xs mt-1">
                 Players: {game.players?.join(", ") || "None"}
               </div>
 
-              {/* JOIN PLAYER */}
               {game.status === "waiting" && (
-                <div className="flex gap-2 mt-2">
-                  <input
-                    type="text"
-                    placeholder="Player ID"
-                    value={joinInputs[game.gameId] || ""}
-                    onChange={(e) =>
-                      setJoinInputs((prev) => ({
-                        ...prev,
-                        [game.gameId]: e.target.value,
-                      }))
-                    }
-                    className="border px-2 py-1 text-xs rounded"
-                  />
-                  <button
-                    onClick={() => forceJoinPlayer(game.gameId)}
-                    className="bg-purple-600 text-white px-2 py-1 text-xs rounded"
-                  >
-                    ➕ Join
-                  </button>
-                </div>
+                <>
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      placeholder="Player ID"
+                      value={joinInputs[game.gameId] || ""}
+                      onChange={(e) =>
+                        setJoinInputs((prev) => ({
+                          ...prev,
+                          [game.gameId]: e.target.value,
+                        }))
+                      }
+                      className="border px-2 py-1 text-xs rounded"
+                    />
+                    <button
+                      onClick={() => forceJoinPlayer(game.gameId)}
+                      className="bg-purple-600 text-white px-2 py-1 text-xs rounded"
+                    >
+                      ➕ Join
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col gap-2 mt-3">
+                    <input
+                      type="number"
+                      placeholder="Number of Enemies"
+                      value={gameControls[game.gameId]?.enemies || ""}
+                      onChange={(e) =>
+                        setGameControls((prev) => ({
+                          ...prev,
+                          [game.gameId]: {
+                            ...prev[game.gameId],
+                            enemies: e.target.value,
+                          },
+                        }))
+                      }
+                      className="border px-2 py-1 text-xs rounded"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Pot Amount"
+                      value={gameControls[game.gameId]?.pot || ""}
+                      onChange={(e) =>
+                        setGameControls((prev) => ({
+                          ...prev,
+                          [game.gameId]: {
+                            ...prev[game.gameId],
+                            pot: e.target.value,
+                          },
+                        }))
+                      }
+                      className="border px-2 py-1 text-xs rounded"
+                    />
+                    <button
+                      onClick={() => setupAndStartGame(game.gameId)}
+                      className="bg-green-600 text-white px-3 py-1 text-xs rounded"
+                    >
+                      🎮 Setup & Start Game
+                    </button>
+                  </div>
+                </>
               )}
 
-              {/* ADMIN SETUP PANEL */}
-              {game.status === "waiting" && (
-                <div className="flex flex-col gap-2 mt-3">
-                  <input
-                    type="number"
-                    placeholder="Number of Enemies"
-                    value={gameControls[game.gameId]?.enemies || ""}
-                    onChange={(e) =>
-                      setGameControls((prev) => ({
-                        ...prev,
-                        [game.gameId]: {
-                          ...prev[game.gameId],
-                          enemies: e.target.value,
-                        },
-                      }))
-                    }
-                    className="border px-2 py-1 text-xs rounded"
-                    disabled={game.status !== "waiting"}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Pot Amount"
-                    value={gameControls[game.gameId]?.pot || ""}
-                    onChange={(e) =>
-                      setGameControls((prev) => ({
-                        ...prev,
-                        [game.gameId]: {
-                          ...prev[game.gameId],
-                          pot: e.target.value,
-                        },
-                      }))
-                    }
-                    className="border px-2 py-1 text-xs rounded"
-                    disabled={game.status !== "waiting"}
-                  />
-                  <button
-                    onClick={() => setupAndStartGame(game.gameId)}
-                    className="bg-green-600 text-white px-3 py-1 text-xs rounded"
-                    disabled={game.status !== "waiting"}
-                  >
-                    🎮 Setup & Start Game
-                  </button>
-                </div>
-              )}
-
-              {/* ENEMIES DEPLOYED INFO */}
               {game.enemiesConfigured && (
                 <div className="text-sm text-red-600 mt-2">
                   ⚔️ Enemies deployed: {game.numEnemies}
@@ -330,7 +328,9 @@ export default function AdminLayout() {
       <section>
         <div className="flex min-h-screen bg-gray-100 mt-4">
           <aside className="w-64 bg-white shadow-lg p-4">
-            <h1 className="text-xl font-bold text-center mb-6">🛡 Admin Panel</h1>
+            <h1 className="text-xl font-bold text-center mb-6">
+              🛡 Admin Panel
+            </h1>
 
             <nav className="space-y-2">
               <NavLink to="/admin/monitor" className={linkClass}>
