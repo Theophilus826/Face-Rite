@@ -50,6 +50,7 @@ export default function AdminLayout() {
     );
 
     const handleEvent = (event) => {
+       if (!event?.gameId) return;
       setEvents((prev) => [event, ...prev]);
 
       setGames((prev) => {
@@ -207,7 +208,7 @@ export default function AdminLayout() {
         <div className="max-h-[400px] overflow-y-auto">
           {games.map((game) => (
             <div key={game.gameId} className="p-3 mb-3 bg-gray-50 rounded border">
-              <div className="font-semibold">Game {game.gameId.slice(0, 6)}</div>
+              <div className="font-semibold">Game {game.gameId?.slice(0, 6) || "N/A"}</div>
               <div className="text-sm text-gray-500">Host: {game.userId}</div>
               <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
               <div className="text-xs mt-1">Players: {game.players?.join(", ") || "None"}</div>
