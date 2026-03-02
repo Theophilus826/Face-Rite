@@ -11,6 +11,7 @@ export default function AdminLayout() {
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
   const [games, setGames] = useState([]);
+  const [gameControls, setGameControls] = useState({}); // enemies & pot per game
 
   const linkClass = ({ isActive }) =>
     `block px-4 py-2 rounded ${isActive ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"}`;
@@ -52,7 +53,6 @@ export default function AdminLayout() {
 
     /* =======================
        GAME EVENTS (LIVE STREAM)
-       Only receive game:event and activity:event
     ======================= */
     const handleGameEvent = (event) => {
       setEvents((prev) => [event, ...prev]);
@@ -105,6 +105,29 @@ export default function AdminLayout() {
   }, []);
 
   /* =======================
+     ADMIN ACTIONS
+     Configure enemies, add pot, start game
+  ======================= */
+  const setupAndStartGame = (gameId) => {
+    const controls = gameControls[gameId];
+    if (!controls) return alert("Enter enemies & pot");
+
+    const numEnemies = Number(controls.enemies);
+    const potAmount = Number(controls.pot);
+
+    if (!numEnemies || numEnemies <= 0) return alert("Invalid enemies number");
+    if (!potAmount || potAmount <= 0) return alert("Invalid pot amount");
+
+    // Emit configuration
+    socketRef.current.emit("host:configureEnemies", { gameId, numEnemies });
+    socketRef.current.emit("host:addToPot", { gameId, amount: potAmount });
+    socketRef.current.emit("host:startGame", { gameId, pot: potAmount });
+
+    // Clear inputs
+    setGameControls((prev) => ({ ...prev, [gameId]: { enemies: "", pot: "" } }));
+  };
+
+  /* =======================
      UI
   ======================= */
   return (
@@ -146,21 +169,48 @@ export default function AdminLayout() {
               <div className="font-semibold">Game {game.gameId?.slice(0, 6)}</div>
               <div className="text-sm text-gray-500">Host: {game.hostId || "N/A"}</div>
               <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
-              <div className="text-xs mt-1">
-                Players: {game.players?.join(", ") || "None"}
-              </div>
+              <div className="text-xs mt-1">Players: {game.players?.join(", ") || "None"}</div>
+
+              {game.status === "waiting" && (
+                <div className="flex flex-col gap-2 mt-2">
+                  <input
+                    type="number"
+                    placeholder="Number of Enemies"
+                    value={gameControls[game.gameId]?.enemies || ""}
+                    onChange={(e) =>
+                      setGameControls((prev) => ({
+                        ...prev,
+                        [game.gameId]: { ...prev[game.gameId], enemies: e.target.value },
+                      }))
+                    }
+                    className="border px-2 py-1 text-xs rounded"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Pot Amount"
+                    value={gameControls[game.gameId]?.pot || ""}
+                    onChange={(e) =>
+                      setGameControls((prev) => ({
+                        ...prev,
+                        [game.gameId]: { ...prev[game.gameId], pot: e.target.value },
+                      }))
+                    }
+                    className="border px-2 py-1 text-xs rounded"
+                  />
+                  <button
+                    onClick={() => setupAndStartGame(game.gameId)}
+                    className="bg-green-600 text-white px-3 py-1 text-xs rounded"
+                  >
+                    🎮 Configure & Start
+                  </button>
+                </div>
+              )}
 
               {game.enemiesConfigured && (
                 <div className="text-sm text-red-600 mt-2">⚔️ Enemies deployed: {game.numEnemies}</div>
               )}
-
-              {game.status === "started" && (
-                <div className="text-sm text-green-600 mt-2">🟢 Game started</div>
-              )}
-
-              {game.status === "finished" && (
-                <div className="text-sm text-gray-600 mt-2">🏁 Game finished</div>
-              )}
+              {game.status === "started" && <div className="text-sm text-green-600 mt-2">🟢 Game started</div>}
+              {game.status === "finished" && <div className="text-sm text-gray-600 mt-2">🏁 Game finished</div>}
             </div>
           ))}
         </div>
