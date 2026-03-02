@@ -56,87 +56,81 @@ export default function HostGame() {
      SOCKET LISTENER
   ========================= */
   useEffect(() => {
-    if (!game) return;
+  if (!game) return;
 
-    const token = localStorage.getItem("token");
-    const socket = io("https://swordgame-5.onrender.com", {
-      path: "/socket.io",
-      transports: ["websocket", "polling"],
-      auth: { token },
-      reconnection: true,
-    });
-    socketRef.current = socket;
+  const token = localStorage.getItem("token");
 
-    const joinRoom = () => {
-      socket.emit("joinRoom", game.id, (ack) => {
-        if (ack?.joined) {
-          console.log("✅ Joined game room:", game.id);
-          if (ack.gameStatus === "started") {
-            setGameStarted(true);
-            setGame((prev) => ({
-              ...prev,
-              pot: ack.pot,
-              numEnemies: ack.enemies,
-            }));
-          }
+  const socket = io("https://swordgame-5.onrender.com", {
+    path: "/socket.io",
+    transports: ["websocket", "polling"],
+    auth: { token },
+    reconnection: true,
+  });
+
+  socketRef.current = socket;
+
+  socket.on("connect", () => {
+    console.log("🎮 Player socket connected:", socket.id);
+
+    socket.emit("joinRoom", game.id, (ack) => {
+      if (ack?.joined) {
+        console.log("✅ Joined room:", game.id);
+
+        // Immediately sync if game already started
+        if (ack.gameStatus === "started") {
+          setGameStarted(true);
+          setGame((prev) => ({
+            ...prev,
+            pot: ack.pot,
+            numEnemies: ack.enemies,
+            enemiesConfigured: true,
+          }));
         }
-      });
-    };
-
-    socket.on("connect", () => {
-      console.log("🎮 Player socket connected:", socket.id);
-      joinRoom();
+      }
     });
+  });
 
-    socket.on("reconnect", joinRoom);
+  socket.on("game:event", (data) => {
+    if (!game) return;
+    if (data.gameId !== game.id) return; // ensure match
 
-    socket.on("game:event", (data) => {
-      if (data.gameId !== game.id) return;
+    setGame((prev) => {
+      if (!prev) return prev;
 
       switch (data.type) {
         case "ENEMIES_CONFIGURED":
           toast.info("⚔️ Enemies deployed!");
-          setGame((prev) => ({
-            ...prev,
-            enemiesConfigured: true,
-            numEnemies: data.enemies || prev.numEnemies,
-          }));
-          break;
+          return { ...prev, enemiesConfigured: true, numEnemies: data.enemies || prev.numEnemies };
 
         case "GAME_STARTED":
           toast.success("🚀 Battle started!");
           setGameStarted(true);
-          setGame((prev) => ({ ...prev, pot: data.pot, numEnemies: data.enemies }));
-          break;
+          return { ...prev, pot: data.pot, numEnemies: data.enemies };
 
         case "ADMIN_ADD_POT":
           toast.info(`Pot increased: +${data.amount}`);
-          setGame((prev) => ({ ...prev, pot: data.newPot }));
-          break;
+          return { ...prev, pot: data.newPot };
 
         case "GAME_RESULT":
           setGameStarted(false);
-          setGame((prev) => ({ ...prev, winnerId: data.winnerId }));
           if (data.winnerId === user._id) {
             toast.success(`🎉 You won ${data.creditedCoins} coins!`);
           }
-          break;
+          return { ...prev, winnerId: data.winnerId };
 
         default:
           console.log("Unhandled game:event:", data);
+          return prev;
       }
     });
+  });
 
-    socket.on("disconnect", (reason) => console.warn("⚠️ Socket disconnected:", reason));
-    socket.on("connect_error", (err) => console.error("🚨 Socket error:", err.message));
-
-    return () => {
-      socket.removeAllListeners();
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [game?.id, user?._id]);
-
+  return () => {
+    socket.removeAllListeners();
+    socket.disconnect();
+    socketRef.current = null;
+  };
+}, [game?.id, user?._id]);
   /* =========================
      ADD TO POT
   ========================= */
