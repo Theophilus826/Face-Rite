@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { io } from "socket.io-client";
 
 import { buyItem } from "../features/coins/CoinSlice.js";
-import { hostGame } from "../features/gameSlice/gameSlice";
+import { hostGame, addToPot } from "../features/gameSlice/gameSlice";
 import gameScene from "../scenes/gameScene.js";
 
 export default function HostGame() {
@@ -23,12 +23,12 @@ export default function HostGame() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const [game, setGame] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
+  const [game, setGame] = useState(null);
 
-  /* =========================
-     CREATE SOLO GAME
-  ========================= */
+  /* =========================================================
+     CREATE GAME (SEND BET TO BACKEND)
+  ========================================================= */
   const handlePlaySolo = async () => {
     if (!user?._id) return toast.error("User session error");
     if (amount <= 0) return toast.error("Invalid amount");
@@ -37,13 +37,24 @@ export default function HostGame() {
     try {
       setLoading(true);
 
+      // Deduct coins first
       await dispatch(buyItem({ itemName: "Play Game", cost: amount }));
 
+      // Create game via Redux
       const action = await dispatch(hostGame({ hostId: user._id, amount }));
       const newGame = action.payload;
       setGame(newGame);
 
       toast.info("⌛ Waiting for admin to start the battle...");
+
+      // --- EMIT TO BACKEND IMMEDIATELY ---
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit("game:create", {
+          hostId: user._id,
+          gameId: newGame.id,
+          betAmount: amount,  // Send user's bet to backend
+        });
+      }
     } catch (err) {
       console.error("🔥 ERROR:", err);
       toast.error(err?.message || "Failed to create game");
@@ -52,100 +63,105 @@ export default function HostGame() {
     }
   };
 
-  /* =========================
-     SOCKET LISTENER
-  ========================= */
+  /* =========================================================
+     SOCKET LISTENER (ADMIN STARTS GAME)
+  ========================================================= */
   useEffect(() => {
-  if (!game) return;
-
-  const token = localStorage.getItem("token");
-
-  const socket = io("https://swordgame-5.onrender.com", {
-    path: "/socket.io",
-    transports: ["websocket", "polling"],
-    auth: { token },
-    reconnection: true,
-  });
-
-  socketRef.current = socket;
-
-  socket.on("connect", () => {
-    console.log("🎮 Player socket connected:", socket.id);
-
-    socket.emit("joinRoom", game.id, (ack) => {
-      if (ack?.joined) {
-        console.log("✅ Joined room:", game.id);
-
-        // Immediately sync if game already started
-        if (ack.gameStatus === "started") {
-          setGameStarted(true);
-          setGame((prev) => ({
-            ...prev,
-            pot: ack.pot,
-            numEnemies: ack.enemies,
-            enemiesConfigured: true,
-          }));
-        }
-      }
-    });
-  });
-
-  socket.on("game:event", (data) => {
-     console.log("RECEIVED EVENT:", data);
     if (!game) return;
-    if (data.gameId !== game.id) return; // ensure match
 
-    setGame((prev) => {
-      if (!prev) return prev;
+    const token = localStorage.getItem("token");
 
-      switch (data.type) {
-        case "ENEMIES_CONFIGURED":
-          toast.info("⚔️ Enemies deployed!");
-          return { ...prev, enemiesConfigured: true, numEnemies: data.enemies || prev.numEnemies };
-
-        case "GAME_STARTED":
-          toast.success("🚀 Battle started!");
-          setGameStarted(true);
-          return { ...prev, pot: data.pot, numEnemies: data.enemies };
-
-        case "ADMIN_ADD_POT":
-          toast.info(`Pot increased: +${data.amount}`);
-          return { ...prev, pot: data.newPot };
-
-        case "GAME_RESULT":
-          setGameStarted(false);
-          if (data.winnerId === user._id) {
-            toast.success(`🎉 You won ${data.creditedCoins} coins!`);
-          }
-          return { ...prev, winnerId: data.winnerId };
-
-        default:
-          console.log("Unhandled game:event:", data);
-          return prev;
-      }
+    const socket = io("https://swordgame-5.onrender.com", {
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
+      auth: { token },
+      reconnection: true,
     });
-  });
 
-  return () => {
-    socket.removeAllListeners();
-    socket.disconnect();
-    socketRef.current = null;
-  };
-}, [game?.id, user?._id]);
-  /* =========================
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("🎮 Player socket connected:", socket.id);
+
+      socket.emit("joinRoom", game.id, (ack) => {
+        if (ack?.joined) {
+          console.log("✅ Joined room:", game.id);
+
+          // Sync immediately if game already started
+          if (ack.gameStatus === "started") {
+            setGameStarted(true);
+            setGame((prev) => ({
+              ...prev,
+              pot: ack.pot,
+              numEnemies: ack.enemies,
+              enemiesConfigured: true,
+            }));
+          }
+        }
+      });
+    });
+
+    socket.on("game:event", (data) => {
+      if (!game) return;
+      if (data.gameId !== game.id) return;
+
+      setGame((prev) => {
+        if (!prev) return prev;
+
+        switch (data.type) {
+          case "ENEMIES_CONFIGURED":
+            toast.info("⚔️ Enemies deployed!");
+            return { ...prev, enemiesConfigured: true, numEnemies: data.enemies || prev.numEnemies };
+
+          case "GAME_STARTED":
+            toast.success("🚀 Battle started!");
+            setGameStarted(true);
+            return { ...prev, pot: data.pot, numEnemies: data.enemies };
+
+          case "ADMIN_ADD_POT":
+            toast.info(`Pot increased: +${data.amount}`);
+            return { ...prev, pot: data.newPot };
+
+          case "GAME_RESULT":
+            setGameStarted(false);
+            if (data.winnerId === user._id) {
+              toast.success(`🎉 You won ${data.creditedCoins} coins!`);
+            }
+            return { ...prev, winnerId: data.winnerId };
+
+          default:
+            console.log("Unhandled game:event:", data);
+            return prev;
+        }
+      });
+    });
+
+    return () => {
+      socket.removeAllListeners();
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [game?.id, user?._id]);
+
+  /* =========================================================
      ADD TO POT
-  ========================= */
+  ========================================================= */
   const handleAddToPot = (amountToAdd) => {
     if (!game) return toast.error("No active game");
-    if (!socketRef.current?.connected) return toast.error("Socket not connected");
+    if (!socketRef.current || !socketRef.current.connected)
+      return toast.error("Socket not connected");
 
-    socketRef.current.emit("host:addToPot", { gameId: game.id, amount: amountToAdd });
+    socketRef.current.emit("host:addToPot", {
+      gameId: game.id,
+      amount: amountToAdd,
+    });
+
     toast.info(`Adding ${amountToAdd} coins to pot...`);
   };
 
-  /* =========================
-     BABYLON SCENE INIT
-  ========================= */
+  /* =========================================================
+     LOAD BABYLON SCENE
+  ========================================================= */
   useEffect(() => {
     if (!gameStarted || !canvasRef.current || !game || !user) return;
 
@@ -154,7 +170,16 @@ export default function HostGame() {
 
     const startScene = async () => {
       try {
-        const scene = await gameScene(BABYLON, engine, null, (p) => setProgress(p), dispatch, game, user);
+        const scene = await gameScene(
+          BABYLON,
+          engine,
+          null,
+          (p) => setProgress(p),
+          dispatch,
+          game,
+          user
+        );
+
         sceneRef.current = scene;
 
         engine.runRenderLoop(() => {
@@ -173,41 +198,60 @@ export default function HostGame() {
 
     startScene();
 
-    const handleResize = () => engine.resize();
-    window.addEventListener("resize", handleResize);
+    const resizeHandler = () => engine.resize();
+    window.addEventListener("resize", resizeHandler);
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", resizeHandler);
       sceneRef.current?.dispose();
       engineRef.current?.dispose();
     };
   }, [gameStarted, game, user, dispatch]);
 
-  /* =========================
+  /* =========================================================
      WAITING SCREEN
-  ========================= */
+  ========================================================= */
   if (game && !gameStarted) {
     return (
       <div className="h-screen flex flex-col justify-center items-center text-white">
-        <div className="animate-pulse text-xl mb-4">⌛ Preparing battlefield...</div>
-        <div className="text-gray-400">Waiting for admin to deploy enemies</div>
-        <div className="mt-6 text-yellow-400">Current Pot: {game.pot} coins</div>
+        <div className="animate-pulse text-xl mb-4">
+          ⌛ Preparing battlefield...
+        </div>
+
+        <div className="text-gray-400">
+          Waiting for admin to deploy enemies
+        </div>
+
+        <div className="mt-6 text-yellow-400">
+          Current Pot: {game.pot} coins
+        </div>
       </div>
     );
   }
 
-  /* =========================
+  /* =========================================================
      GAME VIEW
-  ========================= */
+  ========================================================= */
   if (gameStarted) {
     return (
       <>
-        <canvas ref={canvasRef} style={{ width: "100vw", height: "100vh", display: "block" }} />
+        <canvas
+          ref={canvasRef}
+          style={{ width: "100vw", height: "100vh", display: "block" }}
+        />
+
         <div className="absolute top-4 right-4 flex gap-2">
-          <button className="px-4 py-2 bg-yellow-600 rounded" onClick={() => handleAddToPot(10)}>
+          <button
+            className="px-4 py-2 bg-yellow-600 rounded"
+            onClick={() => handleAddToPot(10)}
+          >
             +10 Pot
           </button>
-          <button className="px-4 py-2 bg-yellow-600 rounded" onClick={() => handleAddToPot(50)}>
+
+          <button
+            className="px-4 py-2 bg-yellow-600 rounded"
+            onClick={() => handleAddToPot(50)}
+          >
             +50 Pot
           </button>
         </div>
@@ -215,12 +259,13 @@ export default function HostGame() {
     );
   }
 
-  /* =========================
+  /* =========================================================
      HOST UI
-  ========================= */
+  ========================================================= */
   return (
     <div className="max-w-xl mx-auto text-white mt-10">
       <h2 className="text-2xl mb-4">Solo Game</h2>
+
       <div className="flex items-center gap-4">
         <input
           type="number"
@@ -229,7 +274,12 @@ export default function HostGame() {
           onChange={(e) => setAmount(+e.target.value)}
           className="text-black px-3 py-2 rounded w-32"
         />
-        <button onClick={handlePlaySolo} disabled={loading} className="px-4 py-2 bg-green-600 rounded">
+
+        <button
+          onClick={handlePlaySolo}
+          disabled={loading}
+          className="px-4 py-2 bg-green-600 rounded"
+        >
           {loading ? "Creating..." : "Play 🎮"}
         </button>
       </div>
