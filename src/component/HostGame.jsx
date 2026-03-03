@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { io } from "socket.io-client";
 
 import { buyItem } from "../features/coins/CoinSlice.js";
-import { hostGame, addToPot } from "../features/gameSlice/gameSlice";
+import { hostGame } from "../features/gameSlice/gameSlice";
 import gameScene from "../scenes/gameScene.js";
 
 export default function HostGame() {
@@ -27,7 +27,7 @@ export default function HostGame() {
   const [game, setGame] = useState(null);
 
   /* =========================================================
-     CREATE GAME (SEND BET TO BACKEND)
+     CREATE GAME (NOW WAITS FOR ADMIN)
   ========================================================= */
   const handlePlaySolo = async () => {
     if (!user?._id) return toast.error("User session error");
@@ -37,24 +37,17 @@ export default function HostGame() {
     try {
       setLoading(true);
 
-      // Deduct coins first
       await dispatch(buyItem({ itemName: "Play Game", cost: amount }));
 
-      // Create game via Redux
-      const action = await dispatch(hostGame({ hostId: user._id, amount }));
+      const action = await dispatch(
+        hostGame({ hostId: user._id, amount })
+      );
+
       const newGame = action.payload;
+
       setGame(newGame);
 
       toast.info("⌛ Waiting for admin to start the battle...");
-
-      // --- EMIT TO BACKEND IMMEDIATELY ---
-      if (socketRef.current && socketRef.current.connected) {
-        socketRef.current.emit("game:create", {
-          hostId: user._id,
-          gameId: newGame.id,
-          betAmount: amount,  // Send user's bet to backend
-        });
-      }
     } catch (err) {
       console.error("🔥 ERROR:", err);
       toast.error(err?.message || "Failed to create game");
@@ -65,6 +58,7 @@ export default function HostGame() {
 
   /* =========================================================
      SOCKET LISTENER (ADMIN STARTS GAME)
+     ✅ No immediate winner declaration
   ========================================================= */
   useEffect(() => {
     if (!game) return;
@@ -87,7 +81,6 @@ export default function HostGame() {
         if (ack?.joined) {
           console.log("✅ Joined room:", game.id);
 
-          // Sync immediately if game already started
           if (ack.gameStatus === "started") {
             setGameStarted(true);
             setGame((prev) => ({
@@ -102,8 +95,8 @@ export default function HostGame() {
     });
 
     socket.on("game:event", (data) => {
-      if (!game) return;
-      if (data.gameId !== game.id) return;
+      console.log("RECEIVED EVENT:", data);
+      if (!game || data.gameId !== game.id) return;
 
       setGame((prev) => {
         if (!prev) return prev;
@@ -123,11 +116,14 @@ export default function HostGame() {
             return { ...prev, pot: data.newPot };
 
           case "GAME_RESULT":
-            setGameStarted(false);
-            if (data.winnerId === user._id) {
-              toast.success(`🎉 You won ${data.creditedCoins} coins!`);
-            }
-            return { ...prev, winnerId: data.winnerId };
+            // Don't stop game immediately; store result for scene
+            return {
+              ...prev,
+              resultPending: {
+                winnerId: data.winnerId,
+                creditedCoins: data.creditedCoins,
+              },
+            };
 
           default:
             console.log("Unhandled game:event:", data);
@@ -160,7 +156,8 @@ export default function HostGame() {
   };
 
   /* =========================================================
-     LOAD BABYLON SCENE
+     LOAD BABYLON SCENE (ONLY AFTER START)
+     ✅ Handles winner after battle
   ========================================================= */
   useEffect(() => {
     if (!gameStarted || !canvasRef.current || !game || !user) return;
@@ -187,8 +184,21 @@ export default function HostGame() {
         });
 
         scene.onDisposeObservable.add(() => {
+          // Winner handled by scene
           if (scene.lastWinnerId === user._id && scene.lastWinAmount > 0) {
             toast.success(`🎉 Coins credited: +${scene.lastWinAmount}`);
+          }
+
+          // Mark game as finished
+          setGameStarted(false);
+
+          // Show pending server result if needed
+          if (game?.resultPending) {
+            const { winnerId, creditedCoins } = game.resultPending;
+            if (winnerId === user._id) {
+              toast.success(`🎉 You won ${creditedCoins} coins!`);
+            }
+            setGame((prev) => ({ ...prev, winnerId }));
           }
         });
       } catch (err) {
