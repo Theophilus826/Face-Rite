@@ -27,7 +27,7 @@ export default function AdminLayout() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    const socket = io("https://swordgame-5.onrender.com/admin", {
+    const socket = io("https://swordgame-5.onrender.com", {
       path: "/socket.io",
       withCredentials: true,
       auth: { token },
