@@ -21,13 +21,11 @@ export default function HostGame() {
 
   const [amount, setAmount] = useState(10);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-
   const [gameStarted, setGameStarted] = useState(false);
   const [game, setGame] = useState(null);
 
   /* =========================================================
-     CREATE GAME (NOW WAITS FOR ADMIN)
+     CREATE GAME
   ========================================================= */
   const handlePlaySolo = async () => {
     if (!user?._id) return toast.error("User session error");
@@ -43,13 +41,10 @@ export default function HostGame() {
         hostGame({ hostId: user._id, amount })
       );
 
-      const newGame = action.payload;
-
-      setGame(newGame);
+      setGame(action.payload);
 
       toast.info("⌛ Waiting for admin to start the battle...");
     } catch (err) {
-      console.error("🔥 ERROR:", err);
       toast.error(err?.message || "Failed to create game");
     } finally {
       setLoading(false);
@@ -57,8 +52,7 @@ export default function HostGame() {
   };
 
   /* =========================================================
-     SOCKET LISTENER (ADMIN STARTS GAME)
-     ✅ No immediate winner declaration
+     SOCKET LISTENER (NO WINNER LOGIC)
   ========================================================= */
   useEffect(() => {
     if (!game) return;
@@ -75,61 +69,50 @@ export default function HostGame() {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("🎮 Player socket connected:", socket.id);
-
       socket.emit("joinRoom", game.id, (ack) => {
-        if (ack?.joined) {
-          console.log("✅ Joined room:", game.id);
-
-          if (ack.gameStatus === "started") {
-            setGameStarted(true);
-            setGame((prev) => ({
-              ...prev,
-              pot: ack.pot,
-              numEnemies: ack.enemies,
-              enemiesConfigured: true,
-            }));
-          }
+        if (ack?.joined && ack.gameStatus === "started") {
+          setGameStarted(true);
+          setGame((prev) => ({
+            ...prev,
+            pot: ack.pot,
+            numEnemies: ack.enemies,
+          }));
         }
       });
     });
 
     socket.on("game:event", (data) => {
-      console.log("RECEIVED EVENT:", data);
       if (!game || data.gameId !== game.id) return;
 
-      setGame((prev) => {
-        if (!prev) return prev;
+      switch (data.type) {
+        case "ENEMIES_CONFIGURED":
+          toast.info("⚔️ Enemies deployed!");
+          setGame((prev) => ({
+            ...prev,
+            numEnemies: data.enemies,
+          }));
+          break;
 
-        switch (data.type) {
-          case "ENEMIES_CONFIGURED":
-            toast.info("⚔️ Enemies deployed!");
-            return { ...prev, enemiesConfigured: true, numEnemies: data.enemies || prev.numEnemies };
+        case "GAME_STARTED":
+          toast.success("🚀 Battle started!");
+          setGameStarted(true);
+          setGame((prev) => ({
+            ...prev,
+            pot: data.pot,
+            numEnemies: data.enemies,
+          }));
+          break;
 
-          case "GAME_STARTED":
-            toast.success("🚀 Battle started!");
-            setGameStarted(true);
-            return { ...prev, pot: data.pot, numEnemies: data.enemies };
+        case "ADMIN_ADD_POT":
+          setGame((prev) => ({
+            ...prev,
+            pot: data.newPot,
+          }));
+          break;
 
-          case "ADMIN_ADD_POT":
-            toast.info(`Pot increased: +${data.amount}`);
-            return { ...prev, pot: data.newPot };
-
-          case "GAME_RESULT":
-            // Don't stop game immediately; store result for scene
-            return {
-              ...prev,
-              resultPending: {
-                winnerId: data.winnerId,
-                creditedCoins: data.creditedCoins,
-              },
-            };
-
-          default:
-            console.log("Unhandled game:event:", data);
-            return prev;
-        }
-      });
+        default:
+          break;
+      }
     });
 
     return () => {
@@ -137,27 +120,25 @@ export default function HostGame() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [game?.id, user?._id]);
+  }, [game?.id]);
 
   /* =========================================================
      ADD TO POT
   ========================================================= */
   const handleAddToPot = (amountToAdd) => {
     if (!game) return toast.error("No active game");
-    if (!socketRef.current || !socketRef.current.connected)
+    if (!socketRef.current?.connected)
       return toast.error("Socket not connected");
 
     socketRef.current.emit("host:addToPot", {
       gameId: game.id,
       amount: amountToAdd,
     });
-
-    toast.info(`Adding ${amountToAdd} coins to pot...`);
   };
 
   /* =========================================================
-     LOAD BABYLON SCENE (ONLY AFTER START)
-     ✅ Handles winner after battle
+     LOAD BABYLON SCENE
+     (Scene decides winner and credits coins)
   ========================================================= */
   useEffect(() => {
     if (!gameStarted || !canvasRef.current || !game || !user) return;
@@ -171,7 +152,7 @@ export default function HostGame() {
           BABYLON,
           engine,
           null,
-          (p) => setProgress(p),
+          null,
           dispatch,
           game,
           user
@@ -183,26 +164,8 @@ export default function HostGame() {
           if (scene && !scene.isDisposed) scene.render();
         });
 
-        scene.onDisposeObservable.add(() => {
-          // Winner handled by scene
-          if (scene.lastWinnerId === user._id && scene.lastWinAmount > 0) {
-            toast.success(`🎉 Coins credited: +${scene.lastWinAmount}`);
-          }
-
-          // Mark game as finished
-          setGameStarted(false);
-
-          // Show pending server result if needed
-          if (game?.resultPending) {
-            const { winnerId, creditedCoins } = game.resultPending;
-            if (winnerId === user._id) {
-              toast.success(`🎉 You won ${creditedCoins} coins!`);
-            }
-            setGame((prev) => ({ ...prev, winnerId }));
-          }
-        });
       } catch (err) {
-        console.error("🔥 Scene Crash:", err);
+        console.error("Scene crash:", err);
       }
     };
 
@@ -216,7 +179,7 @@ export default function HostGame() {
       sceneRef.current?.dispose();
       engineRef.current?.dispose();
     };
-  }, [gameStarted, game, user, dispatch]);
+  }, [gameStarted, game, user]);
 
   /* =========================================================
      WAITING SCREEN
@@ -228,12 +191,8 @@ export default function HostGame() {
           ⌛ Preparing battlefield...
         </div>
 
-        <div className="text-gray-400">
-          Waiting for admin to deploy enemies
-        </div>
-
         <div className="mt-6 text-yellow-400">
-          Current Pot: {game.pot} coins
+          Current Pot: {game?.pot || 0} coins
         </div>
       </div>
     );
