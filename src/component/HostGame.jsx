@@ -91,6 +91,7 @@ export default function HostGame() {
   });
 
   socket.on("game:event", (data) => {
+     console.log("RECEIVED EVENT:", data);
     if (!game) return;
     if (data.gameId !== game.id) return; // ensure match
 
