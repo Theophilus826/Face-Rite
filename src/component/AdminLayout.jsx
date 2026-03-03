@@ -12,6 +12,7 @@ export default function AdminLayout() {
   const [events, setEvents] = useState([]);
   const [games, setGames] = useState([]);
   const [gameControls, setGameControls] = useState({}); // enemies & pot per game
+  const [playerBets, setPlayerBets] = useState({}); // new state to track live bets
 
   const linkClass = ({ isActive }) =>
     `block px-4 py-2 rounded ${isActive ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"}`;
@@ -57,10 +58,20 @@ export default function AdminLayout() {
     const handleGameEvent = (event) => {
       setEvents((prev) => [event, ...prev]);
 
+      // Track player bets live
+      if (event.type === "PLAYER_BET") {
+        setPlayerBets((prev) => ({
+          ...prev,
+          [event.gameId]: {
+            ...(prev[event.gameId] || {}),
+            [event.userId]: event.betAmount,
+          },
+        }));
+      }
+
       setGames((prev) => {
         let existingGame = prev.find((g) => g.gameId === event.gameId);
 
-        // If this is a new game, add it
         if (!existingGame) {
           const newGame = {
             gameId: event.gameId,
@@ -74,7 +85,6 @@ export default function AdminLayout() {
           return [newGame, ...prev];
         }
 
-        // Update existing game based on event type
         return prev.map((g) => {
           if (g.gameId !== event.gameId) return g;
 
@@ -106,7 +116,6 @@ export default function AdminLayout() {
 
   /* =======================
      ADMIN ACTIONS
-     Configure enemies, add pot, start game
   ======================= */
   const setupAndStartGame = (gameId) => {
     const controls = gameControls[gameId];
@@ -118,12 +127,10 @@ export default function AdminLayout() {
     if (!numEnemies || numEnemies <= 0) return alert("Invalid enemies number");
     if (!potAmount || potAmount <= 0) return alert("Invalid pot amount");
 
-    // Emit configuration
     socketRef.current.emit("host:configureEnemies", { gameId, numEnemies });
     socketRef.current.emit("host:addToPot", { gameId, amount: potAmount });
     socketRef.current.emit("host:startGame", { gameId, pot: potAmount });
 
-    // Clear inputs
     setGameControls((prev) => ({ ...prev, [gameId]: { enemies: "", pot: "" } }));
   };
 
@@ -155,6 +162,7 @@ export default function AdminLayout() {
               {event.type}
               {event.enemies && ` - Enemies: ${event.enemies}`}
               {event.newPot && ` - Pot: ${event.newPot}`}
+              {event.betAmount && ` - Bet: ${event.betAmount}`}
             </div>
           ))}
         </div>
@@ -169,6 +177,19 @@ export default function AdminLayout() {
               <div className="font-semibold">Game {game.gameId?.slice(0, 6)}</div>
               <div className="text-sm text-gray-500">Host: {game.hostId || "N/A"}</div>
               <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
+
+              {/* Display player bets */}
+              <div className="text-xs mt-1">
+                Players Bets:
+                {playerBets[game.gameId]
+                  ? Object.entries(playerBets[game.gameId]).map(([uid, bet]) => (
+                      <div key={uid}>
+                        {uid}: {bet} coins
+                      </div>
+                    ))
+                  : " None"}
+              </div>
+
               <div className="text-xs mt-1">Players: {game.players?.join(", ") || "None"}</div>
 
               {game.status === "waiting" && (
