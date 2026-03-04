@@ -204,9 +204,12 @@ for (let enemyData of game.enemies) {
   }
 });
 
-    if (scene.enemies.every(({ enemy }) => enemy.currentHealth <= 0)) {
-      endGame(user._id);
-    }
+   if (
+  scene.enemies.length > 0 &&
+  scene.enemies.every(({ enemy }) => enemy.currentHealth <= 0)
+) {
+  endGame(user._id);
+}
 
     if (player.currentHealth <= 0) endGame("AI");
   });
