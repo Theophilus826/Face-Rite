@@ -51,36 +51,66 @@ export default function AdminLayout() {
       );
     });
 
-    /* =======================
-       GAME EVENTS (LIVE STREAM)
-    ======================= */
-    const handleGameEvent
-        return prev.map((g) => {
-          if (g.gameId !== event.gameId) return g;
+/* =======================
+   GAME EVENTS (LIVE STREAM)
+======================= */
+const handleGameEvent = (event) => {
+  if (!event?.gameId) return;
 
-          switch (event.type) {
-            case "PLAYER_JOINED":
-              return { ...g, players: [...new Set([...(g.players || []), event.userId])] };
-            case "PLAYER_DISCONNECTED":
-              return { ...g, players: (g.players || []).filter((id) => id !== event.userId) };
-            case "ENEMIES_CONFIGURED":
-              return { ...g, enemiesConfigured: true, numEnemies: event.enemies?.length || 0 };
-            case "ADMIN_ADD_POT":
-              return { ...g, pot: event.newPot };
-            case "GAME_STARTED":
-              return { ...g, status: "started", pot: event.pot, numEnemies: event.enemies?.length || g.numEnemies };
-            case "GAME_RESULT":
-              return { ...g, status: "finished" };
-            default:
-              return g;
-          }
-        });
-      });
-    };
+  // Store activity
+  setEvents(prev => [event, ...prev].slice(0, 200));
 
-    socket.on("activity:event", handleGameEvent);
-    socket.on("game:event", handleGameEvent);
+  // Enemy configuration
+  if (event.type === "ENEMIES_CONFIGURED" && Array.isArray(event.enemies)) {
+    setGameEnemies(prev => ({
+      ...prev,
+      [event.gameId]: event.enemies.map(e => ({
+        ...e,
+        position: e.position || { x: 0, y: 0, z: 0 },
+      })),
+    }));
+  }
 
+  // Update games state
+  setGames(prev => {
+    let exists = prev.find(g => g.gameId === event.gameId);
+    if (!exists) {
+      return [{
+        gameId: event.gameId,
+        hostId: event.hostId || null,
+        status: event.status || "waiting",
+        pot: event.pot || 0,
+        players: event.players || [],
+        numEnemies: event.enemies?.length || 0,
+        enemiesConfigured: !!event.enemies,
+      }, ...prev];
+    }
+
+    return prev.map(g => {
+      if (g.gameId !== event.gameId) return g;
+
+      switch (event.type) {
+        case "PLAYER_JOINED":
+          return { ...g, players: [...new Set([...(g.players || []), event.userId])] };
+        case "PLAYER_DISCONNECTED":
+          return { ...g, players: (g.players || []).filter(id => id !== event.userId) };
+        case "ENEMIES_CONFIGURED":
+          return { ...g, enemiesConfigured: true, numEnemies: event.enemies?.length || 0 };
+        case "ADMIN_ADD_POT":
+          return { ...g, pot: event.newPot };
+        case "GAME_STARTED":
+          return { ...g, status: "started", pot: event.pot, numEnemies: event.enemies?.length || g.numEnemies };
+        case "GAME_RESULT":
+          return { ...g, status: "finished" };
+        default:
+          return g;
+      }
+    });
+  });
+};
+
+socket.on("activity:event", handleGameEvent);
+socket.on("game:event", handleGameEvent);
     return () => socket.disconnect();
   }, []);
 
