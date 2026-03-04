@@ -54,49 +54,7 @@ export default function AdminLayout() {
     /* =======================
        GAME EVENTS (LIVE STREAM)
     ======================= */
-    const handleGameEvent = (event) => {
-      setEvents((prev) => [event, ...prev]);
-
-      // Update enemy positions if present
-      if (event.type === "ENEMIES_CONFIGURED" && Array.isArray(event.enemies)) {
-        setGameEnemies(prev => ({
-          ...prev,
-          [event.gameId]: event.enemies.map(e => ({
-            ...e,
-            position: e.position || { x: 0, y: 0, z: 0 },
-          })),
-        }));
-      }
-
-      if (event.type === "ENEMY_POSITION_UPDATE") {
-        setGameEnemies(prev => {
-          const enemies = prev[event.gameId] || [];
-          const updated = enemies.map(enemy =>
-            enemy.id === event.enemyId
-              ? { ...enemy, position: event.position ?? enemy.position }
-              : enemy
-          );
-          return { ...prev, [event.gameId]: updated };
-        });
-      }
-
-      // Update games state
-      setGames((prev) => {
-        let existingGame = prev.find((g) => g.gameId === event.gameId);
-
-        if (!existingGame) {
-          const newGame = {
-            gameId: event.gameId,
-            hostId: event.hostId || null,
-            status: event.status || "waiting",
-            pot: event.pot || 0,
-            numEnemies: event.numEnemies || 0,
-            players: event.players || [],
-            enemiesConfigured: event.enemiesConfigured || false,
-          };
-          return [newGame, ...prev];
-        }
-
+    const handleGameEvent
         return prev.map((g) => {
           if (g.gameId !== event.gameId) return g;
 
