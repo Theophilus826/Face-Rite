@@ -11,11 +11,12 @@ export async function CreateEnemy(
 ) {
   const { MeshBuilder, Vector3, SceneLoader } = BABYLON;
 
-  // SAFETY
-    if (!spawnPosition) {
+  // ------------------- DEFAULT POSITION -------------------
+  if (!spawnPosition) {
     spawnPosition = Vector3.Zero();
   }
-    // LOAD MODEL
+
+  // ------------------- LOAD GLTF MODEL -------------------
   const enemyAsset = await SceneLoader.ImportMeshAsync(
     "",
     "/models/",
@@ -25,71 +26,64 @@ export async function CreateEnemy(
 
   const animGroups = enemyAsset.animationGroups || [];
 
-  // COLLISION BOX (SOURCE OF TRUTH)
+  // ------------------- COLLISION BOX -------------------
   const BOX_HEIGHT = 1.6;
-
   const enemyBox = MeshBuilder.CreateBox(
     "enemyBox",
     { width: 1, height: BOX_HEIGHT, depth: 1 },
     scene
   );
-
   enemyBox.isPickable = false;
   enemyBox.checkCollisions = true;
   enemyBox.ellipsoid = new Vector3(0.5, BOX_HEIGHT / 2, 0.5);
   enemyBox.position.copyFrom(spawnPosition);
+  enemyBox.isVisible = true;
 
-  // VISUAL ROOT
-  // Babylon glTF imports usually put the model under the first mesh
-  const modelRoot = enemyAsset.meshes.find(m => m !== enemyBox);
-
-  if (!modelRoot) {
-    console.error("CreateEnemy: No model root found");
-  } else {
-    modelRoot.parent = enemyBox;
-
-    // Reset local transform
-    modelRoot.position.set(0, -BOX_HEIGHT / 2, 0);
-    modelRoot.rotation.set(Math.PI, 0, 0);
-    modelRoot.scaling.set(1, 1.5, 1);
+  // ------------------- PARENT ALL VISIBLE MESHES -------------------
+  const modelMeshes = enemyAsset.meshes.filter((m) => m !== enemyBox);
+  if (modelMeshes.length === 0) {
+    console.error("CreateEnemy: No visible meshes found!");
   }
+  modelMeshes.forEach((m) => {
+    m.parent = enemyBox;
+    m.position = new Vector3(0, 0, 0); // reset local transform
+    m.rotation = new Vector3(0, 0, 0);
+    m.scaling = new Vector3(1, 1.5, 1);
+  });
 
-    // CHARACTER CONTROLLER
+  // ------------------- CHARACTER CONTROLLER -------------------
   const controller = CreateCharacterController(
     scene,
     enemyBox,
     animGroups,
     BABYLON,
-    false,       // isPlayer
-    enemyBox,    // self collider
-    playerBox    // target collider
+    false, // isPlayer
+    enemyBox, // self collider
+    playerBox // target collider
   );
 
-  // AUTO-IDLE
-    const idleAnim = animGroups.find(
-    a =>
+  // ------------------- AUTO-IDLE ANIMATION -------------------
+  const idleAnim = animGroups.find(
+    (a) =>
       a.name.toLowerCase().includes("idle") ||
       a.name.toLowerCase().includes("walk")
   );
-
   if (idleAnim) {
     idleAnim.start(true);
   }
 
-  // ENEMY OBJECT
+  // ------------------- ENEMY OBJECT -------------------
   const enemy = {
     enemyBox,
-    modelRoot,
+    modelMeshes,
     animGroups,
-    characterController: controller, 
-
-    // Territory / AI anchor
+    characterController: controller,
+    currentHealth: 100,
     homePosition: enemyBox.position.clone(),
 
     spawnAt(position, faceTarget = null) {
       enemyBox.position.copyFrom(position);
       enemy.homePosition.copyFrom(position);
-
       if (faceTarget) {
         const dir = faceTarget.position.subtract(enemyBox.position);
         dir.y = 0;
@@ -99,42 +93,35 @@ export async function CreateEnemy(
 
     updateFacing(target, turnSpeed = 0.15) {
       if (!target) return;
-
       const dir = target.position.subtract(enemyBox.position);
       dir.y = 0;
-
       const desiredYaw = Math.atan2(dir.x, dir.z);
-      enemyBox.rotation.y +=
-        (desiredYaw - enemyBox.rotation.y) * turnSpeed;
-    }
+      enemyBox.rotation.y += (desiredYaw - enemyBox.rotation.y) * turnSpeed;
+    },
   };
 
-  // HEALTH SYSTEM
-    const healthUI = createHealthBar(scene, enemyBox, enemy);
-  healthUI.setupHealth(100);
-
-  const originalTakeDamage = enemy.takeDamage;
+  // ------------------- HEALTH SYSTEM -------------------
+  const healthUI = createHealthBar(scene, enemyBox, enemy);
+  healthUI.setupHealth(enemy.currentHealth);
 
   enemy.takeDamage = (amount) => {
-  originalTakeDamage(amount);
-  healthUI.update();
+    enemy.currentHealth -= amount;
+    if (enemy.currentHealth < 0) enemy.currentHealth = 0;
 
-  if (enemy.currentHealth <= 0) {
-    controller.stop();
+    healthUI.update();
 
-    // 🧼 REMOVE HEALTH BAR
-    healthUI.container.dispose();
+    if (enemy.currentHealth <= 0) {
+      // stop AI/controller
+      controller.stop();
 
-    // 🧼 REMOVE MESHES
-    enemyBox.dispose();
-    if (modelRoot) modelRoot.dispose();
-    
-  }
-};
+      // dispose health bar
+      healthUI.container.dispose();
 
-  // ===============================
-   enemyBox.isVisible = true;
-  // enemyBox.visibility = 0.4;
+      // dispose enemy meshes
+      enemyBox.dispose();
+      modelMeshes.forEach((m) => m.dispose());
+    }
+  };
 
   return enemy;
 }
