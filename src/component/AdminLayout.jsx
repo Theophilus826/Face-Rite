@@ -16,7 +16,7 @@ export default function AdminLayout() {
   const [games, setGames] = useState([]);
   const [gameControls, setGameControls] = useState({});
   const [playerBets, setPlayerBets] = useState({});
-  const [gameEnemies, setGameEnemies] = useState({}); // 🔥 enemy tracking
+  const [gameEnemies, setGameEnemies] = useState({});
 
   const linkClass = ({ isActive }) =>
     `block px-4 py-2 rounded ${
@@ -24,16 +24,42 @@ export default function AdminLayout() {
     }`;
 
   /* ============================
+     SAFE GAME UPSERT
+  ============================ */
+  const upsertGame = (gameId, updater) => {
+    setGames(prev => {
+      const exists = prev.find(g => g.gameId === gameId);
+
+      if (!exists) {
+        const newGame = updater({
+          gameId,
+          hostId: null,
+          status: "waiting",
+          pot: 0,
+          players: [],
+          numEnemies: 0,
+          enemiesConfigured: false,
+        });
+        return [newGame, ...prev];
+      }
+
+      return prev.map(g =>
+        g.gameId === gameId ? updater(g) : g
+      );
+    });
+  };
+
+  /* ============================
      GAME EVENT HANDLER
   ============================ */
   const handleGameEvent = useCallback((event) => {
     if (!event?.gameId) return;
 
-    // Store live activity (limit to 200)
+    // Store activity (max 200)
     setEvents(prev => [event, ...prev].slice(0, 200));
 
     /* ============================
-       PLAYER BET TRACKING
+       PLAYER BET
     ============================ */
     if (event.type === "PLAYER_BET") {
       setPlayerBets(prev => ({
@@ -52,9 +78,18 @@ export default function AdminLayout() {
       if (Array.isArray(event.enemies)) {
         setGameEnemies(prev => ({
           ...prev,
-          [event.gameId]: event.enemies,
+          [event.gameId]: event.enemies.map(e => ({
+            ...e,
+            position: e.position || { x: 0, y: 0, z: 0 },
+          })),
         }));
       }
+
+      upsertGame(event.gameId, game => ({
+        ...game,
+        enemiesConfigured: true,
+        numEnemies: event.enemies?.length || 0,
+      }));
     }
 
     /* ============================
@@ -62,11 +97,18 @@ export default function AdminLayout() {
     ============================ */
     if (event.type === "ENEMY_POSITION_UPDATE") {
       setGameEnemies(prev => {
-        const existing = prev[event.gameId] || [];
+        const current = prev[event.gameId] || [];
 
-        const updated = existing.map(enemy =>
+        const updated = current.map(enemy =>
           enemy.id === event.enemyId
-            ? { ...enemy, position: event.position }
+            ? {
+                ...enemy,
+                position: {
+                  x: event.position?.x ?? enemy.position?.x ?? 0,
+                  y: event.position?.y ?? enemy.position?.y ?? 0,
+                  z: event.position?.z ?? enemy.position?.z ?? 0,
+                },
+              }
             : enemy
         );
 
@@ -78,77 +120,48 @@ export default function AdminLayout() {
     }
 
     /* ============================
-       GAME STATE UPDATE
+       GAME STATE EVENTS
     ============================ */
-    setGames(prev => {
-      const existing = prev.find(g => g.gameId === event.gameId);
+    upsertGame(event.gameId, game => {
+      switch (event.type) {
+        case "PLAYER_JOINED":
+          return {
+            ...game,
+            players: [...new Set([...(game.players || []), event.userId])],
+          };
 
-      // Create game if missing
-      if (!existing) {
-        return [
-          {
-            gameId: event.gameId,
-            hostId: event.hostId || null,
-            status: event.status || "waiting",
-            pot: event.pot || 0,
-            numEnemies: event.enemies?.length || event.numEnemies || 0,
-            players: event.players || [],
-            enemiesConfigured: false,
-          },
-          ...prev,
-        ];
+        case "PLAYER_DISCONNECTED":
+          return {
+            ...game,
+            players: (game.players || []).filter(
+              id => id !== event.userId
+            ),
+          };
+
+        case "ADMIN_ADD_POT":
+          return {
+            ...game,
+            pot: event.newPot ?? game.pot,
+          };
+
+        case "GAME_STARTED":
+          return {
+            ...game,
+            status: "started",
+            pot: event.pot ?? game.pot,
+          };
+
+        case "GAME_RESULT":
+          return {
+            ...game,
+            status: "finished",
+          };
+
+        default:
+          return game;
       }
-
-      // Update existing game
-      return prev.map(game => {
-        if (game.gameId !== event.gameId) return game;
-
-        switch (event.type) {
-          case "PLAYER_JOINED":
-            return {
-              ...game,
-              players: [...new Set([...(game.players || []), event.userId])],
-            };
-
-          case "PLAYER_DISCONNECTED":
-            return {
-              ...game,
-              players: (game.players || []).filter(
-                id => id !== event.userId
-              ),
-            };
-
-          case "ENEMIES_CONFIGURED":
-            return {
-              ...game,
-              enemiesConfigured: true,
-              numEnemies: event.enemies?.length || 0,
-            };
-
-          case "ADMIN_ADD_POT":
-            return {
-              ...game,
-              pot: event.newPot ?? game.pot,
-            };
-
-          case "GAME_STARTED":
-            return {
-              ...game,
-              status: "started",
-              pot: event.pot ?? game.pot,
-            };
-
-          case "GAME_RESULT":
-            return {
-              ...game,
-              status: "finished",
-            };
-
-          default:
-            return game;
-        }
-      });
     });
+
   }, []);
 
   /* ============================
@@ -160,8 +173,8 @@ export default function AdminLayout() {
 
     const socket = io("https://swordgame-5.onrender.com/admin", {
       path: "/socket.io",
-      withCredentials: true,
       auth: { token },
+      withCredentials: true,
       reconnection: true,
     });
 
@@ -177,11 +190,12 @@ export default function AdminLayout() {
     socket.on("reconnect", initialize);
 
     socket.on("users:list", setUsers);
+    socket.on("games:list", setGames);
 
     socket.on("user:status", ({ userId, online }) => {
       setUsers(prev =>
-        prev.map(user =>
-          user._id === userId ? { ...user, online } : user
+        prev.map(u =>
+          u._id === userId ? { ...u, online } : u
         )
       );
     });
@@ -250,8 +264,7 @@ export default function AdminLayout() {
           {events.map((event, i) => (
             <div key={i} className="text-sm border p-2 mb-2 rounded bg-gray-50">
               <div>{event.type}</div>
-              {event.enemies && <div>Enemies: {event.enemies}</div>}
-              {event.newPot && <div>Pot: {event.newPot}</div>}
+              {event.pot && <div>Pot: {event.pot}</div>}
               {event.betAmount && <div>Bet: {event.betAmount}</div>}
             </div>
           ))}
@@ -268,19 +281,11 @@ export default function AdminLayout() {
               Game {game.gameId?.slice(0, 6)}
             </div>
 
-            <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
-
-            {/* Player Bets */}
-            <div className="text-xs mt-1">
-              Players Bets:
-              {playerBets[game.gameId]
-                ? Object.entries(playerBets[game.gameId]).map(([uid, bet]) => (
-                    <div key={uid}>{uid}: {bet} coins</div>
-                  ))
-                : " None"}
+            <div className="text-yellow-600 text-sm">
+              Pot: {game.pot ?? 0}
             </div>
 
-            {/* 🔴 Enemy Positions */}
+            {/* Enemy Positions */}
             {gameEnemies[game.gameId]?.length > 0 && (
               <div className="mt-3 text-xs bg-red-50 p-2 rounded border">
                 <div className="font-semibold text-red-700 mb-1">
@@ -291,11 +296,11 @@ export default function AdminLayout() {
                   <div key={enemy.id} className="mb-2">
                     <div>ID: {enemy.id}</div>
                     <div>
-                      X: {enemy.position?.x?.toFixed(2)} |
-                      Y: {enemy.position?.y?.toFixed(2)} |
-                      Z: {enemy.position?.z?.toFixed(2)}
+                      X: {Number(enemy.position?.x ?? 0).toFixed(2)} |{" "}
+                      Y: {Number(enemy.position?.y ?? 0).toFixed(2)} |{" "}
+                      Z: {Number(enemy.position?.z ?? 0).toFixed(2)}
                     </div>
-                    <div>HP: {enemy.health}</div>
+                    <div>HP: {enemy.health ?? 0}</div>
                     <hr className="my-1" />
                   </div>
                 ))}
