@@ -85,34 +85,21 @@ for (let enemyData of game.enemies) {
   const enemy = await CreateEnemy(
     scene,
     BABYLON,
-    new Vector3(
-      enemyData.position.x,
-      enemyData.position.y,
-      enemyData.position.z,
-    ),
-    player.characterBox,
+    new Vector3(enemyData.position.x, enemyData.position.y, enemyData.position.z),
+    player.characterBox
   );
 
   enemy.enemyBox.checkCollisions = true;
   enemy.enemyBox.ellipsoid = new Vector3(0.5, 1.5, 0.5);
-
   enemy.currentHealth = 100;
   enemy.territoryRadius = ENEMY_TERRITORY_RADIUS;
 
-  const ai = new EnemyController({
-    enemy,
-    player,
-    BABYLON,
-  });
-
+  const ai = new EnemyController({ enemy, player, BABYLON });
   enemy.ai = ai;
 
-  scene.enemies.push({
-    enemy,
-    controller: enemy.controller,
-    ai
-  });
+  scene.enemies.push({ enemy, ai }); // ✅ no undefined controller
 }
+
 
   loaded++;
   updateProgress();
@@ -138,7 +125,7 @@ for (let enemyData of game.enemies) {
     if (dist <= 2.5) {
 
       const damage =
-        enemy.characterController.receiveDamage(10, false);
+        enemy.characterController.receiveDamage(10, false)?? 10;
 
       enemy.takeDamage(damage);
     }
