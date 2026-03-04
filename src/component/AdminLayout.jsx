@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react"; 
 import { NavLink, Outlet } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/AuthSlice";
@@ -12,6 +12,7 @@ export default function AdminLayout() {
   const [events, setEvents] = useState([]);
   const [games, setGames] = useState([]);
   const [gameControls, setGameControls] = useState({}); // enemies & pot per game
+  const [gameEnemies, setGameEnemies] = useState({}); // track enemy positions per game
 
   const linkClass = ({ isActive }) =>
     `block px-4 py-2 rounded ${isActive ? "bg-black text-white" : "text-gray-700 hover:bg-gray-200"}`;
@@ -29,7 +30,6 @@ export default function AdminLayout() {
       auth: { token },
       reconnection: true,
     });
-
     socketRef.current = socket;
 
     const init = () => {
@@ -57,10 +57,33 @@ export default function AdminLayout() {
     const handleGameEvent = (event) => {
       setEvents((prev) => [event, ...prev]);
 
+      // Update enemy positions if present
+      if (event.type === "ENEMIES_CONFIGURED" && Array.isArray(event.enemies)) {
+        setGameEnemies(prev => ({
+          ...prev,
+          [event.gameId]: event.enemies.map(e => ({
+            ...e,
+            position: e.position || { x: 0, y: 0, z: 0 },
+          })),
+        }));
+      }
+
+      if (event.type === "ENEMY_POSITION_UPDATE") {
+        setGameEnemies(prev => {
+          const enemies = prev[event.gameId] || [];
+          const updated = enemies.map(enemy =>
+            enemy.id === event.enemyId
+              ? { ...enemy, position: event.position ?? enemy.position }
+              : enemy
+          );
+          return { ...prev, [event.gameId]: updated };
+        });
+      }
+
+      // Update games state
       setGames((prev) => {
         let existingGame = prev.find((g) => g.gameId === event.gameId);
 
-        // If this is a new game, add it
         if (!existingGame) {
           const newGame = {
             gameId: event.gameId,
@@ -74,7 +97,6 @@ export default function AdminLayout() {
           return [newGame, ...prev];
         }
 
-        // Update existing game based on event type
         return prev.map((g) => {
           if (g.gameId !== event.gameId) return g;
 
@@ -84,11 +106,11 @@ export default function AdminLayout() {
             case "PLAYER_DISCONNECTED":
               return { ...g, players: (g.players || []).filter((id) => id !== event.userId) };
             case "ENEMIES_CONFIGURED":
-              return { ...g, enemiesConfigured: true, numEnemies: event.enemies };
+              return { ...g, enemiesConfigured: true, numEnemies: event.enemies?.length || 0 };
             case "ADMIN_ADD_POT":
               return { ...g, pot: event.newPot };
             case "GAME_STARTED":
-              return { ...g, status: "started", pot: event.pot, numEnemies: event.enemies };
+              return { ...g, status: "started", pot: event.pot, numEnemies: event.enemies?.length || g.numEnemies };
             case "GAME_RESULT":
               return { ...g, status: "finished" };
             default:
@@ -106,7 +128,6 @@ export default function AdminLayout() {
 
   /* =======================
      ADMIN ACTIONS
-     Configure enemies, add pot, start game
   ======================= */
   const setupAndStartGame = (gameId) => {
     const controls = gameControls[gameId];
@@ -118,12 +139,10 @@ export default function AdminLayout() {
     if (!numEnemies || numEnemies <= 0) return alert("Invalid enemies number");
     if (!potAmount || potAmount <= 0) return alert("Invalid pot amount");
 
-    // Emit configuration
     socketRef.current.emit("host:configureEnemies", { gameId, numEnemies });
     socketRef.current.emit("host:addToPot", { gameId, amount: potAmount });
-    socketRef.current.emit("host:startGame", { gameId, pot: potAmount });
+    socketRef.current.emit("host:startGame", { gameId });
 
-    // Clear inputs
     setGameControls((prev) => ({ ...prev, [gameId]: { enemies: "", pot: "" } }));
   };
 
@@ -153,7 +172,7 @@ export default function AdminLayout() {
           {events.map((event, i) => (
             <div key={i} className="text-sm border p-2 mb-2 rounded bg-gray-50">
               {event.type}
-              {event.enemies && ` - Enemies: ${event.enemies}`}
+              {event.enemies && ` - Enemies: ${event.enemies?.length || 0}`}
               {event.newPot && ` - Pot: ${event.newPot}`}
             </div>
           ))}
@@ -170,6 +189,25 @@ export default function AdminLayout() {
               <div className="text-sm text-gray-500">Host: {game.hostId || "N/A"}</div>
               <div className="text-yellow-600 text-sm">Pot: {game.pot}</div>
               <div className="text-xs mt-1">Players: {game.players?.join(", ") || "None"}</div>
+
+              {/* Enemy Positions */}
+              {gameEnemies[game.gameId]?.length > 0 && (
+                <div className="mt-2 text-xs bg-red-50 p-2 rounded border">
+                  <div className="font-semibold text-red-700 mb-1">⚔️ Enemy Positions</div>
+                  {gameEnemies[game.gameId].map((enemy) => (
+                    <div key={enemy.id} className="mb-1">
+                      <div>ID: {enemy.id}</div>
+                      <div>
+                        X: {Number(enemy.position?.x ?? 0).toFixed(2)} |{" "}
+                        Y: {Number(enemy.position?.y ?? 0).toFixed(2)} |{" "}
+                        Z: {Number(enemy.position?.z ?? 0).toFixed(2)}
+                      </div>
+                      <div>HP: {enemy.health ?? 0}</div>
+                      <hr className="my-1" />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {game.status === "waiting" && (
                 <div className="flex flex-col gap-2 mt-2">
@@ -206,9 +244,7 @@ export default function AdminLayout() {
                 </div>
               )}
 
-              {game.enemiesConfigured && (
-                <div className="text-sm text-red-600 mt-2">⚔️ Enemies deployed: {game.numEnemies}</div>
-              )}
+              {game.enemiesConfigured && <div className="text-sm text-red-600 mt-2">⚔️ Enemies deployed: {game.numEnemies}</div>}
               {game.status === "started" && <div className="text-sm text-green-600 mt-2">🟢 Game started</div>}
               {game.status === "finished" && <div className="text-sm text-gray-600 mt-2">🏁 Game finished</div>}
             </div>
