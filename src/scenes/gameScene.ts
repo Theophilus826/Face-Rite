@@ -85,7 +85,7 @@ for (let enemyData of game.enemies) {
   const enemy = await CreateEnemy(
     scene,
     BABYLON,
-    new Vector3(enemyData.position.x, enemyData.position.y, enemyData.position.z),
+    new Vector3(3, 0, 3),
     player.characterBox
   );
 
