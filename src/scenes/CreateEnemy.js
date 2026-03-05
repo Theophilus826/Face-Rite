@@ -45,6 +45,7 @@ export async function CreateEnemy(
 root.parent = enemyBox;
 root.position = new Vector3(0, 0.8, 0);
 root.scaling = new Vector3(1, 1, 1);
+console.log("Enemy created:", enemy.enemyBox.position);
 enemyBox.showBoundingBox = true;
 console.log(enemyBox.position);
 console.log(enemyAsset.meshes);
