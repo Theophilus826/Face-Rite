@@ -36,11 +36,15 @@ export async function CreateEnemy(
   enemyBox.position.copyFrom(spawnPosition);
   enemyBox.isVisible = true;
 
-  // ---------------- PARENT MODEL ----------------
+  // ---------------- PARENT MODEL WITH SCALING ----------------
   const modelMeshes = enemyAsset.meshes.filter((m) => m !== enemyBox);
+
   modelMeshes.forEach((mesh) => {
     mesh.parent = enemyBox;
-    mesh.position.subtractInPlace(enemyBox.position);
+    mesh.scaling = new Vector3(1, 1, 1); // ✅ explicit scale
+    const boundingInfo = mesh.getBoundingInfo();
+    const heightOffset = boundingInfo.boundingBox.extendSize.y;
+    mesh.position = new Vector3(0, heightOffset, 0); // centered on box
   });
 
   enemyBox.showBoundingBox = true;
@@ -59,7 +63,9 @@ export async function CreateEnemy(
 
   // ---------------- IDLE ANIMATION ----------------
   const idleAnim = animGroups.find(
-    (a) => a.name.toLowerCase().includes("idle") || a.name.toLowerCase().includes("walk")
+    (a) =>
+      a.name.toLowerCase().includes("idle") ||
+      a.name.toLowerCase().includes("walk")
   );
   idleAnim?.start(true);
 
