@@ -121,6 +121,7 @@ for (let enemyData of game.enemies) {
       player.characterBox.position,
       enemy.enemyBox.position
     );
+  console.log("Enemy spawn:", enemy.enemyBox.position); // ✅ here
 
     if (dist <= 2.5) {
 
@@ -130,7 +131,7 @@ for (let enemyData of game.enemies) {
       enemy.takeDamage(damage);
     }
   });
-console.log("Enemy spawn:", enemy.enemyBox.position);
+
 });
 
   // ---------------- KEYBOARD ----------------
