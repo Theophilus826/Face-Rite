@@ -40,17 +40,14 @@ export async function CreateEnemy(
   enemyBox.isVisible = true;
 
   // ------------------- PARENT ALL VISIBLE MESHES -------------------
-  const modelMeshes = enemyAsset.meshes.filter((m) => m !== enemyBox);
-  if (modelMeshes.length === 0) {
-    console.error("CreateEnemy: No visible meshes found!");
-  }
-  modelMeshes.forEach((m) => {
-    m.parent = enemyBox;
-    m.position = new Vector3(0, 0, 0); // reset local transform
-    m.rotation = new Vector3(0, 0, 0);
-    m.scaling = new Vector3(1, 1.5, 1);
-  });
+ const root = enemyAsset.meshes[0];
 
+root.parent = enemyBox;
+root.position = new Vector3(0, 0.8, 0);
+root.scaling = new Vector3(1, 1, 1);
+enemyBox.showBoundingBox = true;
+console.log(enemyBox.position);
+console.log(enemyAsset.meshes);
   // ------------------- CHARACTER CONTROLLER -------------------
   const controller = CreateCharacterController(
     scene,
