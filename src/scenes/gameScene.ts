@@ -130,7 +130,7 @@ for (let enemyData of game.enemies) {
       enemy.takeDamage(damage);
     }
   });
-
+console.log("Enemy spawn:", enemy.enemyBox.position);
 });
 
   // ---------------- KEYBOARD ----------------
