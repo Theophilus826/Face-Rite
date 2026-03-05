@@ -48,8 +48,12 @@ async function gameScene(
   const updateProgress = () =>
     progressCallback?.(Math.floor((loaded / 3) * 100));
 
-  const { ground, playerTerritory, ENEMY_TERRITORY_RADIUS } =
-    await CreateEnvironment(scene, BABYLON);
+  const {
+  ground,
+  playerTerritory,
+  enemyPositions,
+  ENEMY_TERRITORY_RADIUS
+} = await CreateEnvironment(scene, BABYLON);
 
   loaded++;
   updateProgress();
@@ -79,13 +83,14 @@ async function gameScene(
 
   scene.player = player;
 
- scene.enemies = [];
+scene.enemies = [];
 
-for (let enemyData of game.enemies) {
+for (const pos of enemyPositions) {
+
   const enemy = await CreateEnemy(
     scene,
     BABYLON,
-    new Vector3(3, 0, 3),
+    pos,
     player.characterBox
   );
 
@@ -95,11 +100,9 @@ for (let enemyData of game.enemies) {
   enemy.territoryRadius = ENEMY_TERRITORY_RADIUS;
 
   const ai = new EnemyController({ enemy, player, BABYLON });
-  enemy.ai = ai;
 
-  scene.enemies.push({ enemy, ai }); // ✅ no undefined controller
+  scene.enemies.push({ enemy, ai });
 }
-
 
   loaded++;
   updateProgress();
