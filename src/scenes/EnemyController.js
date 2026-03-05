@@ -18,13 +18,20 @@ export class EnemyController {
     this.attackCooldown = attackCooldown;
 
     this.lastAttackTime = 0;
+    this.active = true; // ✅ Track if AI is active
   }
 
   update = (now) => {
-    if (!this.enemy || !this.player || this.enemy.currentHealth <= 0 || this.player.currentHealth <= 0) return;
+    if (
+      !this.active ||
+      !this.enemy ||
+      !this.enemy.characterController ||
+      !this.player ||
+      this.enemy.currentHealth <= 0 ||
+      this.player.currentHealth <= 0
+    ) return;
 
     const { Vector3 } = this.BABYLON;
-
     const distance = Vector3.Distance(
       this.player.characterBox.position,
       this.enemy.enemyBox.position
@@ -40,16 +47,17 @@ export class EnemyController {
   };
 
   attack = (now) => {
-  if (!this.lastAttackTime || now - this.lastAttackTime > this.attackCooldown) {
+    if (!this.enemy || !this.enemy.characterController) return;
 
-    this.enemy.characterController.attack(false);   // ✅ Play animation
-
-    this.lastAttackTime = now;
-  }
-};
-
+    if (!this.lastAttackTime || now - this.lastAttackTime > this.attackCooldown) {
+      this.enemy.characterController.attack(false); // ✅ Play animation
+      this.lastAttackTime = now;
+    }
+  };
 
   moveToPlayer = () => {
+    if (!this.enemy || !this.enemy.characterController) return;
+
     this.enemy.characterController.moveTo(
       this.player.characterBox.position.clone(),
       true
@@ -57,6 +65,15 @@ export class EnemyController {
   };
 
   stop = () => {
+    if (!this.enemy || !this.enemy.characterController) return;
     this.enemy.characterController.stop();
+  };
+
+  // ✅ Stop the AI completely (used when enemy dies)
+  dispose = () => {
+    this.active = false;
+    this.stop();
+    this.enemy = null;
+    this.player = null;
   };
 }
