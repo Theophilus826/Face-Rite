@@ -29,25 +29,30 @@ export async function CreateEnemy(
     { width: 1, height: BOX_HEIGHT, depth: 1 },
     scene
   );
-
   enemyBox.isPickable = false;
   enemyBox.checkCollisions = true;
   enemyBox.ellipsoid = new Vector3(0.5, BOX_HEIGHT / 2, 0.5);
   enemyBox.position.copyFrom(spawnPosition);
   enemyBox.isVisible = true;
-
-  // ---------------- PARENT MODEL WITH SCALING ----------------
-  const modelMeshes = enemyAsset.meshes.filter((m) => m !== enemyBox);
-
-  modelMeshes.forEach((mesh) => {
-    mesh.parent = enemyBox;
-    mesh.scaling = new Vector3(0.5, 1, 0.5); // ✅ explicit scale
-    const boundingInfo = mesh.getBoundingInfo();
-    const heightOffset = boundingInfo.boundingBox.extendSize.y;
-    mesh.position = new Vector3(0, heightOffset, 0); // centered on box
-  });
-
   enemyBox.showBoundingBox = true;
+
+  // ---------------- PARENT MODEL ----------------
+  const root = enemyAsset.meshes.find(
+    (m) => m.getTotalVertices && m.getTotalVertices() > 0
+  );
+
+  if (root) {
+    root.parent = enemyBox;
+
+    // ✅ Uniform scale (adjust this as needed)
+    root.scaling = new Vector3(0.5, 0.5, 0.5);
+
+    // ✅ Align bottom of model to box base
+    const bbox = root.getBoundingInfo().boundingBox;
+    const meshBottomY = bbox.minimumWorld.y;
+    root.position = new Vector3(0, -meshBottomY, 0);
+  }
+
   console.log("Enemy created at:", enemyBox.position);
 
   // ---------------- CHARACTER CONTROLLER ----------------
@@ -63,16 +68,14 @@ export async function CreateEnemy(
 
   // ---------------- IDLE ANIMATION ----------------
   const idleAnim = animGroups.find(
-    (a) =>
-      a.name.toLowerCase().includes("idle") ||
-      a.name.toLowerCase().includes("walk")
+    (a) => a.name.toLowerCase().includes("idle") || a.name.toLowerCase().includes("walk")
   );
   idleAnim?.start(true);
 
   // ---------------- ENEMY OBJECT ----------------
   const enemy = {
     enemyBox,
-    modelMeshes,
+    modelMeshes: enemyAsset.meshes,
     animGroups,
     characterController: controller,
     currentHealth: 100,
@@ -115,7 +118,7 @@ export async function CreateEnemy(
     if (enemy.currentHealth <= 0) {
       controller.stop();
       healthUI.container.dispose();
-      modelMeshes.forEach((m) => m.dispose());
+      enemyAsset.meshes.forEach((m) => m.dispose());
       enemyBox.dispose();
     }
   };
