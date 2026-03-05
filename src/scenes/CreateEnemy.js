@@ -1,5 +1,4 @@
 import "@babylonjs/loaders";
-
 import { CreateCharacterController } from "../scenes/CreateCharacterController";
 import { createHealthBar } from "../scenes/createHealthBar";
 
@@ -11,11 +10,9 @@ export async function CreateEnemy(
 ) {
   const { MeshBuilder, Vector3, SceneLoader } = BABYLON;
 
-  if (!spawnPosition) {
-    spawnPosition = Vector3.Zero();
-  }
+  if (!spawnPosition) spawnPosition = Vector3.Zero();
 
-  // LOAD MODEL
+  // ---------------- LOAD MODEL ----------------
   const enemyAsset = await SceneLoader.ImportMeshAsync(
     "",
     "/models/",
@@ -25,9 +22,8 @@ export async function CreateEnemy(
 
   const animGroups = enemyAsset.animationGroups || [];
 
-  // COLLISION BOX
+  // ---------------- COLLISION BOX ----------------
   const BOX_HEIGHT = 1.6;
-
   const enemyBox = MeshBuilder.CreateBox(
     "enemyBox",
     { width: 1, height: BOX_HEIGHT, depth: 1 },
@@ -40,95 +36,80 @@ export async function CreateEnemy(
   enemyBox.position.copyFrom(spawnPosition);
   enemyBox.isVisible = true;
 
-  // PARENT MODEL
-  const root = enemyAsset.meshes[0];
+  // ---------------- PARENT MODEL ----------------
+  const modelMeshes = enemyAsset.meshes.filter((m) => m !== enemyBox);
+  modelMeshes.forEach((mesh) => {
+    mesh.parent = enemyBox;
+    mesh.position.subtractInPlace(enemyBox.position);
+  });
 
-  if (root) {
-    root.parent = enemyBox;
-    root.position = new Vector3(0, 0.8, 0);
-    root.scaling = new Vector3(1, 1, 1);
-  }
-
-  console.log("Enemy created at:", enemyBox.position);
   enemyBox.showBoundingBox = true;
+  console.log("Enemy created at:", enemyBox.position);
 
-  // CHARACTER CONTROLLER
+  // ---------------- CHARACTER CONTROLLER ----------------
   const controller = CreateCharacterController(
     scene,
     enemyBox,
     animGroups,
     BABYLON,
-    false,
+    false, // isPlayer
     enemyBox,
     playerBox
   );
 
-  // IDLE ANIMATION
+  // ---------------- IDLE ANIMATION ----------------
   const idleAnim = animGroups.find(
-    (a) =>
-      a.name.toLowerCase().includes("idle") ||
-      a.name.toLowerCase().includes("walk")
+    (a) => a.name.toLowerCase().includes("idle") || a.name.toLowerCase().includes("walk")
   );
+  idleAnim?.start(true);
 
-  if (idleAnim) {
-    idleAnim.start(true);
-  }
+  // ---------------- ENEMY OBJECT ----------------
+  const enemy = {
+    enemyBox,
+    modelMeshes,
+    animGroups,
+    characterController: controller,
+    currentHealth: 100,
+    homePosition: enemyBox.position.clone(),
 
-  // ENEMY OBJECT
- const enemy = {
-  enemyBox,
-  animGroups,
-  characterController: controller,
-  currentHealth: 100,
-  homePosition: enemyBox.position.clone(),
+    spawnAt(position, faceTarget = null) {
+      enemyBox.position.copyFrom(position);
+      enemy.homePosition.copyFrom(position);
+      if (faceTarget) {
+        const dir = faceTarget.position.subtract(enemyBox.position);
+        dir.y = 0;
+        enemyBox.rotation.y = Math.atan2(dir.x, dir.z);
+      }
+    },
 
-  update(playerBox) {
-    if (!playerBox) return;
-
-    this.updateFacing(playerBox);
-
-    if (this.characterController) {
-      this.characterController.moveForward?.();
-    }
-  },
-
-  spawnAt(position, faceTarget = null) {
-    enemyBox.position.copyFrom(position);
-    enemy.homePosition.copyFrom(position);
-
-    if (faceTarget) {
-      const dir = faceTarget.position.subtract(enemyBox.position);
+    updateFacing(target, turnSpeed = 0.15) {
+      if (!target) return;
+      const dir = target.position.subtract(enemyBox.position);
       dir.y = 0;
-      enemyBox.rotation.y = Math.atan2(dir.x, dir.z);
-    }
-  },
+      const desiredYaw = Math.atan2(dir.x, dir.z);
+      enemyBox.rotation.y += (desiredYaw - enemyBox.rotation.y) * turnSpeed;
+    },
 
-  updateFacing(target, turnSpeed = 0.15) {
-    if (!target) return;
+    update(playerBox) {
+      if (!playerBox) return;
+      this.updateFacing(playerBox);
+      this.characterController?.moveForward?.();
+    },
+  };
 
-    const dir = target.position.subtract(enemyBox.position);
-    dir.y = 0;
-
-    const desiredYaw = Math.atan2(dir.x, dir.z);
-
-    enemyBox.rotation.y += (desiredYaw - enemyBox.rotation.y) * turnSpeed;
-  },
-};
-  // HEALTH SYSTEM
+  // ---------------- HEALTH SYSTEM ----------------
   const healthUI = createHealthBar(scene, enemyBox, enemy);
-
   healthUI.setupHealth(enemy.currentHealth);
 
   enemy.takeDamage = (amount) => {
     enemy.currentHealth -= amount;
-
     if (enemy.currentHealth < 0) enemy.currentHealth = 0;
-
     healthUI.update();
 
     if (enemy.currentHealth <= 0) {
       controller.stop();
       healthUI.container.dispose();
+      modelMeshes.forEach((m) => m.dispose());
       enemyBox.dispose();
     }
   };
