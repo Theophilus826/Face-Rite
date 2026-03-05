@@ -5,7 +5,7 @@ async function gameScene(
   progressCallback,
   dispatch,
   game,
-  user,
+  user
 ) {
   // ---------------- DYNAMIC IMPORTS ----------------
   const [
@@ -33,7 +33,6 @@ async function gameScene(
   ]);
 
   const { Scene, FreeCamera, Vector3, HemisphericLight } = BABYLON;
-
   const scene = new Scene(engine);
   let gameEnded = false;
 
@@ -48,12 +47,8 @@ async function gameScene(
   const updateProgress = () =>
     progressCallback?.(Math.floor((loaded / 3) * 100));
 
-  const {
-  ground,
-  playerTerritory,
-  enemyPositions,
-  ENEMY_TERRITORY_RADIUS
-} = await CreateEnvironment(scene, BABYLON);
+  const { ground, playerTerritory, enemyPositions, ENEMY_TERRITORY_RADIUS } =
+    await CreateEnvironment(scene, BABYLON);
 
   loaded++;
   updateProgress();
@@ -63,14 +58,11 @@ async function gameScene(
 
   // ---------------- CAMERA ----------------
   const camera = new FreeCamera("camera", new Vector3(0, 5, -15), scene);
-
   camera.attachControl(engine.getRenderingCanvas(), true);
-
   new HemisphericLight("light", new Vector3(0, 1, 0), scene);
 
   // ---------------- PLAYER ----------------
   const player = await CreatePlayer(scene, BABYLON);
-
   loaded++;
   updateProgress();
 
@@ -80,29 +72,24 @@ async function gameScene(
   player.characterBox.position = new Vector3(0, 1, 0);
 
   playerTerritory.parent = player.characterBox;
-
   scene.player = player;
 
-scene.enemies = [];
+  // ---------------- ENEMIES ----------------
+  scene.enemies = [];
 
-for (const pos of enemyPositions) {
+  for (const pos of enemyPositions) {
+    const enemy = await CreateEnemy(scene, BABYLON, pos, player.characterBox);
 
-  const enemy = await CreateEnemy(
-    scene,
-    BABYLON,
-    pos,
-    player.characterBox
-  );
+    enemy.enemyBox.checkCollisions = true;
+    enemy.enemyBox.ellipsoid = new Vector3(0.5, 1.5, 0.5);
+    enemy.currentHealth = 100;
+    enemy.territoryRadius = ENEMY_TERRITORY_RADIUS;
 
-  enemy.enemyBox.checkCollisions = true;
-  enemy.enemyBox.ellipsoid = new Vector3(0.5, 1.5, 0.5);
-  enemy.currentHealth = 100;
-  enemy.territoryRadius = ENEMY_TERRITORY_RADIUS;
+    const ai = new EnemyController({ enemy, player, BABYLON });
 
-  const ai = new EnemyController({ enemy, player, BABYLON });
-
-  scene.enemies.push({ enemy, ai });
-}
+    scene.enemies.push({ enemy, ai });
+    console.log("Enemy created at:", enemy.enemyBox.position);
+  }
 
   loaded++;
   updateProgress();
@@ -111,31 +98,25 @@ for (const pos of enemyPositions) {
   setupAttackControls(
     scene,
     player,
-    scene.enemies.map((e) => e.enemy),
+    scene.enemies.map(({ enemy }) => enemy)
   );
 
   player.controller.setAttackHitCallback(() => {
+    scene.enemies.forEach(({ enemy }) => {
+      if (enemy.currentHealth <= 0 || gameEnded) return;
 
-  scene.enemies.forEach(({ enemy }) => {
+      const dist = Vector3.Distance(
+        player.characterBox.position,
+        enemy.enemyBox.position
+      );
 
-    if (enemy.currentHealth <= 0 || gameEnded) return;
-
-    const dist = Vector3.Distance(
-      player.characterBox.position,
-      enemy.enemyBox.position
-    );
-  console.log("Enemy spawn:", enemy.enemyBox.position); // ✅ here
-
-    if (dist <= 2.5) {
-
-      const damage =
-        enemy.characterController.receiveDamage(10, false)?? 10;
-
-      enemy.takeDamage(damage);
-    }
+      if (dist <= 2.5) {
+        const damage =
+          enemy.characterController.receiveDamage(10, false) ?? 10;
+        enemy.takeDamage(damage);
+      }
+    });
   });
-
-});
 
   // ---------------- KEYBOARD ----------------
   const keyDownHandler = (e) => {
@@ -164,9 +145,7 @@ for (const pos of enemyPositions) {
   // ---------------- MOUSE ----------------
   scene.onPointerDown = (_, pickInfo) => {
     if (gameEnded || GameState.isPaused()) return;
-
     if (!pickInfo.hit || pickInfo.pickedMesh.name !== "ground") return;
-
     player.controller.moveTo(pickInfo.pickedPoint, true);
   };
 
@@ -176,31 +155,33 @@ for (const pos of enemyPositions) {
 
     player.controller?.update();
 
-   scene.enemies.forEach(({ enemy }) => {
+    scene.enemies.forEach(({ enemy, ai }) => {
+      if (!ai) return;
 
-  enemy.ai.update(performance.now() / 1000);
+      ai.update(performance.now() / 1000);
 
-  const dist = BABYLON.Vector3.Distance(
-    enemy.enemyBox.position,
-    player.characterBox.position
-  );
+      const dist = BABYLON.Vector3.Distance(
+        enemy.enemyBox.position,
+        player.characterBox.position
+      );
 
-  if (dist <= 2.5 && enemy.currentHealth > 0) {
-    const dmg = player.controller.receiveDamage(5, false);
-    player.takeDamage?.(dmg);
-  }
+      if (dist <= 2.5 && enemy.currentHealth > 0) {
+        const dmg = player.controller.receiveDamage(5, false);
+        player.takeDamage?.(dmg);
+      }
 
-  if (enemy.currentHealth <= 0) {
-    enemy.ai.stop();
-  }
-});
+      if (enemy.currentHealth <= 0) {
+        ai.stop();
+      }
+    });
 
-   if (
-  scene.enemies.length > 0 &&
-  scene.enemies.every(({ enemy }) => enemy.currentHealth <= 0)
-) {
-  endGame(user._id);
-}
+    // Check win/lose
+    if (
+      scene.enemies.length > 0 &&
+      scene.enemies.every(({ enemy }) => enemy.currentHealth <= 0)
+    ) {
+      endGame(user._id);
+    }
 
     if (player.currentHealth <= 0) endGame("AI");
   });
@@ -232,7 +213,7 @@ for (const pos of enemyPositions) {
         goToMainMenu,
         game,
         user,
-        dispatch,
+        dispatch
       );
     } catch (err) {
       console.error("Game end error:", err);
