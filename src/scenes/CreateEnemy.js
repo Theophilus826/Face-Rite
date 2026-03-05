@@ -41,7 +41,7 @@ export async function CreateEnemy(
 
   modelMeshes.forEach((mesh) => {
     mesh.parent = enemyBox;
-    mesh.scaling = new Vector3(1, 1, 1); // ✅ explicit scale
+    mesh.scaling = new Vector3(0.5, 1, 0.5); // ✅ explicit scale
     const boundingInfo = mesh.getBoundingInfo();
     const heightOffset = boundingInfo.boundingBox.extendSize.y;
     mesh.position = new Vector3(0, heightOffset, 0); // centered on box
