@@ -75,36 +75,45 @@ export async function CreateEnemy(
   }
 
   // ENEMY OBJECT
-  const enemy = {
-    enemyBox,
-    animGroups,
-    characterController: controller,
-    currentHealth: 100,
-    homePosition: enemyBox.position.clone(),
+ const enemy = {
+  enemyBox,
+  animGroups,
+  characterController: controller,
+  currentHealth: 100,
+  homePosition: enemyBox.position.clone(),
 
-    spawnAt(position, faceTarget = null) {
-      enemyBox.position.copyFrom(position);
-      enemy.homePosition.copyFrom(position);
+  update(playerBox) {
+    if (!playerBox) return;
 
-      if (faceTarget) {
-        const dir = faceTarget.position.subtract(enemyBox.position);
-        dir.y = 0;
-        enemyBox.rotation.y = Math.atan2(dir.x, dir.z);
-      }
-    },
+    this.updateFacing(playerBox);
 
-    updateFacing(target, turnSpeed = 0.15) {
-      if (!target) return;
+    if (this.characterController) {
+      this.characterController.moveForward?.();
+    }
+  },
 
-      const dir = target.position.subtract(enemyBox.position);
+  spawnAt(position, faceTarget = null) {
+    enemyBox.position.copyFrom(position);
+    enemy.homePosition.copyFrom(position);
+
+    if (faceTarget) {
+      const dir = faceTarget.position.subtract(enemyBox.position);
       dir.y = 0;
+      enemyBox.rotation.y = Math.atan2(dir.x, dir.z);
+    }
+  },
 
-      const desiredYaw = Math.atan2(dir.x, dir.z);
+  updateFacing(target, turnSpeed = 0.15) {
+    if (!target) return;
 
-      enemyBox.rotation.y += (desiredYaw - enemyBox.rotation.y) * turnSpeed;
-    },
-  };
+    const dir = target.position.subtract(enemyBox.position);
+    dir.y = 0;
 
+    const desiredYaw = Math.atan2(dir.x, dir.z);
+
+    enemyBox.rotation.y += (desiredYaw - enemyBox.rotation.y) * turnSpeed;
+  },
+};
   // HEALTH SYSTEM
   const healthUI = createHealthBar(scene, enemyBox, enemy);
 
