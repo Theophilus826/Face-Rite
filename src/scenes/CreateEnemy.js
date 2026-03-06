@@ -2,8 +2,6 @@ import "@babylonjs/loaders";
 import { CreateCharacterController } from "../scenes/CreateCharacterController";
 import { createHealthBar } from "../scenes/createHealthBar";
 
-let enemyModelCache = null;
-
 export async function CreateEnemy(
   scene,
   BABYLON,
@@ -14,44 +12,15 @@ export async function CreateEnemy(
 
   if (!spawnPosition) spawnPosition = Vector3.Zero();
 
-  // ---------------- LOAD MODEL (CACHE) ----------------
-  if (!enemyModelCache) {
-    const result = await SceneLoader.ImportMeshAsync(
-      "",
-      "/models/",
-      "Spartarcus.glb",
-      scene
-    );
-
-    enemyModelCache = {
-      meshes: result.meshes,
-      animGroups: result.animationGroups || []
-    };
-
-    // hide template meshes
-    enemyModelCache.meshes.forEach((m) => m.setEnabled(false));
-  }
-
-  // ---------------- CLONE MODEL ----------------
-  const meshes = enemyModelCache.meshes.map((m) => {
-    const clone = m.clone("enemyClone");
-    clone.setEnabled(true);
-    return clone;
-  });
-
-  const animGroups = enemyModelCache.animGroups.map((a) =>
-    a.clone("enemyAnim")
+  // ---------------- LOAD MODEL ----------------
+  const enemyAsset = await SceneLoader.ImportMeshAsync(
+    "",
+    "/models/",
+    "Spartarcus.glb",
+    scene
   );
 
-  // fix animation targets
-  animGroups.forEach((anim) => {
-    anim.targetedAnimations.forEach((target) => {
-      const clone = meshes.find((m) => m.name === target.target.name);
-      if (clone) {
-        target.target = clone;
-      }
-    });
-  });
+  const animGroups = enemyAsset.animationGroups || [];
 
   // ---------------- COLLISION BOX ----------------
   const BOX_HEIGHT = 1.6;
@@ -70,23 +39,24 @@ export async function CreateEnemy(
   enemyBox.isVisible = true;
   enemyBox.showBoundingBox = true;
 
-  // enemy scale
+  // ✅ scale the enemy safely
   enemyBox.scaling = new Vector3(0.45, 0.45, 0.45);
 
   // ---------------- PARENT MODEL ----------------
-  meshes.forEach((mesh) => {
+  enemyAsset.meshes.forEach((mesh) => {
     mesh.parent = enemyBox;
   });
 
   // find first visible mesh
-  const visibleMesh = meshes.find(
+  const visibleMesh = enemyAsset.meshes.find(
     (m) => m.getTotalVertices && m.getTotalVertices() > 0
   );
 
-  // lift mesh so feet touch ground
+  // lift model so feet touch ground
   if (visibleMesh) {
     const bbox = visibleMesh.getBoundingInfo().boundingBox;
     const meshBottom = bbox.minimumWorld.y;
+
     visibleMesh.position.y = -meshBottom;
   }
 
@@ -113,7 +83,7 @@ export async function CreateEnemy(
   // ---------------- ENEMY OBJECT ----------------
   const enemy = {
     enemyBox,
-    modelMeshes: meshes,
+    modelMeshes: enemyAsset.meshes,
     animGroups,
     characterController: controller,
     currentHealth: 100,
@@ -167,7 +137,7 @@ export async function CreateEnemy(
 
       healthUI.container.dispose();
 
-      meshes.forEach((m) => m.dispose());
+      enemyAsset.meshes.forEach((m) => m.dispose());
 
       enemyBox.dispose();
     }
