@@ -165,10 +165,15 @@ async function gameScene(
         player.characterBox.position
       );
 
-      if (dist <= 2.5 && enemy.currentHealth > 0) {
-        const dmg = player.controller.receiveDamage(5, false);
-        player.takeDamage?.(dmg);
-      }
+      if (
+  dist <= 2.5 &&
+  enemy.currentHealth > 0 &&
+  player.currentHealth > 0 &&
+  !gameEnded
+) {
+  const dmg = player.controller.receiveDamage(5, false);
+  player.takeDamage?.(dmg);
+}
 
       if (enemy.currentHealth <= 0) {
         ai.stop();
@@ -183,7 +188,10 @@ async function gameScene(
       endGame(user._id);
     }
 
-    if (player.currentHealth <= 0) endGame("AI");
+    if (player.currentHealth <= 0 && !gameEnded) {
+  player.controller.stop?.(); // stop movement
+  endGame("AI");
+}
   });
 
   // ---------------- FINALIZE ----------------
