@@ -8,7 +8,7 @@ export async function CreateEnemy(
   spawnPosition,
   playerBox = null
 ) {
-  const { MeshBuilder, Vector3, SceneLoader } = BABYLON;
+  const { MeshBuilder, Vector3, SceneLoader, TransformNode } = BABYLON;
 
   if (!spawnPosition) spawnPosition = Vector3.Zero();
 
@@ -23,41 +23,48 @@ export async function CreateEnemy(
   const animGroups = enemyAsset.animationGroups || [];
 
   // ---------------- COLLISION BOX ----------------
-  const BOX_HEIGHT = 1.6;
+  const BOX_HEIGHT = 1.8;
 
   const enemyBox = MeshBuilder.CreateBox(
     "enemyBox",
-    { width: 1, height: BOX_HEIGHT, depth: 1 },
+    { width: 0.8, height: BOX_HEIGHT, depth: 0.8 },
     scene
   );
 
+  enemyBox.position.copyFrom(spawnPosition);
   enemyBox.isPickable = false;
   enemyBox.checkCollisions = true;
-  enemyBox.ellipsoid = new Vector3(0.5, BOX_HEIGHT / 2, 0.5);
-  enemyBox.position.copyFrom(spawnPosition);
-
   enemyBox.isVisible = true;
   enemyBox.showBoundingBox = true;
 
-  // ✅ scale the enemy safely
-  enemyBox.scaling = new Vector3(0.45, 0.45, 0.45);
+  enemyBox.ellipsoid = new Vector3(0.4, BOX_HEIGHT / 2, 0.4);
 
-  // ---------------- PARENT MODEL ----------------
+  // ---------------- MODEL ROOT ----------------
+  const enemyRoot = new TransformNode("enemyRoot", scene);
+  enemyRoot.parent = enemyBox;
+
+  // parent all meshes
   enemyAsset.meshes.forEach((mesh) => {
-    mesh.parent = enemyBox;
+    mesh.parent = enemyRoot;
   });
 
-  // find first visible mesh
+  // ---------------- SCALE MODEL ----------------
+  const MODEL_SCALE = 0.45;
+
+  enemyRoot.scaling = new Vector3(MODEL_SCALE, MODEL_SCALE, MODEL_SCALE);
+
+  // ---------------- ALIGN MODEL TO GROUND ----------------
   const visibleMesh = enemyAsset.meshes.find(
     (m) => m.getTotalVertices && m.getTotalVertices() > 0
   );
 
-  // lift model so feet touch ground
   if (visibleMesh) {
+    visibleMesh.computeWorldMatrix(true);
+
     const bbox = visibleMesh.getBoundingInfo().boundingBox;
     const meshBottom = bbox.minimumWorld.y;
 
-    visibleMesh.position.y = -meshBottom;
+    enemyRoot.position.y -= meshBottom;
   }
 
   // ---------------- CHARACTER CONTROLLER ----------------
@@ -91,12 +98,11 @@ export async function CreateEnemy(
 
     spawnAt(position, faceTarget = null) {
       enemyBox.position.copyFrom(position);
-      enemy.homePosition.copyFrom(position);
+      this.homePosition.copyFrom(position);
 
       if (faceTarget) {
         const dir = faceTarget.position.subtract(enemyBox.position);
         dir.y = 0;
-
         enemyBox.rotation.y = Math.atan2(dir.x, dir.z);
       }
     },
