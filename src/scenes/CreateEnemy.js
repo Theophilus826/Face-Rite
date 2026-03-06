@@ -37,23 +37,20 @@ export async function CreateEnemy(
   enemyBox.showBoundingBox = true;
 
   // ---------------- PARENT MODEL ----------------
-  const root = enemyAsset.meshes.find(
-    (m) => m.getTotalVertices && m.getTotalVertices() > 0
-  );
-
-  if (root) {
-    root.parent = enemyBox;
-
-    // ✅ Uniform scale (adjust this as needed)
-    root.scaling = new Vector3(0.5, 0.5, 0.5);
-
-    // ✅ Align bottom of model to box base
-    const bbox = root.getBoundingInfo().boundingBox;
-    const meshBottomY = bbox.minimumWorld.y;
-    root.position = new Vector3(0, -meshBottomY, 0);
+  enemyAsset.meshes.forEach((mesh) => {
+  if (mesh !== enemyAsset.meshes[0]) {
+    mesh.parent = enemyBox;
   }
+});
 
-  console.log("Enemy created at:", enemyBox.position);
+const root = enemyAsset.meshes[0];
+
+root.scaling = new Vector3(0.5, 0.5, 0.5);
+
+const bbox = root.getBoundingInfo().boundingBox;
+const meshBottomY = bbox.minimumWorld.y;
+
+root.position = new Vector3(0, -meshBottomY, 0);
 
   // ---------------- CHARACTER CONTROLLER ----------------
   const controller = CreateCharacterController(
