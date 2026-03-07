@@ -133,7 +133,7 @@ export async function CreateEnemy(
 };
 
   // ===============================
-   enemyBox.isVisible = true;
+   enemyBox.isVisible = false;
   // enemyBox.visibility = 0.4;
 
   return enemy;
