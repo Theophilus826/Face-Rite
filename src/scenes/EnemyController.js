@@ -6,7 +6,7 @@ export class EnemyController {
     attackRange = 2,
     aiDamage = 5,
     moveRange = 15,
-    attackCooldown = 1.5
+    attackCooldown = 1
   }) {
     this.enemy = enemy;
     this.player = player;
