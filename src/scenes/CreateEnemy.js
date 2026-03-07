@@ -47,7 +47,7 @@ export async function CreateEnemy(
     console.error("CreateEnemy: No model root found");
   } else {
     modelRoot.parent = enemyBox;
-
+  enemyBox.modelRoot = modelRoot;
     // Reset local transform
     modelRoot.position.set(0, -BOX_HEIGHT / 2, 0);
     modelRoot.rotation.set(Math.PI, 0, 0);
