@@ -1,4 +1,5 @@
 import "@babylonjs/loaders";
+
 import { CreateCharacterController } from "../scenes/CreateCharacterController";
 import { createHealthBar } from "../scenes/createHealthBar";
 
@@ -8,11 +9,13 @@ export async function CreateEnemy(
   spawnPosition,
   playerBox = null
 ) {
-  const { MeshBuilder, Vector3, SceneLoader, TransformNode } = BABYLON;
+  const { MeshBuilder, Vector3, SceneLoader } = BABYLON;
 
-  if (!spawnPosition) spawnPosition = Vector3.Zero();
-
-  // ---------------- LOAD MODEL ----------------
+  // SAFETY
+    if (!spawnPosition) {
+    spawnPosition = Vector3.Zero();
+  }
+    // LOAD MODEL
   const enemyAsset = await SceneLoader.ImportMeshAsync(
     "",
     "/models/",
@@ -22,83 +25,70 @@ export async function CreateEnemy(
 
   const animGroups = enemyAsset.animationGroups || [];
 
-  // ---------------- COLLISION BOX ----------------
-  const BOX_HEIGHT = 1.8;
+  // COLLISION BOX (SOURCE OF TRUTH)
+  const BOX_HEIGHT = 1.6;
 
   const enemyBox = MeshBuilder.CreateBox(
     "enemyBox",
-    { width: 0.8, height: BOX_HEIGHT, depth: 0.8 },
+    { width: 1, height: BOX_HEIGHT, depth: 1 },
     scene
   );
 
-  enemyBox.position.copyFrom(spawnPosition);
   enemyBox.isPickable = false;
   enemyBox.checkCollisions = true;
-  enemyBox.isVisible = true;
-  enemyBox.showBoundingBox = true;
+  enemyBox.ellipsoid = new Vector3(0.5, BOX_HEIGHT / 2, 0.5);
+  enemyBox.position.copyFrom(spawnPosition);
 
-  enemyBox.ellipsoid = new Vector3(0.4, BOX_HEIGHT / 2, 0.4);
+  // VISUAL ROOT
+  // Babylon glTF imports usually put the model under the first mesh
+  const modelRoot = enemyAsset.meshes.find(m => m !== enemyBox);
 
-  // ---------------- MODEL ROOT ----------------
-  const enemyRoot = new TransformNode("enemyRoot", scene);
-  enemyRoot.parent = enemyBox;
+  if (!modelRoot) {
+    console.error("CreateEnemy: No model root found");
+  } else {
+    modelRoot.parent = enemyBox;
 
-  // parent all meshes
-  enemyAsset.meshes.forEach((mesh) => {
-    mesh.parent = enemyRoot;
-  });
-
-  // ---------------- SCALE MODEL ----------------
-  const MODEL_SCALE = 0.45;
-
-  enemyRoot.scaling = new Vector3(MODEL_SCALE, MODEL_SCALE, MODEL_SCALE);
-
-  // ---------------- ALIGN MODEL TO GROUND ----------------
-  const visibleMesh = enemyAsset.meshes.find(
-    (m) => m.getTotalVertices && m.getTotalVertices() > 0
-  );
-
-  if (visibleMesh) {
-    visibleMesh.computeWorldMatrix(true);
-
-    const bbox = visibleMesh.getBoundingInfo().boundingBox;
-    const meshBottom = bbox.minimumWorld.y;
-
-    enemyRoot.position.y -= meshBottom;
+    // Reset local transform
+    modelRoot.position.set(0, -BOX_HEIGHT / 2, 0);
+    modelRoot.rotation.set(Math.PI, 0, 0);
+    modelRoot.scaling.set(1, 1.5, 1);
   }
 
-  // ---------------- CHARACTER CONTROLLER ----------------
+    // CHARACTER CONTROLLER
   const controller = CreateCharacterController(
     scene,
     enemyBox,
     animGroups,
     BABYLON,
-    false,
-    enemyBox,
-    playerBox
+    false,       // isPlayer
+    enemyBox,    // self collider
+    playerBox    // target collider
   );
 
-  // ---------------- IDLE ANIMATION ----------------
-  const idleAnim = animGroups.find(
-    (a) =>
+  // AUTO-IDLE
+    const idleAnim = animGroups.find(
+    a =>
       a.name.toLowerCase().includes("idle") ||
       a.name.toLowerCase().includes("walk")
   );
 
-  idleAnim?.start(true);
+  if (idleAnim) {
+    idleAnim.start(true);
+  }
 
-  // ---------------- ENEMY OBJECT ----------------
+  // ENEMY OBJECT
   const enemy = {
     enemyBox,
-    modelMeshes: enemyAsset.meshes,
+    modelRoot,
     animGroups,
-    characterController: controller,
-    currentHealth: 100,
+    characterController: controller, 
+
+    // Territory / AI anchor
     homePosition: enemyBox.position.clone(),
 
     spawnAt(position, faceTarget = null) {
       enemyBox.position.copyFrom(position);
-      this.homePosition.copyFrom(position);
+      enemy.homePosition.copyFrom(position);
 
       if (faceTarget) {
         const dir = faceTarget.position.subtract(enemyBox.position);
@@ -114,40 +104,37 @@ export async function CreateEnemy(
       dir.y = 0;
 
       const desiredYaw = Math.atan2(dir.x, dir.z);
-
       enemyBox.rotation.y +=
         (desiredYaw - enemyBox.rotation.y) * turnSpeed;
-    },
-
-    update(playerBox) {
-      if (!playerBox) return;
-
-      this.updateFacing(playerBox);
-      this.characterController?.moveForward?.();
-    },
-  };
-
-  // ---------------- HEALTH SYSTEM ----------------
-  const healthUI = createHealthBar(scene, enemyBox, enemy);
-  healthUI.setupHealth(enemy.currentHealth);
-
-  enemy.takeDamage = (amount) => {
-    enemy.currentHealth -= amount;
-
-    if (enemy.currentHealth < 0) enemy.currentHealth = 0;
-
-    healthUI.update();
-
-    if (enemy.currentHealth <= 0) {
-      controller.stop();
-
-      healthUI.container.dispose();
-
-      enemyAsset.meshes.forEach((m) => m.dispose());
-
-      enemyBox.dispose();
     }
   };
+
+  // HEALTH SYSTEM
+    const healthUI = createHealthBar(scene, enemyBox, enemy);
+  healthUI.setupHealth(100);
+
+  const originalTakeDamage = enemy.takeDamage;
+
+  enemy.takeDamage = (amount) => {
+  originalTakeDamage(amount);
+  healthUI.update();
+
+  if (enemy.currentHealth <= 0) {
+    controller.stop();
+
+    // 🧼 REMOVE HEALTH BAR
+    healthUI.container.dispose();
+
+    // 🧼 REMOVE MESHES
+    enemyBox.dispose();
+    if (modelRoot) modelRoot.dispose();
+    
+  }
+};
+
+  // ===============================
+   enemyBox.isVisible = true;
+  // enemyBox.visibility = 0.4;
 
   return enemy;
 }
