@@ -162,23 +162,25 @@ export function CreateCharacterController(
     }
 
     // ---------------- ENEMY AI MOVEMENT ----------------
-    if (!playBox || isAttacking || isBlocking) return;
+// Movement toward targetPosition
+if (!targetPosition || isAttacking || isBlocking) return;
 
-    const toPlayer = playBox.position.subtract(characterBox.position);
-    toPlayer.y = 0;
+const toTarget = targetPosition.subtract(characterBox.position);
+toTarget.y = 0;
 
-    if (toPlayer.length() > ATTACK_RANGE) {
-      const direction = toPlayer.normalize();
-      characterBox.position.addInPlace(direction.scale(SPEEDS.walk * delta));
+if (toTarget.length() < 0.3) {
+  stop();
+  return;
+}
 
-      if (characterBox.modelRoot) {
-        characterBox.modelRoot.rotation.y = Math.atan2(direction.x, direction.z);
-      }
+toTarget.normalize();
+const speed = state === "Running" ? SPEEDS.run : SPEEDS.walk;
 
-      playAnim("run", true);
-    } else {
-      stop();
-    }
+characterBox.position.addInPlace(toTarget.scale(speed * delta));
+
+if (characterBox.modelRoot) {
+  characterBox.modelRoot.rotation.y = Math.atan2(toTarget.x, toTarget.z);
+}
   }
 
   // ================= API =================
