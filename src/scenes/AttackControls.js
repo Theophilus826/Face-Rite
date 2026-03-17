@@ -3,6 +3,7 @@ import {
   Rectangle,
   TextBlock,
   Control,
+  StackPanel,
 } from "@babylonjs/gui";
 
 /**
@@ -14,13 +15,31 @@ import {
 export function setupAttackControls(scene, player, enemies) {
   const ui = AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
-  const lightBtn = createButton(ui, "J\nLight", "orange", "-150px");
-  const heavyBtn = createButton(ui, "K\nHeavy", "red", "-20px");
-  const blockBtn = createButton(ui, "L\nBlock", "cyan", "110px");
+  // Detect mobile
+  const isMobile = window.innerWidth < 768;
+
+  // ================= CONTAINER =================
+  const container = new StackPanel();
+  container.isVertical = false;
+  container.height = isMobile ? "90px" : "70px";
+  container.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+  container.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+  container.spacing = isMobile ? 20 : 10;
+  container.top = "-10px";
+
+  ui.addControl(container);
+
+  // ================= BUTTONS =================
+  const lightBtn = createButton("J\nLight", "orange", isMobile);
+  const heavyBtn = createButton("K\nHeavy", "red", isMobile);
+  const blockBtn = createButton("L\nBlock", "cyan", isMobile);
+
+  container.addControl(lightBtn);
+  container.addControl(heavyBtn);
+  container.addControl(blockBtn);
 
   // ================= HELPER FUNCTIONS =================
   function getHitEnemy() {
-    // Return the first enemy in range and alive
     return enemies.find(
       (enemy) =>
         enemy.currentHealth > 0 &&
@@ -31,20 +50,21 @@ export function setupAttackControls(scene, player, enemies) {
   function flashButton(button, flashColor) {
     const original = button.background;
     button.background = flashColor;
+
     setTimeout(() => {
       button.background = original;
     }, 120);
   }
 
   function applyDamage(base, heavy = false) {
-  const hitEnemy = getHitEnemy();
-  if (!hitEnemy) return;
+    const hitEnemy = getHitEnemy();
+    if (!hitEnemy) return;
 
-  const finalDamage =
-    hitEnemy.characterController.receiveDamage(base, heavy);
+    const finalDamage =
+      hitEnemy.characterController.receiveDamage(base, heavy);
 
-  hitEnemy.takeDamage(finalDamage);
-}
+    hitEnemy.takeDamage(finalDamage);
+  }
 
   // ================= BUTTON EVENTS =================
   lightBtn.onPointerClickObservable.add(() => {
@@ -95,29 +115,23 @@ export function setupAttackControls(scene, player, enemies) {
   });
 }
 
-// ================= BUTTON FACTORY =================
-function createButton(ui, text, color, leftOffset) {
+// ================= RESPONSIVE BUTTON =================
+function createButton(text, color, isMobile) {
   const btn = new Rectangle();
 
-  btn.width = "120px";
-  btn.height = "50px";
-  btn.cornerRadius = 8;
+  btn.width = isMobile ? "120px" : "100px";
+  btn.height = isMobile ? "80px" : "55px";
+  btn.cornerRadius = 10;
   btn.color = color;
   btn.thickness = 2;
   btn.background = "#222";
-
-  btn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-  btn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-  btn.top = "-20px";
-  btn.left = leftOffset;
   btn.isPointerBlocker = true;
-
-  ui.addControl(btn);
 
   const label = new TextBlock();
   label.text = text;
   label.color = color;
-  label.fontSize = 18;
+  label.fontSize = isMobile ? 28 : 18;
+
   label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
   label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
 

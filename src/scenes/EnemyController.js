@@ -3,10 +3,10 @@ export class EnemyController {
     enemy,
     player,
     BABYLON,
-    attackRange = 2.5,
+    attackRange = 2,
     aiDamage = 5,
     moveRange = 15,
-    attackCooldown = 1.5
+    attackCooldown = 1
   }) {
     this.enemy = enemy;
     this.player = player;
@@ -18,45 +18,78 @@ export class EnemyController {
     this.attackCooldown = attackCooldown;
 
     this.lastAttackTime = 0;
+    this.active = true;
+
+    // Attack hit callback (damage applied mid animation)
+    this.enemy.characterController.setAttackHitCallback(() => {
+      const { Vector3 } = this.BABYLON;
+
+      const dist = Vector3.Distance(
+        this.enemy.enemyBox.position,
+        this.player.characterBox.position
+      );
+
+      if (dist <= this.attackRange) {
+        const dmg = this.player.controller.receiveDamage(this.aiDamage, false);
+        this.player.takeDamage?.(dmg);
+      }
+    });
   }
 
-  update = (now) => {
-    if (!this.enemy || !this.player || this.enemy.currentHealth <= 0 || this.player.currentHealth <= 0) return;
+  update = (time) => {
+    if (
+      !this.active ||
+      !this.enemy ||
+      !this.enemy.characterController ||
+      this.enemy.currentHealth <= 0
+    ) return;
 
     const { Vector3 } = this.BABYLON;
 
-    const distance = Vector3.Distance(
-      this.player.characterBox.position,
-      this.enemy.enemyBox.position
+    // ✅ update character controller movement
+    this.enemy.characterController.update();
+
+    const dist = Vector3.Distance(
+      this.enemy.enemyBox.position,
+      this.player.characterBox.position
     );
 
-    if (distance <= this.attackRange) {
-      this.attack(now);
-    } else if (distance <= this.moveRange) {
-      this.moveToPlayer();
-    } else {
-      this.stop();
+    const state = this.enemy.characterController.getState();
+
+    // Attack
+    if (dist <= this.attackRange && state !== "Attacking") {
+      if (time - this.lastAttackTime > this.attackCooldown) {
+        this.enemy.characterController.attack(false);
+        this.lastAttackTime = time;
+      }
+    }
+
+    // Move toward player
+    else if (dist <= this.moveRange) {
+      if (state !== "Running") {
+        this.enemy.characterController.moveTo(
+          this.player.characterBox.position.clone(),
+          true
+        );
+      }
+    }
+
+    // Stop if too far
+    else {
+      if (state !== "Idle") {
+        this.enemy.characterController.stop();
+      }
     }
   };
 
-  attack = (now) => {
-  if (!this.lastAttackTime || now - this.lastAttackTime > this.attackCooldown) {
-
-    this.enemy.characterController.attack(false);   // ✅ Play animation
-
-    this.lastAttackTime = now;
-  }
-};
-
-
-  moveToPlayer = () => {
-    this.enemy.characterController.moveTo(
-      this.player.characterBox.position.clone(),
-      true
-    );
+  stop = () => {
+    this.active = false;
+    this.enemy?.characterController?.stop();
   };
 
-  stop = () => {
-    this.enemy.characterController.stop();
+  dispose = () => {
+    this.active = false;
+    this.enemy = null;
+    this.player = null;
   };
 }

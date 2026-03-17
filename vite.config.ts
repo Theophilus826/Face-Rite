@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 
 export default defineConfig({
-   base: "/Face-Rite/",
+   base: "/",
   plugins: [tailwindcss(), react()],
 
   server: {

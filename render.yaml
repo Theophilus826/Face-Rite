@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: game-frontend
+    env: static
+    buildCommand: npm run build
+    staticPublishPath: dist
+    redirects:
+      # SPA rewrite: serve index.html for all paths so React Router can handle routing
+      - source: "/*"
+        destination: "/index.html"
+        status: 200  # rewrite (not redirect)

@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import API from "../Api";
+import { API } from "../Api";
 
 /* ===============================
    Initial State
@@ -46,7 +46,7 @@ export const claimDailyLogin = createAsyncThunk(
   },
 );
 
-// ✅ Credit user coins (used in showEndScreen)
+// Credit user coins (manual or game reward)
 export const creditCoins = createAsyncThunk(
   "coins/creditCoins",
   async ({ coins }, thunkAPI) => {
@@ -92,6 +92,7 @@ export const fetchCoinHistory = createAsyncThunk(
     return res.data.history;
   },
 );
+
 // Credit game win coins
 export const creditGameWin = createAsyncThunk(
   "coins/creditGameWin",
@@ -111,6 +112,45 @@ export const creditGameWin = createAsyncThunk(
   },
 );
 
+// ================= USER TO USER TRANSFER =================
+export const transferCoins = createAsyncThunk(
+  "coins/transferCoins",
+  async ({ toUserId, coins, description }, thunkAPI) => {
+    try {
+      const res = await API.post(
+        "/coins/transfer",
+        { toUserId, coins, description },
+        getAuthHeader(thunkAPI),
+      );
+      return res.data; // { coins, transaction, recipientTransaction }
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || err.message,
+      );
+    }
+  },
+);
+// ================= WITHDRAW COINS =================
+export const withdrawCoins = createAsyncThunk(
+  "coins/withdrawCoins",
+  async ({ amount, bankName, accountNumber }, thunkAPI) => {
+    try {
+      const res = await API.post(
+        "/coins/withdraw",
+        { amount, bankName, accountNumber },
+        getAuthHeader(thunkAPI),
+      );
+
+      return res.data;
+      // expected: { coins, transaction }
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || err.message,
+      );
+    }
+  },
+);
+
 /* ===============================
    Slice
 ================================ */
@@ -118,9 +158,8 @@ const coinsSlice = createSlice({
   name: "coins",
   initialState,
   reducers: {
-  resetCoinsState: () => ({ ...initialState }),
-},
-
+    resetCoinsState: () => ({ ...initialState }),
+  },
   extraReducers: (builder) => {
     builder
 
@@ -142,10 +181,7 @@ const coinsSlice = createSlice({
         state.balance = action.payload.coins;
 
         if (action.payload?.transaction) {
-          if (!Array.isArray(state.history)) {
-            state.history = [];
-          }
-
+          state.history = state.history || [];
           state.history.unshift(action.payload.transaction);
         }
       })
@@ -156,50 +192,59 @@ const coinsSlice = createSlice({
         state.balance = action.payload.coins;
 
         if (action.payload?.transaction) {
-          if (!Array.isArray(state.history)) {
-            state.history = [];
-          }
-
+          state.history = state.history || [];
           state.history.unshift(action.payload.transaction);
         }
       })
 
       /* ================= Buy Item ================= */
       .addCase(buyItem.fulfilled, (state, action) => {
-  state.status = "succeeded";
-  state.balance = action.payload.coins;
+        state.status = "succeeded";
+        state.balance = action.payload.coins;
 
-  if (Array.isArray(action.payload.history)) {
-    state.history = action.payload.history;
-  } else if (action.payload.history) {
-
-    if (!Array.isArray(state.history)) {
-      state.history = [];
-    }
-
-    state.history.unshift(action.payload.history);
-  }
-})
-
+        if (Array.isArray(action.payload.history)) {
+          state.history = action.payload.history;
+        } else if (action.payload.history) {
+          state.history = state.history || [];
+          state.history.unshift(action.payload.history);
+        }
+      })
 
       /* ================= History ================= */
       .addCase(fetchCoinHistory.pending, (state) => {
         state.historyStatus = "loading";
       })
       .addCase(fetchCoinHistory.fulfilled, (state, action) => {
-  state.historyStatus = "succeeded";
-  state.history = Array.isArray(action.payload)
-    ? action.payload
-    : [];
-})
-
+        state.historyStatus = "succeeded";
+        state.history = Array.isArray(action.payload) ? action.payload : [];
+      })
       .addCase(fetchCoinHistory.rejected, (state, action) => {
         state.historyStatus = "failed";
         state.error = action.payload;
       })
 
-      /* ================= Global Matchers ================= */
+      /* ================= Transfer Coins ================= */
+      .addCase(transferCoins.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.balance = action.payload.coins;
 
+        if (action.payload?.transaction) {
+          state.history = state.history || [];
+          state.history.unshift(action.payload.transaction);
+        }
+      })
+      /* ================= Withdraw Coins ================= */
+      .addCase(withdrawCoins.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.balance = action.payload.coins;
+
+        if (action.payload?.transaction) {
+          state.history = state.history || [];
+          state.history.unshift(action.payload.transaction);
+        }
+      })
+
+      /* ================= Global Matchers ================= */
       .addMatcher(
         (action) =>
           action.type.startsWith("coins/") && action.type.endsWith("/rejected"),
