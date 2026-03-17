@@ -48,12 +48,14 @@ function Home() {
     try {
       setCreatingPost(true);
 
+      // 1. Create text post
       const postRes = await API.post("/post", {
         text: newPostText.trim(),
       });
 
       let finalPost = postRes.data.post;
 
+      // 2. Upload media if exists
       if (selectedFile) {
         const formData = new FormData();
         formData.append("file", selectedFile);
@@ -67,6 +69,7 @@ function Home() {
         finalPost = uploadRes.data.post;
       }
 
+      // 3. Update UI instantly
       setPosts((prev) => [finalPost, ...prev]);
       setNewPostText("");
       setSelectedFile(null);
@@ -95,12 +98,12 @@ function Home() {
       {/* ================= CREATE POST ================= */}
       {user && (
         <section className="max-w-4xl lg:max-w-5xl mx-auto mb-8">
-          <div className="p-4 rounded space-y-3">
+          <div className="bg-neutral-900 p-4 rounded space-y-3">
             <textarea
               placeholder="Share something with the community..."
               value={newPostText}
               onChange={(e) => setNewPostText(e.target.value)}
-              className="w-full p-3 rounded text-white"
+              className="w-full p-3 rounded bg-neutral-800 text-white"
             />
 
             <input
@@ -112,7 +115,7 @@ function Home() {
             <button
               onClick={createPost}
               disabled={creatingPost}
-              className="px-4 py-2 rounded hover:opacity-80"
+              className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
             >
               {creatingPost ? "Posting..." : "Create Post"}
             </button>
@@ -136,8 +139,12 @@ function Home() {
               postOwnerId={post.user?._id || post.user}
               token={user?.token}
               text={post.text || ""}
-              initialLikes={post.reactions?.likes || post.likeCount || 0}
-              initialLoves={post.reactions?.loves || post.loveCount || 0}
+              initialLikes={
+                post.reactions?.likes || post.likeCount || 0
+              }
+              initialLoves={
+                post.reactions?.loves || post.loveCount || 0
+              }
               createdAt={post.createdAt}
               mediaFiles={post.media || []}
             />
@@ -155,7 +162,7 @@ function Home() {
           games.map((game) => (
             <div
               key={game.id}
-              className="p-4 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4"
+              className="bg-neutral-900 p-4 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4"
             >
               <div className="text-sm sm:text-base space-y-1">
                 <p>Host: {game.hostId}</p>
@@ -169,7 +176,7 @@ function Home() {
               {user && (
                 <button
                   onClick={() => navigate(`/play/${game.id}`)}
-                  className="w-full sm:w-auto px-4 py-2 rounded hover:opacity-80"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
                 >
                   Play 🎮
                 </button>
@@ -195,7 +202,7 @@ function Home() {
           <div className="space-y-3">
             <Link
               to="/NewFeedback"
-              className="flex items-center justify-center gap-2 text-white py-3 rounded-lg hover:opacity-80"
+              className="flex items-center justify-center gap-2 bg-black text-white py-3 rounded-lg hover:bg-gray-800"
             >
               <FaQuestionCircle />
               Create New Feedback
@@ -203,7 +210,7 @@ function Home() {
 
             <Link
               to="/Feedbacks"
-              className="flex items-center justify-center gap-2 text-black py-3 rounded-lg hover:opacity-80"
+              className="flex items-center justify-center gap-2 bg-gray-200 text-black py-3 rounded-lg hover:bg-gray-300"
             >
               <FaTicketAlt />
               View My Feedbacks
