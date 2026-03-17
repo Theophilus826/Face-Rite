@@ -33,54 +33,6 @@ function Home() {
     loadPosts();
   }, []);
 
-  // ===== File selection =====
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) setSelectedFile(file);
-  };
-
-  // ===== Create post =====
-  const createPost = async () => {
-    if (!newPostText.trim() && !selectedFile) {
-      return alert("Write something or select a file first");
-    }
-
-    try {
-      setCreatingPost(true);
-
-      // 1. Create text post
-      const postRes = await API.post("/post", {
-        text: newPostText.trim(),
-      });
-
-      let finalPost = postRes.data.post;
-
-      // 2. Upload media if exists
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-
-        const uploadRes = await API.post(
-          `/post/${finalPost._id}/media`,
-          formData,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
-
-        finalPost = uploadRes.data.post;
-      }
-
-      // 3. Update UI instantly
-      setPosts((prev) => [finalPost, ...prev]);
-      setNewPostText("");
-      setSelectedFile(null);
-    } catch (err) {
-      console.error("Failed to create post", err.response?.data || err);
-      alert(err.response?.data?.message || "Post creation failed");
-    } finally {
-      setCreatingPost(false);
-    }
-  };
-
   return (
     <div className="px-4 sm:px-6 lg:px-8">
 
@@ -94,34 +46,6 @@ function Home() {
           Hosted Games 🎮
         </h1>
       </section>
-
-      {/* ================= CREATE POST ================= */}
-      {user && (
-        <section className="max-w-4xl lg:max-w-5xl mx-auto mb-8">
-          <div className="bg-neutral-900 p-4 rounded space-y-3">
-            <textarea
-              placeholder="Share something with the community..."
-              value={newPostText}
-              onChange={(e) => setNewPostText(e.target.value)}
-              className="w-full p-3 rounded bg-neutral-800 text-white"
-            />
-
-            <input
-              type="file"
-              accept="image/*,video/*"
-              onChange={handleFileChange}
-            />
-
-            <button
-              onClick={createPost}
-              disabled={creatingPost}
-              className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-            >
-              {creatingPost ? "Posting..." : "Create Post"}
-            </button>
-          </div>
-        </section>
-      )}
 
       {/* ================= POSTS ================= */}
       <section className="max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto mt-6 space-y-6">
@@ -138,13 +62,8 @@ function Home() {
               postId={post._id}
               postOwnerId={post.user?._id || post.user}
               token={user?.token}
-              text={post.text || ""}
-              initialLikes={
-                post.reactions?.likes || post.likeCount || 0
-              }
-              initialLoves={
-                post.reactions?.loves || post.loveCount || 0
-              }
+              initialLikes={post.reactions?.likes || 0}
+              initialLoves={post.reactions?.loves || 0}
               createdAt={post.createdAt}
               mediaFiles={post.media || []}
             />
@@ -162,7 +81,7 @@ function Home() {
           games.map((game) => (
             <div
               key={game.id}
-              className="bg-neutral-900 p-4 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4"
+              className="p-4 rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4"
             >
               <div className="text-sm sm:text-base space-y-1">
                 <p>Host: {game.hostId}</p>
@@ -176,7 +95,7 @@ function Home() {
               {user && (
                 <button
                   onClick={() => navigate(`/play/${game.id}`)}
-                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+                  className="w-full sm:w-auto px-4 py-2 rounded hover:opacity-80"
                 >
                   Play 🎮
                 </button>
@@ -202,7 +121,7 @@ function Home() {
           <div className="space-y-3">
             <Link
               to="/NewFeedback"
-              className="flex items-center justify-center gap-2 bg-black text-white py-3 rounded-lg hover:bg-gray-800"
+              className="flex items-center justify-center gap-2 text-white py-3 rounded-lg hover:opacity-80"
             >
               <FaQuestionCircle />
               Create New Feedback
@@ -210,7 +129,7 @@ function Home() {
 
             <Link
               to="/Feedbacks"
-              className="flex items-center justify-center gap-2 bg-gray-200 text-black py-3 rounded-lg hover:bg-gray-300"
+              className="flex items-center justify-center gap-2 text-black py-3 rounded-lg hover:opacity-80"
             >
               <FaTicketAlt />
               View My Feedbacks
