@@ -36,7 +36,7 @@ import UserProfile from "./component/UserProfile";
 import AdminLayout from "./component/AdminLayout";
 import AdminRoute from "./component/AdminRoute";
 import PostGalleryWithUpload from "./component/PostGallery";
-
+import Profile from "./component/UserProfile";
 // Lazy loaded
 const HostGame = lazy(() => import("./component/HostGame"));
 
@@ -91,6 +91,7 @@ export default function App() {
           <Route path="/gemes" element={<Gemes />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/profile" element={<Profile/>} />
 
           {/* Protected User Routes */}
           <Route

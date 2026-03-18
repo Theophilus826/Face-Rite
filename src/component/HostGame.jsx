@@ -228,30 +228,52 @@ export default function HostGame() {
     );
   }
 
-  /* =========================================================
-     HOST UI
-  ========================================================= */
-  return (
-    <div className="max-w-xl mx-auto text-white mt-10">
-      <h2 className="text-2xl mb-4">Solo Game</h2>
+  /* ========================================================= 
+   HOST UI (PROFESSIONAL + AI STYLE)
+========================================================= */
+return (
+  <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center px-4">
+    
+    <div className="w-full max-w-md bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl shadow-xl p-6 text-white">
+      
+      {/* Header / Logo */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 font-bold text-lg shadow-lg">
+          AI
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold">Spirit Sword</h2>
+          <p className="text-xs text-gray-400">AI Powered Game</p>
+        </div>
+      </div>
 
-      <div className="flex items-center gap-4">
+      {/* Input Section */}
+      <div className="mb-5">
+        <label className="block text-sm text-gray-400 mb-2">
+          Enter Amount
+        </label>
         <input
           type="number"
           min={1}
           value={amount}
           onChange={(e) => setAmount(+e.target.value)}
-          className="text-black px-3 py-2 rounded w-32"
+          className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white"
         />
-
-        <button
-          onClick={handlePlaySolo}
-          disabled={loading}
-          className="px-4 py-2 bg-green-600 rounded"
-        >
-          {loading ? "Creating..." : "Play 🎮"}
-        </button>
       </div>
+
+      {/* Action Button */}
+      <button
+        onClick={handlePlaySolo}
+        disabled={loading}
+        className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 transition-all font-medium shadow-md disabled:opacity-50"
+      >
+        {loading ? "Creating Game..." : "Play Game 🎮"}
+      </button>
+
+      {/* Footer */}
+      <p className="text-center text-xs text-gray-500 mt-4">
+        Powered by AI • Fast • Secure
+      </p>
     </div>
-  );
-}
+  </div>
+);
