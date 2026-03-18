@@ -77,6 +77,7 @@ function Home() {
     }
   };
 
+  // Framer Motion variants
   const fadeUp = {
     hidden: { opacity: 0, y: 40 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -89,8 +90,6 @@ function Home() {
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 relative overflow-hidden">
 
-      
-
       {/* HEADER */}
       <motion.section
         initial="hidden"
@@ -98,7 +97,6 @@ function Home() {
         variants={fadeUp}
         className="text-center mb-12"
       >
-        {/* AI LOGO */}
         <div className="flex justify-center items-center gap-2 mb-4">
           <Sparkles className="text-purple-500" size={28} />
           <h1 className="text-xl font-semibold text-gray-800">AI Hub</h1>
@@ -122,7 +120,6 @@ function Home() {
           className="max-w-4xl mx-auto mb-10"
         >
           <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-xl shadow-lg border border-white/30 space-y-4">
-
             <textarea
               placeholder="Share something with the community..."
               value={newPostText}
@@ -171,7 +168,16 @@ function Home() {
               whileHover={{ scale: 1.02 }}
               className="bg-white/30 backdrop-blur-xl border border-white/30 shadow-md rounded-xl p-4"
             >
-              <PostGalleryWithUpload {...post} />
+              <PostGalleryWithUpload
+                postId={post._id}
+                postOwnerId={post.user?._id || post.user}
+                token={user?.token}
+                text={post.text || ""}
+                initialLikes={post.reactions?.likes || post.likeCount || 0}
+                initialLoves={post.reactions?.loves || post.loveCount || 0}
+                createdAt={post.createdAt}
+                mediaFiles={post.media || []}
+              />
             </motion.div>
           ))
         )}
@@ -197,7 +203,9 @@ function Home() {
               <div className="text-gray-800 space-y-1">
                 <p>Host: {game.hostId}</p>
                 <p>Bet: {game.amount}</p>
-                <p>Players: {game.players.length}/{game.maxPlayers}</p>
+                <p>
+                  Players: {game.players.length}/{game.maxPlayers}
+                </p>
                 <p>Status: {game.status}</p>
               </div>
 
