@@ -120,7 +120,7 @@ export default function App() {
 
           {/* Game */}
           <Route
-            path="/gemes"
+            path="/host-game"
             element={
               <ProtectedRoute>
                 <Suspense fallback={<GameLoader />}>
