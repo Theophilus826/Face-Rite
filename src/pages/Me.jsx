@@ -3,8 +3,9 @@ import { useSelector, useDispatch } from "react-redux";
 import { useState } from "react";
 import { logout, reset } from "../features/AuthSlice";
 import { useNavigate } from "react-router-dom";
+import logo from "../assets/logo.png"; // replace with your logo path
 
-function Me() {
+export default function Me() {
   const coins = useSelector((state) => state.coins.value);
   const [showBalance, setShowBalance] = useState(true);
 
@@ -18,34 +19,38 @@ function Me() {
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="bg-white shadow-md rounded-xl p-4 flex items-center justify-between">
-        {/* Balance Info */}
-        <div>
-          <p className="text-sm text-gray-500">Wallet Balance</p>
-          <p className="text-xl font-semibold">
-            {showBalance ? `₦${coins ?? 0}` : "••••••"}
-          </p>
-        </div>
+    <div className="min-h-screen flex flex-col justify-between bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
+      
+      {/* Top Section - Wallet Card */}
+      <div className="space-y-6">
+        <div className="bg-white/30 backdrop-blur-md border border-white/30 rounded-2xl shadow-lg p-6 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500">Wallet Balance</p>
+            <p className="text-2xl font-semibold text-gray-900">
+              {showBalance ? `₦${coins ?? 0}` : "••••••"}
+            </p>
+          </div>
 
-        {/* Eye Toggle */}
-        <button
-          onClick={() => setShowBalance(!showBalance)}
-          className="text-gray-600"
-        >
-          {showBalance ? <Eye size={22} /> : <EyeOff size={22} />}
-        </button>
+          {/* Toggle Eye */}
+          <button
+            onClick={() => setShowBalance(!showBalance)}
+            className="text-gray-600 hover:text-gray-800 transition"
+          >
+            {showBalance ? <Eye size={24} /> : <EyeOff size={24} />}
+          </button>
+        </div>
       </div>
 
-      {/* Logout Button */}
-      <button
-        onClick={handleLogout}
-        className="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600 transition"
-      >
-        Logout
-      </button>
+      {/* Bottom Section - Logo + Logout */}
+      <div className="flex flex-col items-center mt-12 space-y-4">
+        <img src={logo} alt="Logo" className="h-16 w-auto" />
+        <button
+          onClick={handleLogout}
+          className="w-full max-w-xs bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-semibold shadow-md transition"
+        >
+          Logout
+        </button>
+      </div>
     </div>
   );
 }
-
-export default Me;

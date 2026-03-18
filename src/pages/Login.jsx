@@ -6,63 +6,71 @@ import { toast } from "react-toastify";
 import Spinner from "../component/Spinner";
 
 export default function Login() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-    const { user, isLoading, isError, message } = useSelector(
-        (state) => state.auth
-    );
+  const { user, isLoading, isError, message } = useSelector(
+    (state) => state.auth
+  );
 
-    // Handle auth state changes
-    useEffect(() => {
-        if (isError) toast.error(message);
-        if (user) navigate("/welcome");
-        dispatch(reset());
-    }, [user, isError, message, navigate, dispatch]);
+  useEffect(() => {
+    if (isError) toast.error(message);
+    if (user) navigate("/welcome");
+    dispatch(reset());
+  }, [user, isError, message, navigate, dispatch]);
 
-    // Submit login form
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!email || !password) {
-            toast.error("Please enter both email and password");
-            return;
-        }
-        dispatch(loginUser({ email, password }));
-    };
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error("Please enter both email and password");
+      return;
+    }
+    dispatch(loginUser({ email, password }));
+  };
 
-    if (isLoading) return <Spinner />;
+  if (isLoading) return <Spinner />;
 
-    return (
-        <div className="max-w-md mx-auto mt-20 p-6 border rounded shadow">
-            <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                />
-                <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                />
-                <button
-                    type="submit"
-                    className="bg-blue-500 text-white p-3 rounded hover:bg-blue-600 disabled:bg-gray-400"
-                    disabled={isLoading}
-                >
-                    {isLoading ? "Logging in..." : "Login"}
-                </button>
-            </form>
-        </div>
-    );
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-4">
+      <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/30 shadow-lg">
+        <h2 className="text-3xl font-extrabold mb-8 text-center text-gray-900">
+          Login
+        </h2>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+            required
+          />
+          <button
+            type="submit"
+            className="mt-2 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition disabled:bg-gray-400"
+            disabled={isLoading}
+          >
+            {isLoading ? "Logging in..." : "Login"}
+          </button>
+        </form>
+        <p className="mt-6 text-center text-gray-700 text-sm">
+          Don't have an account?{" "}
+          <span className="text-blue-500 hover:underline cursor-pointer">
+            Sign up
+          </span>
+        </p>
+      </div>
+    </div>
+  );
 }

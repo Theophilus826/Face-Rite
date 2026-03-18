@@ -23,10 +23,7 @@ export default function DepositPanel() {
 
     try {
       setLoading(true);
-
-      // Pass the selected payment method to backend
       const res = await generateDepositAccount(selectedMethod);
-
       setAccount(res);
     } catch (err) {
       console.error(err);
@@ -44,99 +41,106 @@ export default function DepositPanel() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-xl shadow-md p-5">
-      <h2 className="text-xl font-bold mb-4">Deposit</h2>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
+      <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/30 shadow-lg">
 
-      {/* Payment Method */}
-      <div className="mb-5">
-        <p className="text-sm text-gray-500 mb-2">Payment method</p>
-        <div className="flex gap-3">
-          {methods.map((method) => (
+        <h2 className="text-2xl font-extrabold mb-6 text-center text-gray-900">
+          Deposit
+        </h2>
+
+        {/* Payment Method */}
+        <div className="mb-6">
+          <p className="text-sm text-gray-600 mb-2">Payment method</p>
+          <div className="flex gap-3">
+            {methods.map((method) => (
+              <button
+                key={method.id}
+                onClick={() => setSelectedMethod(method.id)}
+                className={`flex-1 py-3 rounded-lg text-sm font-semibold transition
+                ${
+                  selectedMethod === method.id
+                    ? "bg-blue-500 text-white shadow-md"
+                    : "bg-white/40 backdrop-blur-sm border border-white/40 text-gray-700 hover:bg-white/60"
+                }`}
+              >
+                {method.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Amounts */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          {amounts.map((amt) => (
             <button
-              key={method.id}
-              onClick={() => setSelectedMethod(method.id)}
-              className={`flex-1 py-2 rounded-lg border text-sm font-medium
+              key={amt}
+              onClick={() => setAmount(amt)}
+              className={`p-3 rounded-lg text-sm font-semibold transition
               ${
-                selectedMethod === method.id
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "border-gray-300"
+                amount === amt
+                  ? "bg-blue-500 text-white shadow-md"
+                  : "bg-white/40 backdrop-blur-sm border border-white/40 hover:bg-white/60"
               }`}
             >
-              {method.name}
+              ₦{amt.toLocaleString()}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Quick Amounts */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        {amounts.map((amt) => (
+        {/* Custom Amount */}
+        <input
+          type="number"
+          placeholder="Enter custom amount"
+          value={amount}
+          onChange={(e) => setAmount(Number(e.target.value))}
+          className="w-full p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition mb-5"
+        />
+
+        {/* Deposit Button */}
+        {!account && (
           <button
-            key={amt}
-            onClick={() => setAmount(amt)}
-            className={`p-3 rounded-lg border text-sm font-semibold
-            ${
-              amount === amt
-                ? "bg-blue-600 text-white border-blue-600"
-                : "border-gray-300"
-            }`}
+            onClick={handleDeposit}
+            disabled={loading}
+            className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition disabled:bg-gray-400"
           >
-            ₦{amt.toLocaleString()}
+            {loading ? "Generating account..." : "Deposit Now"}
           </button>
-        ))}
+        )}
+
+        {/* Account Details */}
+        {account && (
+          <div className="mt-6 p-5 rounded-xl bg-white/40 backdrop-blur-sm border border-white/40">
+            <p className="text-sm text-gray-600 mb-3">
+              {selectedMethod === "palmpay"
+                ? "Transfer using PalmPay to this account"
+                : "Transfer using your selected payment provider"}
+            </p>
+
+            <p className="text-sm">
+              <b>Bank:</b> {account.bankName}
+            </p>
+
+            <p className="text-sm">
+              <b>Account Name:</b> {account.accountName}
+            </p>
+
+            <p className="text-xl font-bold mt-2 text-gray-900">
+              {account.accountNumber}
+            </p>
+
+            <button
+              onClick={copyAccount}
+              className="mt-3 text-sm text-blue-500 hover:underline"
+            >
+              Copy Account Number
+            </button>
+          </div>
+        )}
+
+        <p className="text-xs text-gray-500 mt-4 text-center">
+          Minimum deposit ₦2,000
+        </p>
       </div>
-
-      {/* Custom Amount */}
-      <input
-        type="number"
-        placeholder="Enter custom amount"
-        value={amount}
-        onChange={(e) => setAmount(Number(e.target.value))}
-        className="w-full border rounded-lg p-3 mb-4"
-      />
-
-      {/* Deposit Button */}
-      {!account && (
-        <button
-          onClick={handleDeposit}
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700"
-        >
-          {loading ? "Generating account..." : "Deposit Now"}
-        </button>
-      )}
-
-      {/* Virtual Account Details */}
-      {account && (
-        <div className="mt-5 border rounded-lg p-4 bg-gray-50">
-          <p className="text-sm text-gray-500 mb-2">
-            {selectedMethod === "palmpay"
-              ? "Transfer the exact amount using PalmPay to this virtual account"
-              : "Transfer the exact amount using your selected payment provider"}
-          </p>
-
-          <p className="text-sm">
-            <b>Bank:</b> {account.bankName}
-          </p>
-
-          <p className="text-sm">
-            <b>Account Name:</b> {account.accountName}
-          </p>
-
-          <p className="text-lg font-bold mt-1">{account.accountNumber}</p>
-
-          <button
-            onClick={copyAccount}
-            className="mt-2 text-sm text-blue-600"
-          >
-            Copy Account Number
-          </button>
-        </div>
-      )}
-
-      <p className="text-xs text-gray-400 mt-3 text-center">
-        Min deposit ₦2,000
-      </p>
     </div>
   );
 }

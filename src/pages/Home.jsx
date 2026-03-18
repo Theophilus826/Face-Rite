@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { API } from "../features/Api";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
-
+import PostComments from "../pages/PostComments";
 import Carousel from "../component/Carousel";
 import CardGrid from "../component/CardGrid";
 import CoinBalanceCard from "../component/CoinBalanceCard";
@@ -60,7 +60,7 @@ function Home() {
         const uploadRes = await API.post(
           `/post/${finalPost._id}/media`,
           formData,
-          { headers: { "Content-Type": "multipart/form-data" } }
+          { headers: { "Content-Type": "multipart/form-data" } },
         );
 
         finalPost = uploadRes.data.post;
@@ -89,7 +89,6 @@ function Home() {
 
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-
       {/* HEADER */}
       <motion.section
         initial="hidden"
@@ -120,29 +119,56 @@ function Home() {
           className="max-w-4xl mx-auto mb-10"
         >
           <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-xl shadow-lg border border-white/30 space-y-4">
-            <textarea
-              placeholder="Share something with the community..."
-              value={newPostText}
-              onChange={(e) => setNewPostText(e.target.value)}
-              className="w-full p-4 rounded-xl bg-white/40 border border-white/30 focus:ring-2 focus:ring-white/50 outline-none text-gray-800"
-            />
+            {/* TOP: Avatar + Input */}
+            <div className="flex gap-4 items-start">
+              {/* Avatar (click → profile) */}
+              <div
+                onClick={() => navigate("/profile")}
+                className="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white font-bold cursor-pointer overflow-hidden"
+              >
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt="avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  user?.name
+                    ?.split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                )}
+              </div>
 
-            <input
-              type="file"
-              accept="image/*,video/*"
-              onChange={handleFileChange}
-              className="text-gray-700"
-            />
+              {/* Textarea */}
+              <textarea
+                placeholder="Share something with the community..."
+                value={newPostText}
+                onChange={(e) => setNewPostText(e.target.value)}
+                className="flex-1 p-4 rounded-xl bg-white/40 border border-white/30 focus:ring-2 focus:ring-white/50 outline-none text-gray-800"
+              />
+            </div>
 
-            <motion.button
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={createPost}
-              disabled={creatingPost}
-              className="px-6 py-2 rounded-xl text-white bg-gradient-to-r from-purple-500 to-indigo-500 shadow-md"
-            >
-              {creatingPost ? "Posting..." : "Create Post"}
-            </motion.button>
+            {/* File + Button */}
+            <div className="flex flex-col sm:flex-row justify-between gap-4 items-center">
+              <input
+                type="file"
+                accept="image/*,video/*"
+                onChange={handleFileChange}
+                className="text-gray-700"
+              />
+
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={createPost}
+                disabled={creatingPost}
+                className="px-6 py-2 rounded-xl text-white bg-gradient-to-r from-purple-500 to-indigo-500 shadow-md"
+              >
+                {creatingPost ? "Posting..." : "Create Post"}
+              </motion.button>
+            </div>
           </div>
         </motion.section>
       )}
@@ -161,25 +187,83 @@ function Home() {
         {posts.length === 0 ? (
           <p className="text-center text-gray-500">No posts yet</p>
         ) : (
-          posts.map((post) => (
-            <motion.div
-              key={post._id}
-              variants={fadeUp}
-              whileHover={{ scale: 1.02 }}
-              className="bg-white/30 backdrop-blur-xl border border-white/30 shadow-md rounded-xl p-4"
-            >
-              <PostGalleryWithUpload
-                postId={post._id}
-                postOwnerId={post.user?._id || post.user}
-                token={user?.token}
-                text={post.text || ""}
-                initialLikes={post.reactions?.likes || post.likeCount || 0}
-                initialLoves={post.reactions?.loves || post.loveCount || 0}
-                createdAt={post.createdAt}
-                mediaFiles={post.media || []}
-              />
-            </motion.div>
-          ))
+          posts.map((post) => {
+            const postUser = post.user || {};
+
+            const getInitials = (name) =>
+              name
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase();
+
+            return (
+              <motion.div
+                key={post._id}
+                variants={fadeUp}
+                whileHover={{ scale: 1.02 }}
+                className="bg-white/30 backdrop-blur-xl border border-white/30 shadow-md rounded-xl p-4 space-y-4"
+              >
+                {/* 🔹 POST HEADER (Avatar + Name) */}
+                <div
+                  onClick={() => navigate("/profile")}
+                  className="flex items-center gap-3 cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                    {postUser?.avatar ? (
+                      <img
+                        src={postUser.avatar}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      getInitials(postUser?.name || "U")
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {postUser?.name || "User"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(post.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 🔹 POST CONTENT */}
+                <PostGalleryWithUpload
+                  postId={post._id}
+                  postOwnerId={post.user?._id || post.user}
+                  token={user?.token}
+                  text={post.text || ""}
+                  initialLikes={post.reactions?.likes || post.likeCount || 0}
+                  initialLoves={post.reactions?.loves || post.loveCount || 0}
+                  createdAt={post.createdAt}
+                  mediaFiles={post.media || []}
+                />
+
+                {/* 🔹 COMMENTS */}
+                <PostComments
+                  postId={post._id}
+                  comments={post.comments || []}
+                  user={user}
+                  onNewComment={(newComment) => {
+                    setPosts((prev) =>
+                      prev.map((p) =>
+                        p._id === post._id
+                          ? {
+                              ...p,
+                              comments: [...(p.comments || []), newComment],
+                            }
+                          : p,
+                      ),
+                    );
+                  }}
+                />
+              </motion.div>
+            );
+          })
         )}
       </motion.section>
 
