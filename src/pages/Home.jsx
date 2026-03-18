@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import { API } from "../features/Api";
 import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
 
 import Carousel from "../component/Carousel";
 import CardGrid from "../component/CardGrid";
@@ -76,7 +77,6 @@ function Home() {
     }
   };
 
-  // Animation variants
   const fadeUp = {
     hidden: { opacity: 0, y: 40 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -87,7 +87,9 @@ function Home() {
   };
 
   return (
-    <div className="min-h-screen px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-white via-gray-100 to-gray-200">
+    <div className="min-h-screen px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+
+      
 
       {/* HEADER */}
       <motion.section
@@ -96,11 +98,17 @@ function Home() {
         variants={fadeUp}
         className="text-center mb-12"
       >
+        {/* AI LOGO */}
+        <div className="flex justify-center items-center gap-2 mb-4">
+          <Sparkles className="text-purple-500" size={28} />
+          <h1 className="text-xl font-semibold text-gray-800">AI Hub</h1>
+        </div>
+
         <div className="flex justify-center gap-4 mb-6 flex-wrap">
           <CoinBalanceCard />
         </div>
 
-        <h1 className="text-4xl font-extrabold bg-gradient-to-r from-gray-800 to-gray-500 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-extrabold bg-gradient-to-r from-gray-900 to-gray-500 bg-clip-text text-transparent">
           Hosted Games 🎮
         </h1>
       </motion.section>
@@ -113,19 +121,20 @@ function Home() {
           variants={fadeUp}
           className="max-w-4xl mx-auto mb-10"
         >
-          <div className="p-6 rounded-2xl bg-white/70 backdrop-blur-lg shadow-lg border border-white/40 space-y-4">
+          <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-xl shadow-lg border border-white/30 space-y-4">
 
             <textarea
               placeholder="Share something with the community..."
               value={newPostText}
               onChange={(e) => setNewPostText(e.target.value)}
-              className="w-full p-4 rounded-xl bg-white/80 border border-gray-200 focus:ring-2 focus:ring-gray-300 outline-none"
+              className="w-full p-4 rounded-xl bg-white/40 border border-white/30 focus:ring-2 focus:ring-white/50 outline-none text-gray-800"
             />
 
             <input
               type="file"
               accept="image/*,video/*"
               onChange={handleFileChange}
+              className="text-gray-700"
             />
 
             <motion.button
@@ -133,7 +142,7 @@ function Home() {
               whileTap={{ scale: 0.95 }}
               onClick={createPost}
               disabled={creatingPost}
-              className="px-6 py-2 rounded-xl text-white bg-gradient-to-r from-gray-700 to-gray-500 shadow-md"
+              className="px-6 py-2 rounded-xl text-white bg-gradient-to-r from-purple-500 to-indigo-500 shadow-md"
             >
               {creatingPost ? "Posting..." : "Create Post"}
             </motion.button>
@@ -148,30 +157,21 @@ function Home() {
         animate="visible"
         className="max-w-5xl mx-auto space-y-6"
       >
-        <h2 className="text-2xl font-bold text-center text-gray-700">
+        <h2 className="text-2xl font-bold text-center text-gray-800">
           Community Posts
         </h2>
 
         {posts.length === 0 ? (
-          <p className="text-center text-gray-400">No posts yet</p>
+          <p className="text-center text-gray-500">No posts yet</p>
         ) : (
           posts.map((post) => (
             <motion.div
               key={post._id}
               variants={fadeUp}
               whileHover={{ scale: 1.02 }}
-              className="bg-white/70 backdrop-blur-lg border border-white/40 shadow-md rounded-xl p-4"
+              className="bg-white/30 backdrop-blur-xl border border-white/30 shadow-md rounded-xl p-4"
             >
-              <PostGalleryWithUpload
-                postId={post._id}
-                postOwnerId={post.user?._id || post.user}
-                token={user?.token}
-                text={post.text || ""}
-                initialLikes={post.reactions?.likes || 0}
-                initialLoves={post.reactions?.loves || 0}
-                createdAt={post.createdAt}
-                mediaFiles={post.media || []}
-              />
+              <PostGalleryWithUpload {...post} />
             </motion.div>
           ))
         )}
@@ -185,16 +185,16 @@ function Home() {
         className="max-w-6xl mx-auto mt-14 space-y-5"
       >
         {games.length === 0 ? (
-          <p className="text-center text-gray-400">No games hosted yet</p>
+          <p className="text-center text-gray-500">No games hosted yet</p>
         ) : (
           games.map((game) => (
             <motion.div
               key={game.id}
               variants={fadeUp}
               whileHover={{ scale: 1.03 }}
-              className="p-5 rounded-2xl bg-white/70 backdrop-blur-lg shadow-md border border-white/40 flex flex-col sm:flex-row justify-between items-center gap-4"
+              className="p-5 rounded-2xl bg-white/30 backdrop-blur-xl shadow-md border border-white/30 flex flex-col sm:flex-row justify-between items-center gap-4"
             >
-              <div className="text-gray-700 space-y-1">
+              <div className="text-gray-800 space-y-1">
                 <p>Host: {game.hostId}</p>
                 <p>Bet: {game.amount}</p>
                 <p>Players: {game.players.length}/{game.maxPlayers}</p>
@@ -228,11 +228,11 @@ function Home() {
         </div>
 
         <div className="text-center py-10 max-w-xl mx-auto">
-          <h1 className="text-3xl font-bold mb-3 text-gray-800">
+          <h1 className="text-3xl font-bold mb-3 text-gray-900">
             What help do you need?
           </h1>
 
-          <p className="text-gray-500 mb-6">
+          <p className="text-gray-600 mb-6">
             Please choose from an option below
           </p>
 
@@ -250,7 +250,7 @@ function Home() {
             <motion.div whileHover={{ scale: 1.05 }}>
               <Link
                 to="/Feedbacks"
-                className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 py-3 rounded-xl shadow-sm"
+                className="flex items-center justify-center gap-2 bg-white/40 border border-white/30 text-gray-800 py-3 rounded-xl shadow-sm backdrop-blur"
               >
                 <FaTicketAlt />
                 View My Feedbacks
@@ -263,7 +263,7 @@ function Home() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="max-w-6xl mx-auto mt-8 bg-white/60 backdrop-blur-lg p-6 rounded-2xl shadow-md"
+          className="max-w-6xl mx-auto mt-8 bg-white/30 backdrop-blur-xl p-6 rounded-2xl shadow-md border border-white/30"
         >
           <CardGrid />
         </motion.div>
