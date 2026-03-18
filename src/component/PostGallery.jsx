@@ -61,33 +61,42 @@ export default function PostGalleryWithUpload({
 
   // ===== Reactions =====
   const handleReaction = async (type) => {
-    try {
-      // Deduct coins internally (hidden)
-      await dispatch(
-        transferCoins({
-          toUserId: postOwnerId,
-          coins: type === "like" ? LIKE_COST : LOVE_COST,
-          description: `${type.toUpperCase()} reaction`,
-        })
-      ).unwrap();
+  if (!postOwnerId) {
+    console.error("Missing postOwnerId");
+    return;
+  }
 
-      // Update counts
-      const res = await API.post(`/post/${postId}/react`, { type });
-      setLikeCount(res.data.likeCount);
-      setLoveCount(res.data.loveCount);
+  // Prevent reacting to your own post
+  if (token?.userId === postOwnerId) return;
 
-      // Animate button & floating emoji
-      if (type === "like") {
-        setAnimateLike(true);
-        setTimeout(() => setAnimateLike(false), 500);
-      } else {
-        setAnimateLove(true);
-        setTimeout(() => setAnimateLove(false), 500);
-      }
-    } catch (err) {
-      console.error("Reaction failed:", err.response?.data || err);
+  try {
+    // 🔹 Transfer coins
+    await dispatch(
+      transferCoins({
+        toUserId: postOwnerId,
+        amount: type === "like" ? LIKE_COST : LOVE_COST, // ✅ fix here
+        description: `${type.toUpperCase()} reaction`,
+      })
+    ).unwrap();
+
+    // 🔹 Update reaction counts
+    const res = await API.post(`/post/${postId}/react`, { type });
+
+    setLikeCount(res.data.likeCount);
+    setLoveCount(res.data.loveCount);
+
+    // 🔹 Optional: animate buttons
+    if (type === "like") {
+      setAnimateLike(true);
+      setTimeout(() => setAnimateLike(false), 500);
+    } else {
+      setAnimateLove(true);
+      setTimeout(() => setAnimateLove(false), 500);
     }
-  };
+  } catch (err) {
+    console.error("Reaction failed:", err.response?.data || err);
+  }
+};
 
   // ===== Media Preview =====
   const nextMedia = () => setPreviewIndex((prev) => (prev + 1) % mediaFiles.length);

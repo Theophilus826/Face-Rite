@@ -119,10 +119,14 @@ export const transferCoins = createAsyncThunk(
     try {
       const res = await API.post(
         "/coins/transfer",
-        { toUserId, coins, description },
+        {
+          toUserId,
+          amount: coins, // ✅ FIXED
+          description,
+        },
         getAuthHeader(thunkAPI),
       );
-      return res.data; // { coins, transaction, recipientTransaction }
+      return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
         err.response?.data?.message || err.message,
