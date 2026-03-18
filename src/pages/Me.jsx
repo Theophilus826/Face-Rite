@@ -1,9 +1,8 @@
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { useState } from "react";
 import { logout, reset } from "../features/AuthSlice";
 import { useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png"; // replace with your logo path
 
 export default function Me() {
   const coins = useSelector((state) => state.coins.value);
@@ -43,7 +42,13 @@ export default function Me() {
 
       {/* Bottom Section - Logo + Logout */}
       <div className="flex flex-col items-center mt-12 space-y-4">
-        <img src={logo} alt="Logo" className="h-16 w-auto" />
+
+        {/* React Icon Logo */}
+        <div className="flex items-center gap-2 text-purple-600">
+          <Sparkles size={28} />
+          <span className="text-lg font-bold">AI Hub</span>
+        </div>
+
         <button
           onClick={handleLogout}
           className="w-full max-w-xs bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-semibold shadow-md transition"
