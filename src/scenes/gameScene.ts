@@ -38,10 +38,24 @@ async function gameScene(
 
   const isMobile = window.innerWidth < 768;
 
-  // ---------------- FORCE LANDSCAPE ----------------
-  if (isMobile && screen.orientation?.lock) {
-    screen.orientation.lock("landscape").catch(() => {});
+  // ---------------- FORCE LANDSCAPE (TS SAFE) ----------------
+  if (isMobile && "orientation" in screen) {
+    const orientation = screen.orientation as any;
+
+    if (orientation?.lock) {
+      orientation.lock("landscape").catch(() => {});
+    }
   }
+
+  // ✅ Fallback: trigger on user interaction (better support)
+  const lockOnInteraction = () => {
+    if ("orientation" in screen) {
+      const orientation = screen.orientation as any;
+      orientation?.lock?.("landscape").catch(() => {});
+    }
+    window.removeEventListener("click", lockOnInteraction);
+  };
+  window.addEventListener("click", lockOnInteraction);
 
   // ---------------- GAME MENU ----------------
   createGameMenu(scene, {
@@ -209,7 +223,6 @@ async function gameScene(
       }
     });
 
-    // WIN
     if (
       scene.enemies.length > 0 &&
       scene.enemies.every(({ enemy }) => enemy.currentHealth <= 0)
@@ -217,7 +230,6 @@ async function gameScene(
       endGame(user._id);
     }
 
-    // LOSE
     if (player.currentHealth <= 0 && !gameEnded) {
       player.controller.stop?.();
       endGame("AI");
@@ -235,6 +247,7 @@ async function gameScene(
   scene.onDisposeObservable.add(() => {
     window.removeEventListener("keydown", keyDownHandler);
     window.removeEventListener("resize", resizeHandler);
+    window.removeEventListener("click", lockOnInteraction); // ✅ cleanup
     scene.onPointerDown = null;
   });
 
