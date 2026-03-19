@@ -3,9 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Game</title>
-
-  <!-- ✅ MOBILE VIEWPORT (VERY IMPORTANT) -->
+  <title>game</title>
   <meta name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 
@@ -14,30 +12,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <!-- ✅ THEME COLOR -->
-  <meta name="theme-color" content="#000000" />
-
-  <!-- ❌ REMOVE CDN (you already use @import tailwindcss in CSS) -->
-  <!-- <script src="https://cdn.tailwindcss.com"></script> -->
-
-  <!-- ✅ ICONS -->
+  <!-- ✅ ADD THIS -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/svg+xml" href="/logo.svg" />
 
-  <!-- ✅ OPTIONAL: PREVENT TEXT SELECTION (GAME FEEL) -->
-  <style>
-    body {
-      -webkit-user-select: none;
-      user-select: none;
-      -webkit-touch-callout: none;
-    }
-  </style>
 </head>
 
 <body>
   <div id="root"></div>
-
-  <!-- ✅ MAIN APP -->
   <script type="module" src="/src/main.jsx"></script>
 </body>
 
