@@ -41,7 +41,7 @@ export default function Me() {
       </div>
 
       {/* Bottom Section - Logo + Logout */}
-      <div className="flex flex-col items-center mt-12 space-y-4">
+      <div className="flex flex-col items-center mt-10 space-y-4">
 
         {/* React Icon Logo */}
         <div className="flex items-center gap-2 text-purple-600">

@@ -7,7 +7,6 @@ async function gameScene(
   game,
   user
 ) {
-
   const [
     { CreateEnvironment },
     { CreatePlayer },
@@ -39,6 +38,11 @@ async function gameScene(
 
   const isMobile = window.innerWidth < 768;
 
+  // ---------------- FORCE LANDSCAPE ----------------
+  if (isMobile && screen.orientation?.lock) {
+    screen.orientation.lock("landscape").catch(() => {});
+  }
+
   // ---------------- GAME MENU ----------------
   createGameMenu(scene, {
     onStart: () => {},
@@ -59,17 +63,13 @@ async function gameScene(
   ground.position.y = 0;
   ground.checkCollisions = true;
 
-  // ---------------- CAMERA (RESPONSIVE) ----------------
-  const cameraDistance = isMobile ? -20 : -15;
-  const cameraHeight = isMobile ? 7 : 5;
-
+  // ---------------- CAMERA ----------------
   const camera = new FreeCamera(
     "camera",
-    new Vector3(0, cameraHeight, cameraDistance),
+    new Vector3(0, isMobile ? 7 : 5, isMobile ? -20 : -15),
     scene
   );
 
-  camera.setTarget(Vector3.Zero());
   camera.attachControl(engine.getRenderingCanvas(), true);
 
   new HemisphericLight("light", new Vector3(0, 1, 0), scene);
@@ -114,6 +114,29 @@ async function gameScene(
     scene.enemies.map(({ enemy }) => enemy)
   );
 
+  // ---------------- CAMERA FOLLOW ----------------
+  const CAMERA_LERP = 0.08;
+
+  scene.onBeforeRenderObservable.add(() => {
+    if (!player?.characterBox || gameEnded || GameState.isPaused()) return;
+
+    const target = player.characterBox.position;
+
+    const desiredPosition = new Vector3(
+      target.x,
+      target.y + (isMobile ? 6 : 5),
+      target.z + (isMobile ? -18 : -14)
+    );
+
+    camera.position = BABYLON.Vector3.Lerp(
+      camera.position,
+      desiredPosition,
+      CAMERA_LERP
+    );
+
+    camera.setTarget(target);
+  });
+
   // ---------------- PLAYER ATTACK CALLBACK ----------------
   player.controller.setAttackHitCallback(() => {
     scene.enemies.forEach(({ enemy }) => {
@@ -132,15 +155,11 @@ async function gameScene(
     });
   });
 
-  // ---------------- KEYBOARD ----------------
+  // ---------------- KEYBOARD (ONLY PAUSE) ----------------
   const keyDownHandler = (e) => {
     if (gameEnded || GameState.isPaused()) return;
 
     const key = e.key.toLowerCase();
-
-    if (key === "j") player.controller.attack(false);
-    if (key === "k") player.controller.attack(true);
-    if (key === "l") player.controller.block();
 
     if (key === "p" || key === "escape") {
       if (!GameState.isPaused()) {
@@ -149,16 +168,9 @@ async function gameScene(
     }
   };
 
-  const keyUpHandler = (e) => {
-    if (e.key.toLowerCase() === "l") {
-      player.controller.unblock();
-    }
-  };
-
   window.addEventListener("keydown", keyDownHandler);
-  window.addEventListener("keyup", keyUpHandler);
 
-  // ---------------- POINTER (TOUCH + MOUSE) ----------------
+  // ---------------- POINTER ----------------
   scene.onPointerDown = (_, pickInfo) => {
     if (gameEnded || GameState.isPaused()) return;
 
@@ -186,8 +198,7 @@ async function gameScene(
       if (
         dist <= 2.5 &&
         enemy.currentHealth > 0 &&
-        player.currentHealth > 0 &&
-        !gameEnded
+        player.currentHealth > 0
       ) {
         const dmg = player.controller.receiveDamage(5, false);
         player.takeDamage?.(dmg);
@@ -213,20 +224,16 @@ async function gameScene(
     }
   });
 
-  // ---------------- RESIZE HANDLING ----------------
-  const resizeHandler = () => {
-    engine.resize();
-  };
-
+  // ---------------- RESIZE ----------------
+  const resizeHandler = () => engine.resize();
   window.addEventListener("resize", resizeHandler);
 
-  // ---------------- FINALIZE ----------------
+  // ---------------- CLEANUP ----------------
   await scene.whenReadyAsync();
   currentScene?.dispose();
 
   scene.onDisposeObservable.add(() => {
     window.removeEventListener("keydown", keyDownHandler);
-    window.removeEventListener("keyup", keyUpHandler);
     window.removeEventListener("resize", resizeHandler);
     scene.onPointerDown = null;
   });

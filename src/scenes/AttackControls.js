@@ -8,24 +8,36 @@ import {
 
 /**
  * Sets up UI buttons + keyboard attacks
- * @param {BABYLON.Scene} scene
- * @param {object} player
- * @param {Array} enemies
  */
 export function setupAttackControls(scene, player, enemies) {
-  const ui = AdvancedDynamicTexture.CreateFullscreenUI("UI");
+  // ✅ Reuse UI (persistent)
+  let ui = scene.__attackUI;
 
-  // Detect mobile
+  if (!ui) {
+    ui = AdvancedDynamicTexture.CreateFullscreenUI("UI", true, scene);
+    scene.__attackUI = ui;
+  }
+
+  // ✅ Prevent duplicate creation
+  if (scene.__attackControlsCreated) return;
+  scene.__attackControlsCreated = true;
+
   const isMobile = window.innerWidth < 768;
 
   // ================= CONTAINER =================
   const container = new StackPanel();
   container.isVertical = false;
-  container.height = isMobile ? "90px" : "70px";
-  container.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+  container.height = isMobile ? "100px" : "70px";
+
+  container.horizontalAlignment = isMobile
+    ? Control.HORIZONTAL_ALIGNMENT_RIGHT
+    : Control.HORIZONTAL_ALIGNMENT_CENTER;
+
   container.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
   container.spacing = isMobile ? 20 : 10;
   container.top = "-10px";
+
+  if (isMobile) container.paddingRight = "20px";
 
   ui.addControl(container);
 
@@ -38,7 +50,7 @@ export function setupAttackControls(scene, player, enemies) {
   container.addControl(heavyBtn);
   container.addControl(blockBtn);
 
-  // ================= HELPER FUNCTIONS =================
+  // ================= HELPERS =================
   function getHitEnemy() {
     return enemies.find(
       (enemy) =>
@@ -88,8 +100,8 @@ export function setupAttackControls(scene, player, enemies) {
     player.controller.unblock();
   });
 
-  // ================= KEYBOARD EVENTS =================
-  window.addEventListener("keydown", (e) => {
+  // ================= KEYBOARD =================
+  const keyDown = (e) => {
     const key = e.key.toLowerCase();
 
     if (key === "l") {
@@ -106,21 +118,30 @@ export function setupAttackControls(scene, player, enemies) {
       player.controller.attack(true);
       applyDamage(20, true);
     }
-  });
+  };
 
-  window.addEventListener("keyup", (e) => {
+  const keyUp = (e) => {
     if (e.key.toLowerCase() === "l") {
       player.controller.unblock();
     }
+  };
+
+  window.addEventListener("keydown", keyDown);
+  window.addEventListener("keyup", keyUp);
+
+  // ✅ Cleanup
+  scene.onDisposeObservable.add(() => {
+    window.removeEventListener("keydown", keyDown);
+    window.removeEventListener("keyup", keyUp);
   });
 }
 
-// ================= RESPONSIVE BUTTON =================
+// ================= BUTTON =================
 function createButton(text, color, isMobile) {
   const btn = new Rectangle();
 
-  btn.width = isMobile ? "120px" : "100px";
-  btn.height = isMobile ? "80px" : "55px";
+  btn.width = isMobile ? "140px" : "100px";
+  btn.height = isMobile ? "90px" : "55px";
   btn.cornerRadius = 10;
   btn.color = color;
   btn.thickness = 2;
