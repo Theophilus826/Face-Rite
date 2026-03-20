@@ -44,7 +44,7 @@ import AdminRoute from "./component/AdminRoute";
 import PostGalleryWithUpload from "./component/PostGallery";
 import Profile from "./component/UserProfile";
 
-// Lazy
+// Lazy load
 const HostGame = lazy(() => import("./component/HostGame"));
 
 /* ---------------- Loader ---------------- */
@@ -64,10 +64,13 @@ function PostGalleryWrapper() {
 
   return (
     <PostGalleryWithUpload
-      postId=""
+      postId="example-post-id"
       postOwnerId={user.id}
       token={user.token}
       createdAt={new Date().toISOString()}
+      user={user}
+      onNewComment={(comment) => console.log("New comment:", comment)}
+      comments={[]}
     />
   );
 }
@@ -90,7 +93,6 @@ function AppContent() {
     dispatch(fetchCoins());
   }, [dispatch]);
 
-  // Hide layout on game screen
   const hideLayout = location.pathname.startsWith("/host-game");
 
   return (
@@ -99,12 +101,11 @@ function AppContent() {
       style={{ backgroundImage: `url(${globle})` }}
     >
       <ToastContainer position="top-right" autoClose={3000} />
-
       {!hideLayout && <Navbar />}
       {!hideLayout && <BottomNav />}
 
       <Routes>
-        {/* Public */}
+        {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -112,10 +113,9 @@ function AppContent() {
         <Route path="/gemes" element={<Gemes />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/postComments" element={<PostComments/>} />
+        <Route path="/postComments" element={<PostComments />} />
 
-        {/* Protected (FIXED) */}
+        {/* Protected Routes */}
         <Route
           path="/deposit"
           element={
@@ -140,7 +140,6 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/me"
           element={
@@ -149,17 +148,16 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/user/:id"
           element={
             <ProtectedRoute>
-              <Profile/>
+              <Profile />
             </ProtectedRoute>
           }
         />
 
-        {/* Game (No Navbar/BottomNav) */}
+        {/* Game Route (No Navbar/BottomNav) */}
         <Route
           path="/host-game"
           element={
