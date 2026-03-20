@@ -45,7 +45,7 @@ function Home() {
     loadPosts();
 
     // Initialize socket connection
-    const socket = io("http://localhost:5000", {
+    const socket = io("https://swordgame-5.onrender.com", {
       auth: { token: user?.token },
       withCredentials: true,
     });
