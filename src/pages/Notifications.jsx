@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { io } from "socket.io-client";
+import { Link } from "react-router-dom";
 
 export default function Notifications() {
   const { token, user } = useSelector((state) => state.auth);
@@ -10,14 +11,13 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
 
+  // Fetch existing notifications from backend
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-
       const { data } = await axios.get("/api/notifications", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       setNotifications(data);
     } catch (err) {
       console.error(err);
@@ -30,18 +30,16 @@ export default function Notifications() {
   useEffect(() => {
     fetchNotifications();
 
-    // 🔌 Socket connection
-    const socket = io("http://localhost:5000", {
-      auth: { token },   // ✅ correct for your socketAuth middleware
+    // Connect to socket server
+    const socket = io("https://swordgame-5.onrender.com", {
+      auth: { token },
       withCredentials: true,
     });
-
     socketRef.current = socket;
 
-    // 🔔 Listen for new notifications
+    // Listen for new notifications
     socket.on("notification", (notif) => {
       setNotifications((prev) => [notif, ...prev]);
-
       toast.info(`🔔 ${notif.message}`);
     });
 
@@ -50,16 +48,14 @@ export default function Notifications() {
     };
   }, [token]);
 
+  // Mark a notification as read
   const handleMarkAsRead = async (id) => {
     try {
       await axios.put(
         `/api/notifications/${id}/read`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
@@ -87,8 +83,18 @@ export default function Notifications() {
               }`}
             >
               <div>
-                <p>{notif.message}</p>
-                <span className="text-xs text-gray-400">
+                {/* Show clickable link if notification has postId */}
+                {notif.postId ? (
+                  <Link
+                    to={`/post/${notif.postId}`}
+                    className="underline text-blue-600 hover:text-blue-800"
+                  >
+                    {notif.message}
+                  </Link>
+                ) : (
+                  <p>{notif.message}</p>
+                )}
+                <span className="text-xs text-gray-400 block">
                   {new Date(notif.createdAt).toLocaleString()}
                 </span>
               </div>

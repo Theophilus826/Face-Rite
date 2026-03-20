@@ -5,7 +5,7 @@ async function gameScene(
   progressCallback,
   dispatch,
   game,
-  user
+  user,
 ) {
   const [
     { CreateEnvironment },
@@ -81,7 +81,7 @@ async function gameScene(
   const camera = new FreeCamera(
     "camera",
     new Vector3(0, isMobile ? 7 : 5, isMobile ? -20 : -15),
-    scene
+    scene,
   );
 
   camera.attachControl(engine.getRenderingCanvas(), true);
@@ -125,7 +125,8 @@ async function gameScene(
   setupAttackControls(
     scene,
     player,
-    scene.enemies.map(({ enemy }) => enemy)
+    scene.enemies.map(({ enemy }) => enemy),
+    camera,
   );
 
   // ---------------- CAMERA FOLLOW ----------------
@@ -136,21 +137,31 @@ async function gameScene(
 
     const target = player.characterBox.position;
 
+    const camState = scene.cameraControl;
+
+    // ✅ Clamp vertical offset (prevents crazy movement)
+    camState.offsetY = Math.max(-3, Math.min(5, camState.offsetY));
+
     const desiredPosition = new Vector3(
       target.x,
-      target.y + (isMobile ? 6 : 5),
-      target.z + (isMobile ? -18 : -14)
+      target.y + (isMobile ? 6 : 5) + camState.offsetY,
+      target.z + (isMobile ? -18 : -14),
     );
 
     camera.position = BABYLON.Vector3.Lerp(
       camera.position,
       desiredPosition,
-      CAMERA_LERP
+      CAMERA_LERP,
     );
+
+    // ✅ Apply rotation offset
+    camera.rotation.y += camState.rotationY;
+
+    // Optional: smooth decay (so it doesn’t spin forever)
+    camState.rotationY *= 0.9;
 
     camera.setTarget(target);
   });
-
   // ---------------- PLAYER ATTACK CALLBACK ----------------
   player.controller.setAttackHitCallback(() => {
     scene.enemies.forEach(({ enemy }) => {
@@ -158,12 +169,11 @@ async function gameScene(
 
       const dist = Vector3.Distance(
         player.characterBox.position,
-        enemy.enemyBox.position
+        enemy.enemyBox.position,
       );
 
       if (dist <= 2.5) {
-        const damage =
-          enemy.characterController.receiveDamage(10, false) ?? 10;
+        const damage = enemy.characterController.receiveDamage(10, false) ?? 10;
         enemy.takeDamage(damage);
       }
     });
@@ -206,14 +216,10 @@ async function gameScene(
 
       const dist = BABYLON.Vector3.Distance(
         enemy.enemyBox.position,
-        player.characterBox.position
+        player.characterBox.position,
       );
 
-      if (
-        dist <= 2.5 &&
-        enemy.currentHealth > 0 &&
-        player.currentHealth > 0
-      ) {
+      if (dist <= 2.5 && enemy.currentHealth > 0 && player.currentHealth > 0) {
         const dmg = player.controller.receiveDamage(5, false);
         player.takeDamage?.(dmg);
       }
@@ -268,7 +274,7 @@ async function gameScene(
         goToMainMenu,
         game,
         user,
-        dispatch
+        dispatch,
       );
     } catch (err) {
       console.error("Game end error:", err);

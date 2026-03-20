@@ -7,11 +7,12 @@ export default function Profile() {
   const user = useSelector((state) => state.auth.user);
   const [posts, setPosts] = useState([]);
 
+  // Fetch posts for the user
   useEffect(() => {
     if (!user) return;
-    API.get(`/user/${user._id}/posts`).then(res => {
-      setPosts(res.data.posts || []);
-    }).catch(err => console.error(err));
+    API.get(`/user/${user._id}/posts`)
+      .then((res) => setPosts(res.data.posts || []))
+      .catch((err) => console.error(err));
   }, [user]);
 
   return (
@@ -23,7 +24,7 @@ export default function Profile() {
       {posts.length === 0 ? (
         <p className="text-center text-gray-500">You have not posted yet</p>
       ) : (
-        posts.map(post => (
+        posts.map((post) => (
           <div key={post._id} className="mb-6">
             <PostGalleryWithUpload
               postId={post._id}

@@ -26,12 +26,11 @@ export default function PostGalleryWithUpload({
   const [animateLike, setAnimateLike] = useState(false);
   const [animateLove, setAnimateLove] = useState(false);
 
-  const swipeStartX = useRef(null);
   const LIKE_COST = 50;
   const LOVE_COST = 100;
   const isOwner = token?.userId === postOwnerId;
 
-  // 🔄 Sync props
+  // Sync props
   useEffect(() => setMediaFiles(initialMediaFiles), [initialMediaFiles]);
   useEffect(() => setPostText(text), [text]);
 
@@ -61,63 +60,65 @@ export default function PostGalleryWithUpload({
 
   // ===== Reactions =====
   const handleReaction = async (type) => {
-  if (!postOwnerId) {
-    console.error("Missing postOwnerId");
-    return;
-  }
+    if (!postOwnerId || token?.userId === postOwnerId) return;
 
-  // Prevent reacting to your own post
-  if (token?.userId === postOwnerId) return;
+    try {
+      await dispatch(
+        transferCoins({
+          toUserId: postOwnerId,
+          coins: type === "like" ? LIKE_COST : LOVE_COST, // ← use coins
+          description: `${type.toUpperCase()} reaction`,
+        }),
+      ).unwrap();
 
-  try {
-    // 🔹 Transfer coins
-    await dispatch(
-      transferCoins({
-        toUserId: postOwnerId,
-        amount: type === "like" ? LIKE_COST : LOVE_COST, // ✅ fix here
-        description: `${type.toUpperCase()} reaction`,
-      })
-    ).unwrap();
+      const res = await API.post(`/post/${postId}/react`, { type });
 
-    // 🔹 Update reaction counts
-    const res = await API.post(`/post/${postId}/react`, { type });
+      setLikeCount(res.data.likeCount);
+      setLoveCount(res.data.loveCount);
 
-    setLikeCount(res.data.likeCount);
-    setLoveCount(res.data.loveCount);
-
-    // 🔹 Optional: animate buttons
-    if (type === "like") {
-      setAnimateLike(true);
-      setTimeout(() => setAnimateLike(false), 500);
-    } else {
-      setAnimateLove(true);
-      setTimeout(() => setAnimateLove(false), 500);
+      if (type === "like") {
+        setAnimateLike(true);
+        setTimeout(() => setAnimateLike(false), 500);
+      } else {
+        setAnimateLove(true);
+        setTimeout(() => setAnimateLove(false), 500);
+      }
+    } catch (err) {
+      console.error("Reaction failed:", err.response?.data || err);
     }
-  } catch (err) {
-    console.error("Reaction failed:", err.response?.data || err);
-  }
-};
+  };
 
   // ===== Media Preview =====
-  const nextMedia = () => setPreviewIndex((prev) => (prev + 1) % mediaFiles.length);
-  const prevMedia = () => setPreviewIndex((prev) => (prev - 1 + mediaFiles.length) % mediaFiles.length);
+  const nextMedia = () =>
+    setPreviewIndex((prev) => (prev + 1) % mediaFiles.length);
+  const prevMedia = () =>
+    setPreviewIndex(
+      (prev) => (prev - 1 + mediaFiles.length) % mediaFiles.length,
+    );
 
   // ===== Format Date =====
   const formatDate = (dateString) => new Date(dateString).toLocaleString();
 
   return (
     <div className="mb-6 p-5 rounded-2xl bg-white/30 backdrop-blur-xl border border-white/30 shadow-lg text-gray-900">
-
       {/* Timestamp */}
-      {createdAt && <p className="text-gray-600 text-sm mb-2">{formatDate(createdAt)}</p>}
+      {createdAt && (
+        <p className="text-gray-600 text-sm mb-2">{formatDate(createdAt)}</p>
+      )}
 
       {/* Post text */}
-      {postText && <p className="mb-3 whitespace-pre-wrap text-gray-800">{postText}</p>}
+      {postText && (
+        <p className="mb-3 whitespace-pre-wrap text-gray-800">{postText}</p>
+      )}
 
       {/* File Upload (owner only) */}
       {token && isOwner && (
         <div className="mb-3 flex gap-2">
-          <input type="file" onChange={handleFileChange} className="text-gray-700" />
+          <input
+            type="file"
+            onChange={handleFileChange}
+            className="text-gray-700"
+          />
           <button
             onClick={handleUpload}
             disabled={uploading}
@@ -139,13 +140,24 @@ export default function PostGalleryWithUpload({
             >
               {media.type === "video" ? (
                 <video
-                  src={media.url?.startsWith("http") ? media.url : `https://swordgame-5.onrender.com${media.url}`}
+                  src={
+                    media.url?.startsWith("http")
+                      ? media.url
+                      : `https://swordgame-5.onrender.com${media.url}`
+                  }
                   className="w-full h-auto max-h-[500px] object-cover rounded-xl"
                   controls
+                  autoPlay
+                  muted
+                  loop
                 />
               ) : (
                 <img
-                  src={media.url?.startsWith("http") ? media.url : `https://swordgame-5.onrender.com${media.url}`}
+                  src={
+                    media.url?.startsWith("http")
+                      ? media.url
+                      : `https://swordgame-5.onrender.com${media.url}`
+                  }
                   alt="post"
                   loading="lazy"
                   className="w-full h-auto max-h-[500px] object-cover rounded-xl"
@@ -164,14 +176,24 @@ export default function PostGalleryWithUpload({
         >
           {mediaFiles[previewIndex].type === "video" ? (
             <video
-              src={mediaFiles[previewIndex].url?.startsWith("http") ? mediaFiles[previewIndex].url : `https://swordgame-5.onrender.com${mediaFiles[previewIndex].url}`}
+              src={
+                mediaFiles[previewIndex].url?.startsWith("http")
+                  ? mediaFiles[previewIndex].url
+                  : `https://swordgame-5.onrender.com${mediaFiles[previewIndex].url}`
+              }
               controls
               autoPlay
+              muted
+              loop
               className="max-h-full max-w-full"
             />
           ) : (
             <img
-              src={mediaFiles[previewIndex].url?.startsWith("http") ? mediaFiles[previewIndex].url : `https://swordgame-5.onrender.com${mediaFiles[previewIndex].url}`}
+              src={
+                mediaFiles[previewIndex].url?.startsWith("http")
+                  ? mediaFiles[previewIndex].url
+                  : `https://swordgame-5.onrender.com${mediaFiles[previewIndex].url}`
+              }
               className="max-h-full max-w-full"
             />
           )}
@@ -180,13 +202,12 @@ export default function PostGalleryWithUpload({
 
       {/* Reactions */}
       <div className="flex items-center gap-6 mt-5">
-
-        {/* LIKE */}
         <div className="relative">
           <button
             onClick={() => handleReaction("like")}
-            className={`px-4 py-2 rounded-xl text-white bg-blue-500 transition-all duration-300
-            ${animateLike ? "scale-125 shadow-lg" : "scale-100"}`}
+            className={`px-4 py-2 rounded-xl text-white bg-blue-500 transition-all duration-300 ${
+              animateLike ? "scale-125 shadow-lg" : "scale-100"
+            }`}
           >
             👍 {likeCount}
           </button>
@@ -197,12 +218,12 @@ export default function PostGalleryWithUpload({
           )}
         </div>
 
-        {/* LOVE */}
         <div className="relative">
           <button
             onClick={() => handleReaction("love")}
-            className={`px-4 py-2 rounded-xl text-white bg-pink-500 transition-all duration-300
-            ${animateLove ? "scale-125 shadow-lg" : "scale-100"}`}
+            className={`px-4 py-2 rounded-xl text-white bg-pink-500 transition-all duration-300 ${
+              animateLove ? "scale-125 shadow-lg" : "scale-100"
+            }`}
           >
             ❤️ {loveCount}
           </button>
@@ -212,7 +233,6 @@ export default function PostGalleryWithUpload({
             </span>
           )}
         </div>
-
       </div>
     </div>
   );
