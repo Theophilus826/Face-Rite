@@ -86,7 +86,7 @@ function Home() {
         const uploadRes = await API.post(
           `/post/${finalPost._id}/media`,
           formData,
-          { headers: { "Content-Type": "multipart/form-data" } },
+          { headers: { "Content-Type": "multipart/form-data" } }
         );
 
         finalPost = uploadRes.data.post;
@@ -104,11 +104,7 @@ function Home() {
   };
 
   const getInitials = (name) =>
-    name
-      ?.split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
+    name?.split(" ").map((n) => n[0]).join("").toUpperCase();
 
   const fadeUp = {
     hidden: { opacity: 0, y: 40 },
@@ -120,12 +116,7 @@ function Home() {
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8">
       {/* HEADER */}
-      <motion.section
-        initial="hidden"
-        animate="visible"
-        variants={fadeUp}
-        className="text-center mb-12"
-      >
+      <motion.section initial="hidden" animate="visible" variants={fadeUp} className="text-center mb-12">
         <div className="flex justify-center items-center gap-2 mb-4">
           <Sparkles className="text-purple-500" />
           <h1 className="text-xl font-semibold">AI Hub</h1>
@@ -150,94 +141,75 @@ function Home() {
       )}
 
       {/* POSTS */}
-      <motion.section
-        variants={stagger}
-        initial="hidden"
-        animate="visible"
-        className="max-w-5xl mx-auto space-y-6"
-      >
+      <motion.section variants={stagger} initial="hidden" animate="visible" className="max-w-5xl mx-auto space-y-6">
         {posts.map((post) => {
           const postUser = post.user || {};
           const isExpanded = expandedPosts[post._id];
           const allComments = post.comments || [];
-          const visibleComments = isExpanded
-            ? allComments
-            : allComments.slice(0, 1);
+          const visibleComments = isExpanded ? allComments : allComments.slice(0, 1);
 
           return (
-            <motion.section
-              variants={stagger}
-              initial="hidden"
-              animate="visible"
-              className="max-w-5xl mx-auto space-y-6"
-            >
-              {posts.map((post) => {
-                const postUser = post.user || {};
-                const isExpanded = expandedPosts[post._id];
-                const allComments = post.comments || [];
-                const visibleComments = isExpanded
-                  ? allComments
-                  : allComments.slice(0, 1);
+            <motion.div key={post._id} variants={fadeUp} className="p-4 border rounded-xl space-y-4">
+              {/* HEADER */}
+              <div onClick={() => navigate("/profile")} className="flex gap-3 cursor-pointer">
+                <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white">
+                  {postUser?.avatar ? (
+                    <img src={postUser.avatar} className="w-full h-full object-cover" />
+                  ) : (
+                    getInitials(postUser?.name || "U")
+                  )}
+                </div>
+                <div>
+                  <p>{postUser?.name}</p>
+                  <p className="text-xs">{new Date(post.createdAt).toLocaleString()}</p>
+                </div>
+              </div>
 
-                return (
-                  <motion.div
-                    key={post._id}
-                    variants={fadeUp}
-                    className="p-4 border rounded-xl space-y-4"
-                  >
-                    {/* HEADER */}
-                    <div
-                      onClick={() => navigate("/profile")}
-                      className="flex gap-3 cursor-pointer"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white">
-                        {postUser?.avatar ? (
-                          <img
-                            src={postUser.avatar}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          getInitials(postUser?.name || "U")
-                        )}
-                      </div>
-                      <div>
-                        <p>{postUser?.name}</p>
-                        <p className="text-xs">
-                          {new Date(post.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
+              <PostGalleryWithUpload
+                postId={post._id}
+                text={post.text}
+                mediaFiles={post.media || []}
+              />
 
-                    <PostGalleryWithUpload
-                      postId={post._id}
-                      text={post.text}
-                      mediaFiles={post.media || []}
-                    />
+              {/* COMMENTS */}
+              <div className="space-y-2">
+                {allComments.length > 1 && !isExpanded && (
+                  <button onClick={() => toggleComments(post._id)}>
+                    View more comments ({allComments.length})
+                  </button>
+                )}
 
-                    {/* COMMENTS */}
-                    <div className="space-y-2">
-                      {allComments.length > 1 && !isExpanded && (
-                        <button onClick={() => toggleComments(post._id)}>
-                          View more comments ({allComments.length})
-                        </button>
-                      )}
+                <PostComments
+                  postId={post._id}
+                  comments={visibleComments}
+                  user={user}
+                  onNewComment={async (newComment) => {
+                    setPosts((prev) =>
+                      prev.map((p) =>
+                        p._id === post._id
+                          ? {
+                              ...p,
+                              comments: [...(p.comments || []), newComment],
+                            }
+                          : p
+                      )
+                    );
 
-                      <PostComments
-                        postId={post._id}
-                        comments={visibleComments}
-                        user={user}
-                      />
+                    // auto expand
+                    setExpandedPosts((prev) => ({
+                      ...prev,
+                      [post._id]: true,
+                    }));
+                  }}
+                />
 
-                      {allComments.length > 1 && isExpanded && (
-                        <button onClick={() => toggleComments(post._id)}>
-                          Hide comments
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </motion.section>
+                {allComments.length > 1 && isExpanded && (
+                  <button onClick={() => toggleComments(post._id)}>
+                    Hide comments
+                  </button>
+                )}
+              </div>
+            </motion.div>
           );
         })}
       </motion.section>
