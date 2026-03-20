@@ -109,7 +109,7 @@ function Home() {
       await dispatch(
         transferCoins({
           toUserId: postOwnerId,
-          amount,
+          coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type.toUpperCase()} reaction`,
         }),
       ).unwrap();
