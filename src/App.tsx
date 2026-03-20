@@ -154,7 +154,7 @@ function AppContent() {
           path="/user/:id"
           element={
             <ProtectedRoute>
-              <UserProfile />
+              <Profile/>
             </ProtectedRoute>
           }
         />
