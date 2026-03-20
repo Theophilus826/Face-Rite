@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useEffect, lazy, Suspense } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { ToastContainer } from "react-toastify";
@@ -53,7 +53,7 @@ function PostGalleryWrapper() {
       createdAt={new Date().toISOString()}
       user={user}
       comments={[]}
-      onNewComment={(comment) => console.log("New comment:", comment)}
+     
     />
   );
 }
