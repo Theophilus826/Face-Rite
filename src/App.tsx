@@ -6,6 +6,7 @@ import {
   Route,
   Navigate,
   useLocation,
+  useParams,
 } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -32,8 +33,8 @@ import Notifications from "./pages/Notifications";
 import DepositPanel from "./pages/DepositPanel";
 import Withdraw from "./pages/Withdraw";
 import Gemes from "./pages/Gemes";
-import PostComments from "./pages/PostComments";
-
+// import PostComments from "./pages/PostComments";
+ import PostComments, { type CommentType } from "./pages/PostComments";
 // Components
 import Navbar from "./component/Navbar";
 import CardGrid from "./component/CardGrid";
@@ -56,7 +57,7 @@ function GameLoader() {
   );
 }
 
-/* ---------------- Post Wrapper ---------------- */
+/* ---------------- Post Gallery Wrapper ---------------- */
 function PostGalleryWrapper() {
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -70,7 +71,27 @@ function PostGalleryWrapper() {
       createdAt={new Date().toISOString()}
       user={user}
       comments={[]}
-     
+    />
+  );
+}
+
+/* ---------------- Post Comments Wrapper ---------------- */
+function PostCommentsWrapper() {
+  const user = useSelector((state: RootState) => state.auth.user);
+  const { id } = useParams(); // ✅ dynamic postId
+
+  if (!user?.token) return <Navigate to="/login" replace />;
+
+  const handleNewComment = (comment: CommentType) => {
+    console.log("New comment:", comment);
+  };
+
+  return (
+    <PostComments
+      postId={id || "fallback-id"}
+      user={user}
+      comments={[]}
+      onNewComment={handleNewComment}
     />
   );
 }
@@ -93,7 +114,6 @@ function AppContent() {
     dispatch(fetchCoins());
   }, [dispatch]);
 
-  // Hide layout on game screen
   const hideLayout = location.pathname.startsWith("/host-game");
 
   return (
@@ -116,9 +136,18 @@ function AppContent() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/postComments" element={<PostComments/>} />
 
-        {/* Protected (FIXED) */}
+        {/* Comments (FIXED) */}
+        <Route
+          path="/postComments/:id"
+          element={
+            <ProtectedRoute>
+              <PostCommentsWrapper />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected */}
         <Route
           path="/deposit"
           element={
@@ -143,7 +172,6 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/me"
           element={
@@ -152,17 +180,16 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/user/:id"
           element={
             <ProtectedRoute>
-              <Profile/>
+              <Profile />
             </ProtectedRoute>
           }
         />
 
-        {/* Game (No Navbar/BottomNav) */}
+        {/* Game */}
         <Route
           path="/host-game"
           element={
