@@ -154,7 +154,7 @@ function Navbar() {
                         {/* View All */}
                         <li
                           className="p-2 text-center text-blue-500 cursor-pointer hover:bg-gray-100"
-                          onClick={() => navigate("/notification")}
+                          onClick={() => navigate("/notifications")}
                         >
                           View All
                         </li>
