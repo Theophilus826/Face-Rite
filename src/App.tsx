@@ -1,36 +1,53 @@
-// src/App.tsx
 import { useEffect, lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import globle from "/globle.png";
-
 import type { AppDispatch, RootState } from "./app/store";
 
-// Redux actions
+// Redux
 import { fetchCoins } from "./features/coins/CoinSlice";
-
-// Components
-import Navbar from "./component/Navbar";
-import BottomNav from "./component/BottomNav";
-import ProtectedRoute from "./component/ProtectedRoute";
-import AdminRoute from "./component/AdminRoute";
-import AdminLayout from "./component/AdminLayout";
-import PostGalleryWithUpload from "./component/PostGallery";
 
 // Pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Notifications from "./pages/Notifications";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import FeedbackPages from "./pages/FeedbackPages";
+import FeedbackDetail from "./pages/Feedback";
+import NewFeedback from "./pages/NewFeedback";
 import Me from "./pages/Me";
 import CoinHistory from "./pages/CoinHistory";
+import AdminMonitor from "./pages/AdminMonitor";
+import AdminCreditCoins from "./pages/AdminCreditCoins";
+import Notifications from "./pages/Notifications";
+import DepositPanel from "./pages/DepositPanel";
+import Withdraw from "./pages/Withdraw";
+import Gemes from "./pages/Gemes";
+import PostComments from "./pages/PostComments";
 
-// Lazy load
+// Components
+import Navbar from "./component/Navbar";
+import CardGrid from "./component/CardGrid";
+import ProtectedRoute from "./component/ProtectedRoute";
+import BottomNav from "./component/BottomNav";
+import AdminLayout from "./component/AdminLayout";
+import AdminRoute from "./component/AdminRoute";
+import PostGalleryWithUpload from "./component/PostGallery";
+import Profile from "./component/UserProfile";
+
+// Lazy
 const HostGame = lazy(() => import("./component/HostGame"));
 
-// Loader for lazy routes
+/* ---------------- Loader ---------------- */
 function GameLoader() {
   return (
     <div className="h-screen flex items-center justify-center text-white text-xl animate-pulse">
@@ -39,7 +56,7 @@ function GameLoader() {
   );
 }
 
-// Wrapper for protected PostGallery
+/* ---------------- Post Wrapper ---------------- */
 function PostGalleryWrapper() {
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -58,7 +75,7 @@ function PostGalleryWrapper() {
   );
 }
 
-// Main App wrapper
+/* ---------------- App Wrapper ---------------- */
 export default function App() {
   return (
     <BrowserRouter>
@@ -67,7 +84,7 @@ export default function App() {
   );
 }
 
-// App content
+/* ---------------- Main App ---------------- */
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
@@ -76,6 +93,7 @@ function AppContent() {
     dispatch(fetchCoins());
   }, [dispatch]);
 
+  // Hide layout on game screen
   const hideLayout = location.pathname.startsWith("/host-game");
 
   return (
@@ -84,30 +102,36 @@ function AppContent() {
       style={{ backgroundImage: `url(${globle})` }}
     >
       <ToastContainer position="top-right" autoClose={3000} />
+
       {!hideLayout && <Navbar />}
       {!hideLayout && <BottomNav />}
 
       <Routes>
-        {/* Public Routes */}
+        {/* Public */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/notifications" element={<Notifications />} />
-        
-        {/* Protected Routes */}
+        <Route path="/gemes" element={<Gemes />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/postComments" element={<PostComments/>} />
+
+        {/* Protected (FIXED) */}
         <Route
-          path="/me"
+          path="/deposit"
           element={
             <ProtectedRoute>
-              <Me />
+              <DepositPanel />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/coin-history"
+          path="/withdraw"
           element={
             <ProtectedRoute>
-              <CoinHistory />
+              <Withdraw />
             </ProtectedRoute>
           }
         />
@@ -120,7 +144,25 @@ function AppContent() {
           }
         />
 
-        {/* Game Route (no Navbar/BottomNav) */}
+        <Route
+          path="/me"
+          element={
+            <ProtectedRoute>
+              <Me />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/user/:id"
+          element={
+            <ProtectedRoute>
+              <Profile/>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Game (No Navbar/BottomNav) */}
         <Route
           path="/host-game"
           element={
@@ -132,13 +174,46 @@ function AppContent() {
           }
         />
 
-        {/* Admin Routes */}
+        {/* Feedback */}
+        <Route
+          path="/feedbacks"
+          element={
+            <ProtectedRoute>
+              <FeedbackPages />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/newfeedback"
+          element={
+            <ProtectedRoute>
+              <NewFeedback />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/feedback/:id"
+          element={
+            <ProtectedRoute>
+              <FeedbackDetail />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin */}
         <Route path="/admin" element={<AdminRoute />}>
           <Route element={<AdminLayout />}>
             <Route index element={<Navigate to="monitor" replace />} />
-            {/* Add admin pages here */}
+            <Route path="monitor" element={<AdminMonitor />} />
+            <Route path="credit-coins" element={<AdminCreditCoins />} />
+            <Route path="host-game" element={<HostGame />} />
+            <Route path="feedbacks" element={<FeedbackPages />} />
           </Route>
         </Route>
+
+        {/* Optional */}
+        <Route path="/cards" element={<CardGrid />} />
+        <Route path="/coin-history" element={<CoinHistory />} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />

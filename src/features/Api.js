@@ -64,10 +64,16 @@ API.interceptors.response.use(
 
 // ===============================
 // Post Helpers
-// ===============================
+// =============================
 export const uploadMedia = async (file) => {
+  if (!file) throw new Error("No file provided");
+
   const formData = new FormData();
   formData.append("file", file);
+
+  // Determine file type for backend (optional, if backend infers type automatically)
+  const fileType = file.type.startsWith("image") ? "image" : "video";
+  formData.append("type", fileType); // send type explicitly
 
   const res = await API.post("/post/upload", formData, {
     headers: {
@@ -78,16 +84,21 @@ export const uploadMedia = async (file) => {
   return res.data;
 };
 
+// React to a post
 export const reactToPost = async (postId, type) => {
-  const res = await API.post(`/post/react/${postId}`, { type });
+  if (!["like", "love"].includes(type))
+    throw new Error("Invalid reaction type");
+
+  // Backend expects POST /post/:id/react
+  const res = await API.post(`/post/${postId}/react`, { type });
   return res.data;
 };
 
+// Fetch all posts
 export const fetchPosts = async () => {
   const res = await API.get("/post");
-  return res.data.posts;
+  return res.data.posts || [];
 };
-
 // ===============================
 // Deposit / Wallet Helpers
 // ===============================
