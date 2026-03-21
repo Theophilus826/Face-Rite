@@ -15,7 +15,8 @@ const getStoredUser = () => {
 // Axios Instance
 // ===============================
 export const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://swordgame-5.onrender.com/api",
+  baseURL:
+    import.meta.env.VITE_API_URL || "https://swordgame-5.onrender.com/api",
   withCredentials: true,
 });
 
@@ -36,7 +37,7 @@ API.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // ===============================
@@ -59,7 +60,7 @@ API.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 // ===============================
@@ -71,9 +72,19 @@ export const uploadMedia = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  // Determine file type for backend (optional, if backend infers type automatically)
-  const fileType = file.type.startsWith("image") ? "image" : "video";
-  formData.append("type", fileType); // send type explicitly
+  // Determine file type explicitly for backend
+  const fileType = file.type.startsWith("image")
+    ? "image"
+    : file.type.startsWith("video")
+      ? "video"
+      : null;
+
+  if (!fileType)
+    throw new Error(
+      "Unsupported file type. Only images and videos are allowed",
+    );
+
+  formData.append("type", fileType); // ✅ send type explicitly
 
   const res = await API.post("/post/upload", formData, {
     headers: {

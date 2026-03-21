@@ -4,7 +4,7 @@ import {
   FaShareAlt,
   FaBell,
 } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Welcome from "../pages/Welcome";
 import Share from "./Share";
@@ -12,6 +12,7 @@ import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
 function Navbar() {
+  const navigate = useNavigate();
   const { user, token } = useSelector((state) => state.auth);
 
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -125,28 +126,40 @@ function Navbar() {
                     </button>
 
                     {/* Dropdown */}
-                    {isNotifOpen && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white rounded shadow-lg z-50">
-                        <ul>
-                          {notifications.map((n) => (
+                    <div
+                      className={`absolute right-0 mt-2 w-64 bg-white rounded shadow-lg z-50 transition-transform duration-200 origin-top-right ${
+                        isNotifOpen ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0"
+                      } transform`}
+                      style={{ transformOrigin: "top" }}
+                    >
+                      <ul>
+                        {notifications.length > 0 ? (
+                          notifications.map((n) => (
                             <li
                               key={n.id}
-                              className={`p-2 text-sm border-b ${
+                              className={`p-2 text-sm border-b cursor-pointer ${
                                 n.read ? "bg-gray-100" : "bg-gray-50 font-medium"
-                              }`}
+                              } hover:bg-gray-200`}
                               onClick={() => markAsRead(n.id)}
                             >
                               {n.message}
                             </li>
-                          ))}
-                          {notifications.length === 0 && (
-                            <li className="p-2 text-sm text-gray-500">
-                              No notifications
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
+                          ))
+                        ) : (
+                          <li className="p-2 text-sm text-gray-500">
+                            No notifications
+                          </li>
+                        )}
+
+                        {/* View All */}
+                        <li
+                          className="p-2 text-center text-blue-500 cursor-pointer hover:bg-gray-100"
+                          onClick={() => navigate("/notification")}
+                        >
+                          View All
+                        </li>
+                      </ul>
+                    </div>
                   </div>
 
                   {/* Share */}
