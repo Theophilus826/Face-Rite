@@ -45,7 +45,7 @@ export default function PostGalleryWithUpload({
           setLoveCount(p.loveCount || 0);
         }
       } catch (err) {
-        // console.error("Polling fetch failed:", err.response?.data || err);
+        console.error("Polling fetch failed:", err.response?.data || err);
       }
     }, 5000);
 
