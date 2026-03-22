@@ -122,6 +122,12 @@ async function gameScene(
   updateProgress();
 
   // ---------------- UI CONTROLS ----------------
+  if (!scene.cameraControl) {
+  scene.cameraControl = {
+    rotationY: 0,
+    offsetY: 0,
+  };
+}
   setupAttackControls(
     scene,
     player,
