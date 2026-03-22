@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { transferCoins } from "../features/coins/CoinSlice";
 import { API } from "../features/Api";
@@ -9,7 +9,6 @@ export default function PostGalleryWithUpload({
   token,
   user,
   comments = [],
-  onNewComment = () => {},
   text = "",
   initialLikes = 0,
   initialLoves = 0,
@@ -21,7 +20,7 @@ export default function PostGalleryWithUpload({
   // ===== States =====
   const [mediaFiles, setMediaFiles] = useState(initialMediaFiles);
   const [postText, setPostText] = useState(text);
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [loveCount, setLoveCount] = useState(initialLoves);
@@ -31,28 +30,61 @@ export default function PostGalleryWithUpload({
 
   const LIKE_COST = 50;
   const LOVE_COST = 100;
-  const isOwner = user?.id === postOwnerId;
+  const isOwner = user?._id === postOwnerId || user?.id === postOwnerId;
 
-  // Sync props
-  useEffect(() => setMediaFiles(initialMediaFiles), [initialMediaFiles]);
-  useEffect(() => setPostText(text), [text]);
+  // ===== Polling to auto-refresh post every 5 seconds =====
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await API.get(`/post/${postId}`);
+        if (res.data?.post) {
+          const p = res.data.post;
+          setMediaFiles(p.media || []);
+          setPostText(p.text || "");
+          setLikeCount(p.likeCount || 0);
+          setLoveCount(p.loveCount || 0);
+        }
+      } catch (err) {
+        console.error("Polling fetch failed:", err.response?.data || err);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [postId]);
 
   // ===== File Upload =====
-  const handleFileChange = (e) => setFile(e.target.files[0]);
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    const allowed = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+    ];
+    const filtered = selectedFiles.filter((f) => allowed.includes(f.type));
+    if (filtered.length !== selectedFiles.length)
+      alert("Some files were skipped due to invalid type");
+    setFiles(filtered);
+  };
 
   const handleUpload = async () => {
-    if (!file) return alert("Select a file first!");
+    if (files.length === 0) return alert("Select files first!");
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach((file) => formData.append("file", file));
 
     try {
       setUploading(true);
+      // Cloudinary upload endpoint (backend handles it)
       const res = await API.post(`/post/${postId}/media`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
       if (res.data.post?.media) setMediaFiles(res.data.post.media);
       if (res.data.post?.text) setPostText(res.data.post.text);
-      setFile(null);
+      setFiles([]);
     } catch (err) {
       console.error("Upload failed:", err.response?.data || err);
       alert(err.response?.data?.message || "Upload failed");
@@ -69,13 +101,12 @@ export default function PostGalleryWithUpload({
       await dispatch(
         transferCoins({
           toUserId: postOwnerId,
-          coins: type === "like" ? LIKE_COST : LOVE_COST, // ← use coins
+          coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type.toUpperCase()} reaction`,
-        }),
+        })
       ).unwrap();
 
       const res = await API.post(`/post/${postId}/react`, { type });
-
       setLikeCount(res.data.likeCount);
       setLoveCount(res.data.loveCount);
 
@@ -95,36 +126,32 @@ export default function PostGalleryWithUpload({
   const nextMedia = () =>
     setPreviewIndex((prev) => (prev + 1) % mediaFiles.length);
   const prevMedia = () =>
-    setPreviewIndex(
-      (prev) => (prev - 1 + mediaFiles.length) % mediaFiles.length,
-    );
+    setPreviewIndex((prev) => (prev - 1 + mediaFiles.length) % mediaFiles.length);
 
-  // ===== Format Date =====
   const formatDate = (dateString) => new Date(dateString).toLocaleString();
 
   return (
     <div className="mb-6 p-5 rounded-2xl bg-white/30 backdrop-blur-xl border border-white/30 shadow-lg text-gray-900">
-      {/* Timestamp */}
       {createdAt && (
         <p className="text-gray-600 text-sm mb-2">{formatDate(createdAt)}</p>
       )}
 
-      {/* Post text */}
       {postText && (
         <p className="mb-3 whitespace-pre-wrap text-gray-800">{postText}</p>
       )}
 
-      {/* File Upload (owner only) */}
+      {/* Upload Section */}
       {token && isOwner && (
         <div className="mb-3 flex gap-2">
           <input
             type="file"
+            multiple
             onChange={handleFileChange}
             className="text-gray-700"
           />
           <button
             onClick={handleUpload}
-            disabled={uploading}
+            disabled={uploading || files.length === 0}
             className="px-3 py-1 rounded-lg bg-green-500 text-white"
           >
             {uploading ? "Uploading..." : "Upload"}
@@ -143,25 +170,18 @@ export default function PostGalleryWithUpload({
             >
               {media.type === "video" ? (
                 <video
-                  src={
-                    media.url?.startsWith("http")
-                      ? media.url
-                      : `https://swordgame-5.onrender.com${media.url}`
-                  }
+                  src={media.url}
                   className="w-full h-auto max-h-[500px] object-cover rounded-xl"
                   controls
                   autoPlay
                   muted
                   loop
+                  preload="metadata"
                 />
               ) : (
                 <img
-                  src={
-                    media.url?.startsWith("http")
-                      ? media.url
-                      : `https://swordgame-5.onrender.com${media.url}`
-                  }
-                  alt="post"
+                  src={media.url}
+                  alt={postText || "Post media"}
                   loading="lazy"
                   className="w-full h-auto max-h-[500px] object-cover rounded-xl"
                 />
@@ -175,15 +195,13 @@ export default function PostGalleryWithUpload({
       {previewIndex !== null && (
         <div
           className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
-          onClick={() => setPreviewIndex(null)}
+          onClick={(e) =>
+            e.target === e.currentTarget && setPreviewIndex(null)
+          }
         >
           {mediaFiles[previewIndex].type === "video" ? (
             <video
-              src={
-                mediaFiles[previewIndex].url?.startsWith("http")
-                  ? mediaFiles[previewIndex].url
-                  : `https://swordgame-5.onrender.com${mediaFiles[previewIndex].url}`
-              }
+              src={mediaFiles[previewIndex].url}
               controls
               autoPlay
               muted
@@ -192,12 +210,9 @@ export default function PostGalleryWithUpload({
             />
           ) : (
             <img
-              src={
-                mediaFiles[previewIndex].url?.startsWith("http")
-                  ? mediaFiles[previewIndex].url
-                  : `https://swordgame-5.onrender.com${mediaFiles[previewIndex].url}`
-              }
+              src={mediaFiles[previewIndex].url}
               className="max-h-full max-w-full"
+              alt={postText || "Post media"}
             />
           )}
         </div>

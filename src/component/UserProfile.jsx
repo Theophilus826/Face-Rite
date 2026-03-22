@@ -92,8 +92,8 @@ export default function Profile() {
               postOwnerId={post.user?._id || post.user}
               token={user?.token}
               text={post.text || ""}
-              initialLikes={post.reactions?.likes || 0}
-              initialLoves={post.reactions?.loves || 0}
+              initialLikes={post.likeCount || 0}
+              initialLoves={post.loveCount || 0}
               createdAt={post.createdAt}
               mediaFiles={post.media || []}
               // Allow picking an image from post

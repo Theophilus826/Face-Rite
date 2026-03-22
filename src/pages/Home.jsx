@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { FaQuestionCircle, FaTicketAlt } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { API } from "../features/Api";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
@@ -12,7 +12,6 @@ import CoinBalanceCard from "../component/CoinBalanceCard";
 import PostGalleryWithUpload from "../component/PostGallery";
 import { transferCoins } from "../features/coins/CoinSlice";
 import { toast } from "react-toastify";
-import { io } from "socket.io-client";
 
 function Home() {
   const navigate = useNavigate();
@@ -25,12 +24,10 @@ function Home() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [creatingPost, setCreatingPost] = useState(false);
 
-  const socketRef = useRef(null);
-
   const LIKE_COST = 50;
   const LOVE_COST = 100;
 
-  // Load posts
+  // ===== Polling for posts =====
   const loadPosts = async () => {
     try {
       const res = await API.get("/post");
@@ -43,29 +40,17 @@ function Home() {
 
   useEffect(() => {
     loadPosts();
+    const interval = setInterval(loadPosts, 5000); // refresh every 5s
+    return () => clearInterval(interval);
+  }, []);
 
-    // Initialize socket connection
-    const socket = io("https://swordgame-5.onrender.com", {
-      auth: { token: user?.token },
-      withCredentials: true,
-    });
-    socketRef.current = socket;
-
-    // Listen for comment notifications
-    socket.on("new-comment", (notif) => {
-      toast.info(`🔔 ${notif.message}`);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [user?.token]);
-
+  // ===== File Selection =====
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) setSelectedFile(file);
   };
 
+  // ===== Create Post =====
   const createPost = async () => {
     if (!newPostText.trim() && !selectedFile)
       return toast.error("Write something or select a file first");
@@ -81,9 +66,7 @@ function Home() {
         const uploadRes = await API.post(
           `/post/${finalPost._id}/media`,
           formData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          },
+          { headers: { "Content-Type": "multipart/form-data" } }
         );
         finalPost = uploadRes.data.post;
       }
@@ -100,41 +83,7 @@ function Home() {
     }
   };
 
-  const handleReaction = async (postId, postOwnerId, type) => {
-    if (!user || !postOwnerId || user._id === postOwnerId) return;
-
-    const amount = type === "like" ? LIKE_COST : LOVE_COST;
-
-    try {
-      await dispatch(
-        transferCoins({
-          toUserId: postOwnerId,
-          coins: type === "like" ? LIKE_COST : LOVE_COST,
-          description: `${type.toUpperCase()} reaction`,
-        }),
-      ).unwrap();
-
-      const res = await API.post(`/post/${postId}/react`, { type });
-
-      setPosts((prev) =>
-        prev.map((p) =>
-          p._id === postId
-            ? {
-                ...p,
-                reactions: {
-                  likes: res.data.likeCount,
-                  loves: res.data.loveCount,
-                },
-              }
-            : p,
-        ),
-      );
-    } catch (err) {
-      console.error("Reaction failed", err.response?.data || err);
-      toast.error(err.response?.data?.message || "Failed to react");
-    }
-  };
-
+  // ===== Utility: get initials =====
   const getInitials = (name) =>
     name
       ?.split(" ")
@@ -142,21 +91,13 @@ function Home() {
       .join("")
       .toUpperCase();
 
-  const fadeUp = {
-    hidden: { opacity: 0, y: 40 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-  };
+  const fadeUp = { hidden: { opacity: 0, y: 40 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
   const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
 
   return (
     <div className="min-h-screen px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* HEADER */}
-      <motion.section
-        initial="hidden"
-        animate="visible"
-        variants={fadeUp}
-        className="text-center mb-12"
-      >
+      <motion.section initial="hidden" animate="visible" variants={fadeUp} className="text-center mb-12">
         <div className="flex justify-center items-center gap-2 mb-4">
           <Sparkles className="text-purple-500" size={28} />
           <h1 className="text-xl font-semibold text-gray-800">AI Hub</h1>
@@ -171,12 +112,7 @@ function Home() {
 
       {/* CREATE POST */}
       {user && (
-        <motion.section
-          initial="hidden"
-          animate="visible"
-          variants={fadeUp}
-          className="max-w-4xl mx-auto mb-10"
-        >
+        <motion.section initial="hidden" animate="visible" variants={fadeUp} className="max-w-4xl mx-auto mb-10">
           <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-xl shadow-lg border border-white/30 space-y-4">
             <div className="flex gap-4 items-start">
               <div
@@ -184,11 +120,7 @@ function Home() {
                 className="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white font-bold cursor-pointer overflow-hidden"
               >
                 {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt="avatar"
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
                 ) : (
                   getInitials(user?.name)
                 )}
@@ -201,12 +133,7 @@ function Home() {
               />
             </div>
             <div className="flex flex-col sm:flex-row justify-between gap-4 items-center">
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleFileChange}
-                className="text-gray-700"
-              />
+              <input type="file" accept="image/*,video/*" onChange={handleFileChange} className="text-gray-700" />
               <motion.button
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.95 }}
@@ -222,15 +149,8 @@ function Home() {
       )}
 
       {/* POSTS */}
-      <motion.section
-        variants={stagger}
-        initial="hidden"
-        animate="visible"
-        className="max-w-5xl mx-auto space-y-6"
-      >
-        <h2 className="text-2xl font-bold text-center text-gray-800">
-          Community Posts
-        </h2>
+      <motion.section variants={stagger} initial="hidden" animate="visible" className="max-w-5xl mx-auto space-y-6">
+        <h2 className="text-2xl font-bold text-center text-gray-800">Community Posts</h2>
         {posts.length === 0 ? (
           <p className="text-center text-gray-500">No posts yet</p>
         ) : (
@@ -244,28 +164,17 @@ function Home() {
                 className="bg-white/30 backdrop-blur-xl border border-white/30 shadow-md rounded-xl p-4 space-y-4"
               >
                 {/* POST HEADER */}
-                <div
-                  onClick={() => navigate("/profile")}
-                  className="flex items-center gap-3 cursor-pointer"
-                >
+                <div onClick={() => navigate("/profile")} className="flex items-center gap-3 cursor-pointer">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
                     {postUser?.avatar ? (
-                      <img
-                        src={postUser.avatar}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={postUser.avatar} alt="" className="w-full h-full object-cover" />
                     ) : (
                       getInitials(postUser?.name || "U")
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">
-                      {postUser?.name || "User"}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(post.createdAt).toLocaleString()}
-                    </p>
+                    <p className="text-sm font-semibold text-gray-800">{postUser?.name || "User"}</p>
+                    <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -275,70 +184,22 @@ function Home() {
                   postOwnerId={post.user?._id || post.user}
                   token={user?.token}
                   text={post.text || ""}
-                  initialLikes={post.reactions?.likes || post.likeCount || 0}
-                  initialLoves={post.reactions?.loves || post.loveCount || 0}
+                  initialLikes={post.likeCount || 0}
+                  initialLoves={post.loveCount || 0}
                   createdAt={post.createdAt}
                   mediaFiles={post.media || []}
                 />
 
-                {/* COMMENTS & REPLIES WITH REAL-TIME NOTIFICATIONS */}
-                <PostComments
-                  postId={post._id}
-                  comments={post.comments || []}
-                  user={user}
-                  renderComment={(comment, idx) => {
-                    const [expanded, setExpanded] = useState(false);
-
-                    const hasManyReplies = (comment.replies || []).length > 1;
-                    const displayedReplies = expanded
-                      ? comment.replies
-                      : comment.replies?.slice(0, 1) || [];
-
-                    return (
-                      <div key={comment._id} className="space-y-2">
-                        <div className="p-2 bg-white/20 rounded-md">
-                          <p className="text-gray-800">{comment.text}</p>
-                        </div>
-
-                        {displayedReplies.map((reply) => (
-                          <div
-                            key={reply._id}
-                            className="ml-6 p-2 bg-white/10 rounded-md"
-                          >
-                            <p className="text-gray-700">{reply.text}</p>
-                          </div>
-                        ))}
-
-                        {hasManyReplies && (
-                          <button
-                            onClick={() => setExpanded(!expanded)}
-                            className="ml-6 text-sm text-blue-500 hover:underline"
-                          >
-                            {expanded
-                              ? "Show less"
-                              : `Show all ${comment.replies.length} replies`}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  }}
-                  onNewComment={async (newComment) => {
-                    // same as your existing logic
-                  }}
-                />
+                {/* COMMENTS */}
+                <PostComments postId={post._id} comments={post.comments || []} user={user} />
               </motion.div>
             );
           })
         )}
       </motion.section>
 
-      {/* GAMES & SUPPORT sections remain the same */}
-      <motion.section
-        variants={stagger}
-        initial="hidden"
-        animate="visible"
-        className="max-w-6xl mx-auto mt-14 space-y-5"
-      >
+      {/* GAMES */}
+      <motion.section variants={stagger} initial="hidden" animate="visible" className="max-w-6xl mx-auto mt-14 space-y-5">
         {games.length === 0 ? (
           <p className="text-center text-gray-500">No games hosted yet</p>
         ) : (
@@ -373,22 +234,13 @@ function Home() {
       </motion.section>
 
       {/* SUPPORT */}
-      <motion.section
-        initial="hidden"
-        animate="visible"
-        variants={fadeUp}
-        className="mt-16"
-      >
+      <motion.section initial="hidden" animate="visible" variants={fadeUp} className="mt-16">
         <div className="rounded-2xl overflow-hidden shadow-lg">
           <Carousel />
         </div>
         <div className="text-center py-10 max-w-xl mx-auto">
-          <h1 className="text-3xl font-bold mb-3 text-gray-900">
-            What help do you need?
-          </h1>
-          <p className="text-gray-600 mb-6">
-            Please choose from an option below
-          </p>
+          <h1 className="text-3xl font-bold mb-3 text-gray-900">What help do you need?</h1>
+          <p className="text-gray-600 mb-6">Please choose from an option below</p>
 
           <div className="space-y-4">
             <motion.div whileHover={{ scale: 1.05 }}>

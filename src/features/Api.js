@@ -66,27 +66,23 @@ API.interceptors.response.use(
 // ===============================
 // Post Helpers
 // =============================
-export const uploadMedia = async (file) => {
+export const uploadMedia = async (postId, file) => {
   if (!file) throw new Error("No file provided");
 
   const formData = new FormData();
   formData.append("file", file);
 
-  // Determine file type explicitly for backend
   const fileType = file.type.startsWith("image")
     ? "image"
     : file.type.startsWith("video")
-      ? "video"
-      : null;
+    ? "video"
+    : null;
 
-  if (!fileType)
-    throw new Error(
-      "Unsupported file type. Only images and videos are allowed",
-    );
+  if (!fileType) throw new Error("Unsupported file type");
 
-  formData.append("type", fileType); // ✅ send type explicitly
+  formData.append("type", fileType);
 
-  const res = await API.post("/post/upload", formData, {
+  const res = await API.post(`/post/${postId}/media`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
