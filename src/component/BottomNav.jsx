@@ -8,7 +8,7 @@ export default function BottomNav() {
   const inactive = "text-gray-400";
 
   return (
-    <div className="fixed bottom-0 left-0 w-full bg-transparent border-t border-gray-700/40 z-50 backdrop-blur-md">
+    <div className="fixed bottom-0 left-0 w-full bg-gradient-to-r from-blue-500 via-teal-400 to-blue-500/80 border-t border-gray-700/40 z-50 backdrop-blur-md rounded-t-xl">
       <div className="flex justify-around py-3">
         <NavLink
           to="/"

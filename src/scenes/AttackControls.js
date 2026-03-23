@@ -107,19 +107,19 @@ export function setupAttackControls(scene, player, enemies, camera) {
    // ================= ARROW CONTROLS (MOBILE ONLY) =================
 if (isMobile && camera) {
   const arrowContainer = new StackPanel();
-  arrowContainer.width = "160px";
-  arrowContainer.height = "160px";
+  arrowContainer.width = "180px";
+  arrowContainer.height = "180px";
   arrowContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
   arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
   arrowContainer.paddingLeft = "20px";
-  arrowContainer.paddingBottom = "80px";
+  arrowContainer.paddingBottom = "100px";
   arrowContainer.zIndex = 1000;
   ui.addControl(arrowContainer);
 
   const createArrow = (text) => {
   const btn = new Rectangle();
-  btn.width = "60px";
-  btn.height = "60px";
+  btn.width = "80px";
+  btn.height = "80px";
 
   // ✅ Transparent circular look
   btn.background = "rgba(255,255,255,0.08)";

@@ -18,9 +18,7 @@ function Navbar() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // =======================
-  // SOCKET FOR NOTIFICATIONS
-  // =======================
+  // SOCKET
   useEffect(() => {
     if (!token || !user) return;
 
@@ -50,9 +48,7 @@ function Navbar() {
     };
   }, [token, user]);
 
-  // =======================
   // CLOSE DROPDOWN ON OUTSIDE CLICK
-  // =======================
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
@@ -71,7 +67,7 @@ function Navbar() {
 
   return (
     <>
-      <nav className="bg-transparent border-b border-gray-700/40 sticky top-0 z-50 backdrop-blur-md">
+      <nav className="bg-gradient-to-r from-blue-500 via-teal-400 to-blue-500/30 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md shadow-sm shadow-black/20">
         <div className="mx-auto max-w-screen-sm md:max-w-7xl px-3">
           <div className="flex h-14 md:h-16 items-center justify-between">
             {/* Left */}

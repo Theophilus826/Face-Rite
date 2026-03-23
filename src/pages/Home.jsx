@@ -74,10 +74,7 @@ function Home() {
         const formData = new FormData();
         formData.append("file", selectedFile);
 
-        const uploadRes = await API.post(
-          `/post/${post._id}/media`,
-          formData
-        );
+        const uploadRes = await API.post(`/post/${post._id}/media`, formData);
 
         post = uploadRes.data.post;
       }
@@ -114,12 +111,18 @@ function Home() {
 
   return (
     <div className="min-h-screen px-4 relative overflow-hidden">
-      
       {/* HEADER */}
-      <motion.section initial="hidden" animate="visible" variants={fadeUp} className="text-center mb-12">
+      <motion.section
+        initial="hidden"
+        animate="visible"
+        variants={fadeUp}
+        className="text-center mb-12"
+      >
         <div className="flex justify-center gap-2 mb-4">
           <Sparkles className="text-purple-500" />
-          <h1 className="text-xl font-semibold">AI LIVETIME VALUE</h1>
+          <h1 className="text-2xl md:text-4xl font-extrabold bg-gradient-to-r from-blue-400 via-teal-300 to-blue-500 text-transparent bg-clip-text drop-shadow-lg">
+            AI LIFETIME VALUE
+          </h1>
         </div>
 
         <CoinBalanceCard />
@@ -131,14 +134,16 @@ function Home() {
       {user && (
         <motion.section className="max-w-4xl mx-auto mb-10">
           <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-xl space-y-4">
-
             <div className="flex gap-4">
               <div
                 onClick={() => navigate("/profile")}
                 className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white cursor-pointer"
               >
                 {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full rounded-full" />
+                  <img
+                    src={user.avatar}
+                    className="w-full h-full rounded-full"
+                  />
                 ) : (
                   getInitials(user?.name)
                 )}
@@ -177,12 +182,14 @@ function Home() {
 
           return (
             <motion.div key={post._id} className="p-4 bg-white/30 rounded-xl">
-
               {/* HEADER */}
               <div className="flex gap-3 items-center">
                 <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white">
                   {postUser?.avatar ? (
-                    <img src={postUser.avatar} className="w-full h-full rounded-full" />
+                    <img
+                      src={postUser.avatar}
+                      className="w-full h-full rounded-full"
+                    />
                   ) : (
                     getInitials(postUser?.name || "U")
                   )}
