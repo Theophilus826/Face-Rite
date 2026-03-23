@@ -43,13 +43,11 @@ export default function Profile() {
       formData.append("type", "image");
 
       const result = await API.post("/post/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      const url = result.media.url;
-
-      await API.put(`/user/${user._id}/avatar`, { avatar: url });
-      setProfileImage(url);
+  headers: { "Content-Type": "multipart/form-data" },
+});
+const url = result.data.media.url;
+await API.put(`/user/${user._id}/avatar`, { avatar: url });
+setProfileImage(url);
     } catch (err) {
       console.error("Profile image upload failed:", err);
     } finally {

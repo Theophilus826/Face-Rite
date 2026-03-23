@@ -1,9 +1,4 @@
-import {
-  FaSignInAlt,
-  FaUser,
-  FaShareAlt,
-  FaBell,
-} from "react-icons/fa";
+import { FaSignInAlt, FaUser, FaShareAlt, FaBell } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Welcome from "../pages/Welcome";
@@ -29,7 +24,7 @@ function Navbar() {
   useEffect(() => {
     if (!token || !user) return;
 
-    const socket = io("http://localhost:5000", {
+    const socket = io("https://swordgame-5.onrender.com", {
       path: "/socket.io",
       withCredentials: true,
       auth: { token },
@@ -65,19 +60,18 @@ function Navbar() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const markAsRead = (id) => {
     setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
+      notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
     );
   };
 
   return (
     <>
-      <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
+      <nav className="bg-transparent border-b border-gray-700/40 sticky top-0 z-50 backdrop-blur-md">
         <div className="mx-auto max-w-screen-sm md:max-w-7xl px-3">
           <div className="flex h-14 md:h-16 items-center justify-between">
             {/* Left */}
@@ -128,7 +122,9 @@ function Navbar() {
                     {/* Dropdown */}
                     <div
                       className={`absolute right-0 mt-2 w-64 bg-white rounded shadow-lg z-50 transition-transform duration-200 origin-top-right ${
-                        isNotifOpen ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0"
+                        isNotifOpen
+                          ? "scale-y-100 opacity-100"
+                          : "scale-y-0 opacity-0"
                       } transform`}
                       style={{ transformOrigin: "top" }}
                     >
@@ -138,7 +134,9 @@ function Navbar() {
                             <li
                               key={n.id}
                               className={`p-2 text-sm border-b cursor-pointer ${
-                                n.read ? "bg-gray-100" : "bg-gray-50 font-medium"
+                                n.read
+                                  ? "bg-gray-100"
+                                  : "bg-gray-50 font-medium"
                               } hover:bg-gray-200`}
                               onClick={() => markAsRead(n.id)}
                             >

@@ -104,8 +104,7 @@ export function setupAttackControls(scene, player, enemies, camera) {
     player.controller.unblock();
   });
 
-  // ================= ARROW CONTROLS (MOBILE ONLY) =================
-  // ================= ARROW CONTROLS (MOBILE ONLY) =================
+   // ================= ARROW CONTROLS (MOBILE ONLY) =================
 if (isMobile && camera) {
   const arrowContainer = new StackPanel();
   arrowContainer.width = "160px";
@@ -113,29 +112,32 @@ if (isMobile && camera) {
   arrowContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
   arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
   arrowContainer.paddingLeft = "20px";
-  arrowContainer.paddingBottom = "40px";
+  arrowContainer.paddingBottom = "80px";
   arrowContainer.zIndex = 1000;
   ui.addControl(arrowContainer);
 
   const createArrow = (text) => {
-    const btn = new Rectangle();
-    btn.width = "50px";
-    btn.height = "50px";
-    btn.background = "rgba(0,0,0,0.6)";
-    btn.color = "white";
-    btn.thickness = 2;
-    btn.cornerRadius = 8;
+  const btn = new Rectangle();
+  btn.width = "60px";
+  btn.height = "60px";
 
-    const label = new TextBlock();
-    label.text = text;
-    label.color = "white";
-    label.fontSize = 26;
-    label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
-    label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+  // ✅ Transparent circular look
+  btn.background = "rgba(255,255,255,0.08)";
+  btn.color = "white";
+  btn.thickness = 2;
+  btn.cornerRadius = 30; // makes it a circle
 
-    btn.addControl(label);
-    return btn;
-  };
+  const label = new TextBlock();
+  label.text = text;
+  label.color = "white";
+  label.fontSize = 28;
+
+  label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+  label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+
+  btn.addControl(label);
+  return btn;
+};
 
   const up = createArrow("↑");
   const down = createArrow("↓");

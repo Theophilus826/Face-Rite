@@ -25,14 +25,20 @@ export default function PostGalleryWithUpload({
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [loveCount, setLoveCount] = useState(initialLoves);
   const [previewIndex, setPreviewIndex] = useState(null);
+
   const [animateLike, setAnimateLike] = useState(false);
   const [animateLove, setAnimateLove] = useState(false);
 
+  // ✅ Independent reactions
+  const [liked, setLiked] = useState(false);
+  const [loved, setLoved] = useState(false);
+
   const LIKE_COST = 50;
   const LOVE_COST = 100;
+
   const isOwner = user?._id === postOwnerId || user?.id === postOwnerId;
 
-  // ===== Polling to auto-refresh post every 5 seconds =====
+  // ===== Polling =====
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -43,51 +49,39 @@ export default function PostGalleryWithUpload({
           setPostText(p.text || "");
           setLikeCount(p.likeCount || 0);
           setLoveCount(p.loveCount || 0);
+
+          if (p.userReactions) {
+            setLiked(p.userReactions.includes("like"));
+            setLoved(p.userReactions.includes("love"));
+          }
         }
       } catch (err) {
-        console.error("Polling fetch failed:", err.response?.data || err);
+        console.error("Polling failed:", err);
       }
     }, 5000);
 
     return () => clearInterval(interval);
   }, [postId]);
 
-  // ===== File Upload =====
+  // ===== Upload =====
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
-    const allowed = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-      "video/mp4",
-      "video/webm",
-      "video/quicktime",
-    ];
-    const filtered = selectedFiles.filter((f) => allowed.includes(f.type));
-    if (filtered.length !== selectedFiles.length)
-      alert("Some files were skipped due to invalid type");
-    setFiles(filtered);
+    setFiles(selectedFiles);
   };
 
   const handleUpload = async () => {
-    if (files.length === 0) return alert("Select files first!");
+    if (!files.length) return;
+
     const formData = new FormData();
     files.forEach((file) => formData.append("file", file));
 
     try {
       setUploading(true);
-      // Cloudinary upload endpoint (backend handles it)
-      const res = await API.post(`/post/${postId}/media`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      if (res.data.post?.media) setMediaFiles(res.data.post.media);
-      if (res.data.post?.text) setPostText(res.data.post.text);
+      const res = await API.post(`/post/${postId}/media`, formData);
+      setMediaFiles(res.data.post.media || []);
       setFiles([]);
     } catch (err) {
-      console.error("Upload failed:", err.response?.data || err);
-      alert(err.response?.data?.message || "Upload failed");
+      console.error(err);
     } finally {
       setUploading(false);
     }
@@ -97,160 +91,129 @@ export default function PostGalleryWithUpload({
   const handleReaction = async (type) => {
     if (!postOwnerId || token?.userId === postOwnerId) return;
 
+    // Prevent duplicate
+    if (type === "like" && liked) return;
+    if (type === "love" && loved) return;
+
     try {
       await dispatch(
         transferCoins({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
-          description: `${type.toUpperCase()} reaction`,
+          description: `${type} reaction`,
         })
       ).unwrap();
 
       const res = await API.post(`/post/${postId}/react`, { type });
+
       setLikeCount(res.data.likeCount);
       setLoveCount(res.data.loveCount);
 
       if (type === "like") {
+        setLiked(true);
         setAnimateLike(true);
-        setTimeout(() => setAnimateLike(false), 500);
-      } else {
+        setTimeout(() => setAnimateLike(false), 700);
+      }
+
+      if (type === "love") {
+        setLoved(true);
         setAnimateLove(true);
-        setTimeout(() => setAnimateLove(false), 500);
+        setTimeout(() => setAnimateLove(false), 700);
       }
     } catch (err) {
-      console.error("Reaction failed:", err.response?.data || err);
+      console.error(err);
     }
   };
 
-  // ===== Media Preview =====
-  const nextMedia = () =>
-    setPreviewIndex((prev) => (prev + 1) % mediaFiles.length);
-  const prevMedia = () =>
-    setPreviewIndex((prev) => (prev - 1 + mediaFiles.length) % mediaFiles.length);
-
-  const formatDate = (dateString) => new Date(dateString).toLocaleString();
+  const formatDate = (d) => new Date(d).toLocaleString();
 
   return (
-    <div className="mb-6 p-5 rounded-2xl bg-white/30 backdrop-blur-xl border border-white/30 shadow-lg text-gray-900">
+    <div className="mb-6 p-5 rounded-2xl bg-white/30 backdrop-blur-xl shadow-lg">
+
       {createdAt && (
-        <p className="text-gray-600 text-sm mb-2">{formatDate(createdAt)}</p>
+        <p className="text-sm text-gray-600">{formatDate(createdAt)}</p>
       )}
 
-      {postText && (
-        <p className="mb-3 whitespace-pre-wrap text-gray-800">{postText}</p>
-      )}
+      {postText && <p className="my-3">{postText}</p>}
 
-      {/* Upload Section */}
+      {/* Upload */}
       {token && isOwner && (
-        <div className="mb-3 flex gap-2">
-          <input
-            type="file"
-            multiple
-            onChange={handleFileChange}
-            className="text-gray-700"
-          />
+        <div className="flex gap-2 mb-3">
+          <input type="file" multiple onChange={handleFileChange} />
           <button
             onClick={handleUpload}
-            disabled={uploading || files.length === 0}
-            className="px-3 py-1 rounded-lg bg-green-500 text-white"
+            disabled={uploading}
+            className="bg-green-500 text-white px-3 py-1 rounded"
           >
             {uploading ? "Uploading..." : "Upload"}
           </button>
         </div>
       )}
 
-      {/* Media Gallery */}
-      {mediaFiles.length > 0 && (
-        <div className="space-y-3">
-          {mediaFiles.map((media, i) => (
-            <div
-              key={i}
-              className="w-full overflow-hidden rounded-xl cursor-pointer"
-              onClick={() => setPreviewIndex(i)}
-            >
-              {media.type === "video" ? (
-                <video
-                  src={media.url}
-                  className="w-full h-auto max-h-[500px] object-cover rounded-xl"
-                  controls
-                  autoPlay
-                  muted
-                  loop
-                  preload="metadata"
-                />
-              ) : (
-                <img
-                  src={media.url}
-                  alt={postText || "Post media"}
-                  loading="lazy"
-                  className="w-full h-auto max-h-[500px] object-cover rounded-xl"
-                />
-              )}
-            </div>
-          ))}
+      {/* Media */}
+      {mediaFiles.map((m, i) => (
+        <div key={i} onClick={() => setPreviewIndex(i)}>
+          {m.type === "video" ? (
+            <video src={m.url} className="rounded-xl w-full" controls />
+          ) : (
+            <img src={m.url} className="rounded-xl w-full" alt="" />
+          )}
         </div>
-      )}
+      ))}
 
-      {/* Fullscreen Preview */}
+      {/* Preview */}
       {previewIndex !== null && (
         <div
-          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
-          onClick={(e) =>
-            e.target === e.currentTarget && setPreviewIndex(null)
-          }
+          className="fixed inset-0 bg-black/90 flex justify-center items-center"
+          onClick={() => setPreviewIndex(null)}
         >
-          {mediaFiles[previewIndex].type === "video" ? (
-            <video
-              src={mediaFiles[previewIndex].url}
-              controls
-              autoPlay
-              muted
-              loop
-              className="max-h-full max-w-full"
-            />
-          ) : (
-            <img
-              src={mediaFiles[previewIndex].url}
-              className="max-h-full max-w-full"
-              alt={postText || "Post media"}
-            />
-          )}
+          <img
+            src={mediaFiles[previewIndex].url}
+            className="max-h-full max-w-full"
+            alt=""
+          />
         </div>
       )}
 
       {/* Reactions */}
-      <div className="flex items-center gap-6 mt-5">
+      <div className="flex gap-6 mt-5">
+
+        {/* LIKE */}
         <div className="relative">
           <button
             onClick={() => handleReaction("like")}
-            className={`px-4 py-2 rounded-xl text-white bg-blue-500 transition-all duration-300 ${
-              animateLike ? "scale-125 shadow-lg" : "scale-100"
-            }`}
+            className={`px-4 py-2 rounded-xl text-white transition-all duration-300 ${
+              liked ? "bg-blue-700" : "bg-blue-500"
+            } ${animateLike ? "scale-125 shadow-2xl" : ""}`}
           >
             👍 {likeCount}
           </button>
+
           {animateLike && (
-            <span className="absolute left-1/2 -translate-x-1/2 -top-6 text-xl animate-bounce">
+            <span className="absolute left-1/2 -translate-x-1/2 -top-6 text-2xl animate-float">
               👍
             </span>
           )}
         </div>
 
+        {/* LOVE */}
         <div className="relative">
           <button
             onClick={() => handleReaction("love")}
-            className={`px-4 py-2 rounded-xl text-white bg-pink-500 transition-all duration-300 ${
-              animateLove ? "scale-125 shadow-lg" : "scale-100"
-            }`}
+            className={`px-4 py-2 rounded-xl text-white transition-all duration-300 ${
+              loved ? "bg-pink-700" : "bg-pink-500"
+            } ${animateLove ? "scale-125 shadow-2xl" : ""}`}
           >
             ❤️ {loveCount}
           </button>
+
           {animateLove && (
-            <span className="absolute left-1/2 -translate-x-1/2 -top-6 text-xl animate-bounce">
+            <span className="absolute left-1/2 -translate-x-1/2 -top-6 text-2xl animate-float">
               ❤️
             </span>
           )}
         </div>
+
       </div>
     </div>
   );
