@@ -36,8 +36,7 @@ export default function PostGalleryWithUpload({
   const LIKE_COST = 50;
   const LOVE_COST = 100;
 
-  const isOwner = user?._id === postOwnerId || user?.id === postOwnerId;
-
+  const isOwner = String(user?._id) === String(postOwnerId);
   // ===== Polling =====
   useEffect(() => {
     const interval = setInterval(async () => {

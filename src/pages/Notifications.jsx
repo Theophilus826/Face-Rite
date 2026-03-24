@@ -9,41 +9,43 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch notifications from backend
+  // Backend API base URL from .env or default
+  const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
+
+  // Fetch notifications
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get("/api/notifications", {
+      const { data } = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications(data);
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to load notifications");
+      if (err.response && err.response.status === 404) {
+        toast.info("No notifications found on the server");
+        setNotifications([]);
+      } else {
+        console.error(err);
+        toast.error("Failed to load notifications");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
+    if (token) fetchNotifications();
   }, [token]);
 
   // Mark notification as read
   const handleMarkAsRead = async (id) => {
     try {
-      await axios.put(
-        `/api/notifications/${id}/read`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await axios.put(`${API_BASE}/api/notifications/${id}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       setNotifications((prev) =>
-        prev.map((n) =>
-          n._id === id ? { ...n, read: true } : n
-        )
+        prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
     } catch (err) {
       console.error(err);
@@ -69,9 +71,7 @@ export default function Notifications() {
             <div
               key={notif._id}
               className={`p-4 rounded border flex justify-between items-center ${
-                notif.read
-                  ? "bg-gray-100 text-gray-700"
-                  : "bg-white font-bold"
+                notif.read ? "bg-gray-100 text-gray-700" : "bg-white font-bold"
               }`}
             >
               <div>
@@ -85,7 +85,6 @@ export default function Notifications() {
                 ) : (
                   <p>{notif.message}</p>
                 )}
-
                 <span className="text-xs text-gray-400 block">
                   {new Date(notif.createdAt).toLocaleString()}
                 </span>
@@ -93,9 +92,7 @@ export default function Notifications() {
 
               {!notif.read && (
                 <button
-                  onClick={() =>
-                    handleMarkAsRead(notif._id)
-                  }
+                  onClick={() => handleMarkAsRead(notif._id)}
                   className="ml-4 bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 text-sm"
                 >
                   Mark as read

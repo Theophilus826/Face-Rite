@@ -193,7 +193,7 @@ function Home() {
               {/* CONTENT */}
               <PostGalleryWithUpload
                 postId={post._id}
-                postOwnerId={post.user?._id || post.user}
+                postOwnerId={post.user?._id || post.user?._id?.toString()}
                 token={user?.token}
                 user={user}
                 text={post.text}
