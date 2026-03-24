@@ -15,7 +15,7 @@ import type { AppDispatch, RootState } from "./app/store";
 
 // Redux
 import { fetchCoins } from "./features/coins/CoinSlice";
-
+import useAutoLogout from "./features/UseAutoLogout";
 // Pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -110,6 +110,8 @@ function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
 
+  // ✅ Auto logout hook
+  useAutoLogout();
   useEffect(() => {
     dispatch(fetchCoins());
   }, [dispatch]);

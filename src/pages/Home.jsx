@@ -15,7 +15,6 @@ import { io } from "socket.io-client";
 
 function Home() {
   const navigate = useNavigate();
-  const games = useSelector((state) => state.games.games);
   const user = useSelector((state) => state.auth.user);
 
   const [posts, setPosts] = useState([]);
@@ -31,7 +30,6 @@ function Home() {
       const res = await API.get("/post");
       setPosts(res.data.posts || []);
     } catch (err) {
-      console.error(err);
       toast.error("Failed to load posts");
     }
   };
@@ -75,7 +73,6 @@ function Home() {
         formData.append("file", selectedFile);
 
         const uploadRes = await API.post(`/post/${post._id}/media`, formData);
-
         post = uploadRes.data.post;
       }
 
@@ -84,8 +81,7 @@ function Home() {
       setSelectedFile(null);
 
       toast.success("Post created!");
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Post failed");
     } finally {
       setCreatingPost(false);
@@ -100,102 +96,93 @@ function Home() {
       .join("")
       .toUpperCase();
 
-  const fadeUp = {
-    hidden: { opacity: 0, y: 40 },
-    visible: { opacity: 1, y: 0 },
-  };
-
-  const stagger = {
-    visible: { transition: { staggerChildren: 0.1 } },
-  };
-
   return (
-    <div className="min-h-screen px-4 relative overflow-hidden">
+    <div className="min-h-screen px-3 sm:px-4 md:px-6 lg:px-8 max-w-7xl mx-auto overflow-x-hidden">
+      
       {/* HEADER */}
-      <motion.section
-        initial="hidden"
-        animate="visible"
-        variants={fadeUp}
-        className="text-center mb-12"
-      >
-        <div className="flex justify-center gap-2 mb-4">
-          <Sparkles className="text-purple-500" />
-          <h1 className="text-2xl md:text-4xl font-extrabold bg-gradient-to-r from-blue-400 via-teal-300 to-blue-500 text-transparent bg-clip-text drop-shadow-lg">
+      <motion.section className="text-center mb-8 sm:mb-12">
+        <div className="flex justify-center items-center gap-2 mb-3 sm:mb-4">
+          <Sparkles className="text-purple-500 w-5 h-5 sm:w-6 sm:h-6" />
+          <h1 className="text-xl sm:text-2xl md:text-4xl font-extrabold bg-gradient-to-r from-blue-400 via-teal-300 to-blue-500 text-transparent bg-clip-text">
             AI LIFETIME VALUE
           </h1>
         </div>
 
         <CoinBalanceCard />
 
-        <h1 className="text-4xl font-bold">Hosted Games 🎮</h1>
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-4">
+          Hosted Games 🎮
+        </h2>
       </motion.section>
 
       {/* CREATE POST */}
       {user && (
-        <motion.section className="max-w-4xl mx-auto mb-10">
-          <div className="p-6 rounded-2xl bg-white/30 backdrop-blur-xl space-y-4">
-            <div className="flex gap-4">
+        <section className="max-w-3xl md:max-w-4xl mx-auto mb-8 sm:mb-10">
+          <div className="p-4 sm:p-6 rounded-2xl bg-white/30 backdrop-blur-xl space-y-4">
+
+            {/* TOP */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              
+              {/* Avatar */}
               <div
                 onClick={() => navigate("/profile")}
-                className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white cursor-pointer"
+                className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full bg-purple-500 flex items-center justify-center text-white cursor-pointer overflow-hidden"
               >
                 {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    className="w-full h-full rounded-full"
-                  />
+                  <img src={user.avatar} className="w-full h-full object-cover" />
                 ) : (
                   getInitials(user?.name)
                 )}
               </div>
 
+              {/* Input */}
               <textarea
                 value={newPostText}
                 onChange={(e) => setNewPostText(e.target.value)}
                 placeholder="Share something..."
-                className="flex-1 p-3 rounded-xl"
+                className="w-full sm:flex-1 p-3 rounded-xl text-sm sm:text-base resize-none"
               />
             </div>
 
-            <div className="flex justify-between items-center">
+            {/* ACTIONS */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
               <input
                 type="file"
                 onChange={(e) => setSelectedFile(e.target.files[0])}
+                className="text-sm"
               />
 
               <button
                 onClick={createPost}
                 disabled={creatingPost}
-                className="bg-purple-500 text-white px-5 py-2 rounded-xl"
+                className="w-full sm:w-auto bg-purple-500 text-white px-5 py-2 rounded-xl"
               >
                 {creatingPost ? "Posting..." : "Post"}
               </button>
             </div>
           </div>
-        </motion.section>
+        </section>
       )}
 
       {/* POSTS */}
-      <motion.section className="max-w-5xl mx-auto space-y-6">
+      <section className="max-w-3xl sm:max-w-4xl lg:max-w-5xl mx-auto space-y-5 sm:space-y-6">
         {posts.map((post) => {
           const postUser = post.user || {};
 
           return (
-            <motion.div key={post._id} className="p-4 bg-white/30 rounded-xl">
+            <div key={post._id} className="p-3 sm:p-4 bg-white/30 rounded-xl break-words">
+
               {/* HEADER */}
-              <div className="flex gap-3 items-center">
-                <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white">
+              <div className="flex gap-3 items-center mb-2">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full bg-purple-500 flex items-center justify-center text-white overflow-hidden">
                   {postUser?.avatar ? (
-                    <img
-                      src={postUser.avatar}
-                      className="w-full h-full rounded-full"
-                    />
+                    <img src={postUser.avatar} className="w-full h-full object-cover" />
                   ) : (
                     getInitials(postUser?.name || "U")
                   )}
                 </div>
 
-                <div>
+                <div className="text-sm sm:text-base">
                   <p className="font-semibold">{postUser?.name}</p>
                   <p className="text-xs text-gray-500">
                     {new Date(post.createdAt).toLocaleString()}
@@ -203,12 +190,12 @@ function Home() {
                 </div>
               </div>
 
-              {/* POST CONTENT */}
+              {/* CONTENT */}
               <PostGalleryWithUpload
                 postId={post._id}
                 postOwnerId={post.user?._id || post.user}
                 token={user?.token}
-                user={user} // ✅ IMPORTANT FIX
+                user={user}
                 text={post.text}
                 initialLikes={post.likeCount || 0}
                 initialLoves={post.loveCount || 0}
@@ -222,24 +209,32 @@ function Home() {
                 comments={post.comments || []}
                 user={user}
               />
-            </motion.div>
+            </div>
           );
         })}
-      </motion.section>
+      </section>
 
       {/* SUPPORT */}
-      <div className="mt-16 text-center">
+      <div className="mt-12 sm:mt-16 text-center px-2">
         <Carousel />
 
-        <Link to="/NewFeedback" className="block mt-4 text-blue-500">
+        <Link
+          to="/NewFeedback"
+          className="flex justify-center items-center gap-2 mt-4 text-blue-500 text-sm sm:text-base"
+        >
           <FaQuestionCircle /> New Feedback
         </Link>
 
-        <Link to="/Feedbacks" className="block mt-2">
+        <Link
+          to="/Feedbacks"
+          className="flex justify-center items-center gap-2 mt-2 text-sm sm:text-base"
+        >
           <FaTicketAlt /> My Feedbacks
         </Link>
 
-        <CardGrid />
+        <div className="mt-6">
+          <CardGrid />
+        </div>
       </div>
     </div>
   );
