@@ -111,10 +111,8 @@ export const fetchPosts = async () => {
 // ===============================
 
 // Generate Virtual Deposit Account
-export const generateDepositAccount = async (method) => {
-  if (!method) throw new Error("Payment method is required");
-
-  const res = await API.post("/wallet/deposit-account", { method });
+export const generateDepositAccount = async () => {
+  const res = await API.post("/wallet/deposit-account");
   return res.data;
 };
 
