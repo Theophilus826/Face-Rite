@@ -14,24 +14,31 @@ export default function DepositPanel() {
   // Handle Deposit
   // ===============================
   const handleDeposit = async () => {
-    if (!amount || amount < 2000) {
-      alert("Minimum deposit is ₦2,000");
-      return;
-    }
+  if (!amount || amount < 100) {
+    alert("Minimum deposit is ₦100");
+    return;
+  }
 
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
+    const res = await fetch("/api/deposit/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount }), // ← send amount
+    });
+    const data = await res.json();
 
-      const res = await generateDepositAccount(); // ✅ no method
-      setAccount(res);
-      setWaiting(true);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to generate deposit account");
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (!res.ok) throw new Error(data.message || "Failed");
+
+    setAccount(data);
+    setWaiting(true);
+
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ===============================
   // Auto Wallet Refresh (Polling)
@@ -171,7 +178,7 @@ export default function DepositPanel() {
         )}
 
         <p className="text-xs text-gray-500 mt-4 text-center">
-          Minimum deposit ₦2,000
+          Minimum deposit ₦100
         </p>
       </div>
     </div>
