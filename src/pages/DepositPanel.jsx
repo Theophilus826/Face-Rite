@@ -13,7 +13,7 @@ export default function DepositPanel() {
   // ===============================
   // Handle Deposit
   // ===============================
-  const handleDeposit = async () => {
+ const handleDeposit = async () => {
   if (!amount || amount < 100) {
     alert("Minimum deposit is ₦100");
     return;
@@ -21,20 +21,36 @@ export default function DepositPanel() {
 
   try {
     setLoading(true);
+
     const res = await fetch("/api/deposit/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount }), // ← send amount
+      body: JSON.stringify({ amount }),
     });
-    const data = await res.json();
 
-    if (!res.ok) throw new Error(data.message || "Failed");
+    // ✅ SAFE RESPONSE HANDLING (fixes your error)
+    const text = await res.text();
+
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (err) {
+      console.error("❌ Invalid JSON from server:", text);
+      throw new Error("Server returned invalid response");
+    }
+
+    if (!res.ok) {
+      throw new Error(data.message || data.error || "Failed to generate account");
+    }
+
+    console.log("✅ Deposit account:", data);
 
     setAccount(data);
     setWaiting(true);
 
   } catch (err) {
-    alert(err.message);
+    console.error("❌ Deposit error:", err.message);
+    alert(err.message || "Something went wrong");
   } finally {
     setLoading(false);
   }
