@@ -9,51 +9,40 @@ export default function Notifications() {
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const prevIds = useRef([]);
 
-  const API_BASE =
-    process.env.REACT_APP_API_URL ||
-    "https://swordgame-5.onrender.com";
+  const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
 
   /* =========================
      FETCH NOTIFICATIONS
+     - only for logged-in user
   ========================= */
   const fetchNotifications = async (silent = false) => {
+    if (!token) return;
+
     try {
       if (!silent) setLoading(true);
 
-      const { data } = await axios.get(
-        `${API_BASE}/api/notifications`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const { data } = await axios.get(`${API_BASE}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       // Detect new notifications
-      const newOnes = data.filter(
-        (n) => !prevIds.current.includes(n._id)
-      );
-
+      const newOnes = data.filter((n) => !prevIds.current.includes(n._id));
       if (newOnes.length > 0 && silent) {
         toast.info("🔔 New notification received");
       }
 
       prevIds.current = data.map((n) => n._id);
 
-      // Prevent unnecessary re-renders
-      setNotifications((prev) => {
-        if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
-        return data;
-      });
+      // Only update state if data changed
+      setNotifications((prev) =>
+        JSON.stringify(prev) === JSON.stringify(data) ? prev : data
+      );
     } catch (err) {
+      console.error(err);
       if (!silent) {
-        if (err.response?.status === 404) {
-          setNotifications([]);
-        } else {
-          console.error(err);
-          toast.error("Failed to load notifications");
-        }
+        toast.error(err.response?.data?.message || "Failed to load notifications");
       }
     } finally {
       if (!silent) setLoading(false);
@@ -64,14 +53,8 @@ export default function Notifications() {
      POLLING
   ========================= */
   useEffect(() => {
-    if (!token) return;
-
     fetchNotifications(); // initial load
-
-    const interval = setInterval(() => {
-      fetchNotifications(true); // silent refresh
-    }, 5000);
-
+    const interval = setInterval(() => fetchNotifications(true), 5000); // poll every 5s
     return () => clearInterval(interval);
   }, [token]);
 
@@ -83,15 +66,11 @@ export default function Notifications() {
       await axios.put(
         `${API_BASE}/api/notifications/${id}/read`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setNotifications((prev) =>
-        prev.map((n) =>
-          n._id === id ? { ...n, read: true } : n
-        )
+        prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
     } catch (err) {
       console.error(err);
@@ -116,18 +95,14 @@ export default function Notifications() {
       {loading ? (
         <p className="text-center text-gray-500">Loading...</p>
       ) : notifications.length === 0 ? (
-        <p className="text-center text-gray-500">
-          You have no notifications.
-        </p>
+        <p className="text-center text-gray-500">You have no notifications.</p>
       ) : (
         <div className="space-y-2">
           {notifications.map((notif) => (
             <div
               key={notif._id}
               className={`p-4 rounded border flex justify-between items-center ${
-                notif.read
-                  ? "bg-gray-100 text-gray-700"
-                  : "bg-white font-bold"
+                notif.read ? "bg-gray-100 text-gray-700" : "bg-white font-bold"
               }`}
             >
               <div>
@@ -141,7 +116,6 @@ export default function Notifications() {
                 ) : (
                   <p>{notif.message}</p>
                 )}
-
                 <span className="text-xs text-gray-400 block">
                   {new Date(notif.createdAt).toLocaleString()}
                 </span>
