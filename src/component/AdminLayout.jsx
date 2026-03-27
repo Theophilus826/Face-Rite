@@ -120,18 +120,7 @@ export default function AdminLayout() {
     socket.on("activity:event", handleGameEvent);
     socket.on("game:event", handleGameEvent);
 
-    /* ================= NOTIFICATIONS ================= */
-    socket.on("notification", (notif) => {
-      const event = {
-        type: "ADMIN_NOTIFICATION",
-        message: notif.message,
-        userId: notif.user || "ALL",
-        timestamp: Date.now(),
-      };
-      setEvents((prev) => [event, ...prev]);
-    });
-
-    return () => {
+        return () => {
       socket.disconnect();
       socketRef.current = null;
     };
@@ -157,45 +146,54 @@ export default function AdminLayout() {
     setGameControls((prev) => ({ ...prev, [gameId]: { enemies: "", pot: "" } }));
   };
 
+  //  notification api
+  const API_BASE = "https://swordgame-5.onrender.com";
   const sendNotification = async () => {
-    if (!notificationMessage.trim()) return;
-    setNotifLoading(true);
+  if (!notificationMessage.trim()) return;
+  setNotifLoading(true);
 
-    try {
-      const endpoint = userId
-        ? "/api/notifications"
-        : "/api/notifications/broadcast";
+  try {
+    const endpoint = userId
+      ? "/api/notifications"
+      : "/api/notifications/broadcast";
 
-      const body = userId
-        ? { userId, message: notificationMessage }
-        : { message: notificationMessage };
+    const body = userId
+      ? { userId, message: notificationMessage }
+      : { message: notificationMessage };
 
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(body),
-      });
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify(body),
+    });
 
-      if (!res.ok) throw new Error("Failed");
+    if (!res.ok) throw new Error("Failed");
 
-      setEvents((prev) => [
-        { type: "ADMIN_NOTIFICATION_SENT", message: notificationMessage, userId: userId || "ALL", timestamp: Date.now() },
-        ...prev,
-      ]);
+    // ✅ Show in admin activity log
+    setEvents((prev) => [
+      {
+        type: "ADMIN_NOTIFICATION_SENT",
+        message: notificationMessage,
+        userId: userId || "ALL",
+        timestamp: Date.now(),
+      },
+      ...prev,
+    ]);
 
-      setNotificationCount((prev) => prev + 1);
-      setNotificationMessage("");
-      setUserId("");
-    } catch (err) {
-      console.error(err);
-      alert("Notification failed");
-    } finally {
-      setNotifLoading(false);
-    }
-  };
+    setNotificationCount((prev) => prev + 1);
+    setNotificationMessage("");
+    setUserId("");
+
+  } catch (err) {
+    console.error(err);
+    alert("Notification failed");
+  } finally {
+    setNotifLoading(false);
+  }
+};
 
   /* =========================
      EVENT RENDERER

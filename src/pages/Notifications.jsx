@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import axios from "axios";
@@ -6,46 +6,92 @@ import { Link } from "react-router-dom";
 
 export default function Notifications() {
   const { token } = useSelector((state) => state.auth);
+
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Backend API base URL from .env or default
-  const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
+  const prevIds = useRef([]);
 
-  // Fetch notifications
-  const fetchNotifications = async () => {
+  const API_BASE =
+    process.env.REACT_APP_API_URL ||
+    "https://swordgame-5.onrender.com";
+
+  /* =========================
+     FETCH NOTIFICATIONS
+  ========================= */
+  const fetchNotifications = async (silent = false) => {
     try {
-      setLoading(true);
-      const { data } = await axios.get(`${API_BASE}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` },
+      if (!silent) setLoading(true);
+
+      const { data } = await axios.get(
+        `${API_BASE}/api/notifications`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // Detect new notifications
+      const newOnes = data.filter(
+        (n) => !prevIds.current.includes(n._id)
+      );
+
+      if (newOnes.length > 0 && silent) {
+        toast.info("🔔 New notification received");
+      }
+
+      prevIds.current = data.map((n) => n._id);
+
+      // Prevent unnecessary re-renders
+      setNotifications((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
+        return data;
       });
-      setNotifications(data);
     } catch (err) {
-      if (err.response && err.response.status === 404) {
-        toast.info("No notifications found on the server");
-        setNotifications([]);
-      } else {
-        console.error(err);
-        toast.error("Failed to load notifications");
+      if (!silent) {
+        if (err.response?.status === 404) {
+          setNotifications([]);
+        } else {
+          console.error(err);
+          toast.error("Failed to load notifications");
+        }
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
+  /* =========================
+     POLLING
+  ========================= */
   useEffect(() => {
-    if (token) fetchNotifications();
+    if (!token) return;
+
+    fetchNotifications(); // initial load
+
+    const interval = setInterval(() => {
+      fetchNotifications(true); // silent refresh
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, [token]);
 
-  // Mark notification as read
+  /* =========================
+     MARK AS READ
+  ========================= */
   const handleMarkAsRead = async (id) => {
     try {
-      await axios.put(`${API_BASE}/api/notifications/${id}/read`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.put(
+        `${API_BASE}/api/notifications/${id}/read`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, read: true } : n))
+        prev.map((n) =>
+          n._id === id ? { ...n, read: true } : n
+        )
       );
     } catch (err) {
       console.error(err);
@@ -53,10 +99,18 @@ export default function Notifications() {
     }
   };
 
+  /* =========================
+     DERIVED STATE
+  ========================= */
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  /* =========================
+     UI
+  ========================= */
   return (
     <div className="max-w-3xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6 text-center">
-        🔔 Notifications
+        🔔 Notifications ({unreadCount})
       </h1>
 
       {loading ? (
@@ -71,7 +125,9 @@ export default function Notifications() {
             <div
               key={notif._id}
               className={`p-4 rounded border flex justify-between items-center ${
-                notif.read ? "bg-gray-100 text-gray-700" : "bg-white font-bold"
+                notif.read
+                  ? "bg-gray-100 text-gray-700"
+                  : "bg-white font-bold"
               }`}
             >
               <div>
@@ -85,6 +141,7 @@ export default function Notifications() {
                 ) : (
                   <p>{notif.message}</p>
                 )}
+
                 <span className="text-xs text-gray-400 block">
                   {new Date(notif.createdAt).toLocaleString()}
                 </span>
