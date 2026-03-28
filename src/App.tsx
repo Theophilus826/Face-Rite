@@ -7,7 +7,6 @@ import {
   Navigate,
   useLocation,
   useParams,
-  HashRouter,
 } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -16,7 +15,7 @@ import type { AppDispatch, RootState } from "./app/store";
 
 // Redux
 import { fetchCoins } from "./features/coins/CoinSlice";
-import useAutoLogout from "./features/UseAutoLogout";
+// import useAutoLogout from "./features/UseAutoLogout";
 // Pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -100,9 +99,9 @@ function PostCommentsWrapper() {
 /* ---------------- App Wrapper ---------------- */
 export default function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <AppContent />
-    </HashRouter>
+    </BrowserRouter>
   );
 }
 
@@ -112,7 +111,7 @@ function AppContent() {
   const location = useLocation();
 
   // ✅ Auto logout hook
-  useAutoLogout();
+  // useAutoLogout();
   useEffect(() => {
     dispatch(fetchCoins());
   }, [dispatch]);
