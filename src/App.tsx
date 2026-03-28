@@ -7,6 +7,7 @@ import {
   Navigate,
   useLocation,
   useParams,
+  HashRouter,
 } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -99,9 +100,9 @@ function PostCommentsWrapper() {
 /* ---------------- App Wrapper ---------------- */
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AppContent />
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
