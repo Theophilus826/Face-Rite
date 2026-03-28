@@ -15,7 +15,8 @@ const getStoredUser = () => {
 // Axios Instance
 // ===============================
 export const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://swordgame-5.onrender.com/api",
+  baseURL:
+    import.meta.env.VITE_API_URL || "https://swordgame-5.onrender.com/api",
   withCredentials: true,
 });
 
@@ -36,7 +37,7 @@ API.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // ===============================
@@ -59,17 +60,29 @@ API.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 // ===============================
 // Post Helpers
-// ===============================
-export const uploadMedia = async (file) => {
+// =============================
+export const uploadMedia = async (postId, file) => {
+  if (!file) throw new Error("No file provided");
+
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await API.post("/post/upload", formData, {
+  const fileType = file.type.startsWith("image")
+    ? "image"
+    : file.type.startsWith("video")
+    ? "video"
+    : null;
+
+  if (!fileType) throw new Error("Unsupported file type");
+
+  formData.append("type", fileType);
+
+  const res = await API.post(`/post/${postId}/media`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -78,25 +91,28 @@ export const uploadMedia = async (file) => {
   return res.data;
 };
 
+// React to a post
 export const reactToPost = async (postId, type) => {
-  const res = await API.post(`/post/react/${postId}`, { type });
+  if (!["like", "love"].includes(type))
+    throw new Error("Invalid reaction type");
+
+  // Backend expects POST /post/:id/react
+  const res = await API.post(`/post/${postId}/react`, { type });
   return res.data;
 };
 
+// Fetch all posts
 export const fetchPosts = async () => {
   const res = await API.get("/post");
-  return res.data.posts;
+  return res.data.posts || [];
 };
-
 // ===============================
 // Deposit / Wallet Helpers
 // ===============================
 
 // Generate Virtual Deposit Account
-export const generateDepositAccount = async (method) => {
-  if (!method) throw new Error("Payment method is required");
-
-  const res = await API.post("/wallet/deposit-account", { method });
+export const generateDepositAccount = async () => {
+  const res = await API.post("/wallet/deposit-account");
   return res.data;
 };
 

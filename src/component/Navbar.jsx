@@ -1,10 +1,5 @@
-import {
-  FaSignInAlt,
-  FaUser,
-  FaShareAlt,
-  FaBell,
-} from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { FaSignInAlt, FaUser, FaShareAlt, FaBell } from "react-icons/fa";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Welcome from "../pages/Welcome";
 import Share from "./Share";
@@ -12,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
 function Navbar() {
+  const navigate = useNavigate();
   const { user, token } = useSelector((state) => state.auth);
 
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -22,13 +18,11 @@ function Navbar() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // =======================
-  // SOCKET FOR NOTIFICATIONS
-  // =======================
+  // SOCKET
   useEffect(() => {
     if (!token || !user) return;
 
-    const socket = io("http://localhost:5000", {
+    const socket = io("https://swordgame-5.onrender.com", {
       path: "/socket.io",
       withCredentials: true,
       auth: { token },
@@ -54,9 +48,7 @@ function Navbar() {
     };
   }, [token, user]);
 
-  // =======================
   // CLOSE DROPDOWN ON OUTSIDE CLICK
-  // =======================
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
@@ -64,19 +56,18 @@ function Navbar() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const markAsRead = (id) => {
     setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
+      notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
     );
   };
 
   return (
     <>
-      <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
+      <nav className="bg-gradient-to-r from-blue-500 via-teal-400 to-blue-500/30 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md shadow-sm shadow-black/20">
         <div className="mx-auto max-w-screen-sm md:max-w-7xl px-3">
           <div className="flex h-14 md:h-16 items-center justify-between">
             {/* Left */}
@@ -125,28 +116,44 @@ function Navbar() {
                     </button>
 
                     {/* Dropdown */}
-                    {isNotifOpen && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white rounded shadow-lg z-50">
-                        <ul>
-                          {notifications.map((n) => (
+                    <div
+                      className={`absolute right-0 mt-2 w-64 bg-white rounded shadow-lg z-50 transition-transform duration-200 origin-top-right ${
+                        isNotifOpen
+                          ? "scale-y-100 opacity-100"
+                          : "scale-y-0 opacity-0"
+                      } transform`}
+                      style={{ transformOrigin: "top" }}
+                    >
+                      <ul>
+                        {notifications.length > 0 ? (
+                          notifications.map((n) => (
                             <li
                               key={n.id}
-                              className={`p-2 text-sm border-b ${
-                                n.read ? "bg-gray-100" : "bg-gray-50 font-medium"
-                              }`}
+                              className={`p-2 text-sm border-b cursor-pointer ${
+                                n.read
+                                  ? "bg-gray-100"
+                                  : "bg-gray-50 font-medium"
+                              } hover:bg-gray-200`}
                               onClick={() => markAsRead(n.id)}
                             >
                               {n.message}
                             </li>
-                          ))}
-                          {notifications.length === 0 && (
-                            <li className="p-2 text-sm text-gray-500">
-                              No notifications
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
+                          ))
+                        ) : (
+                          <li className="p-2 text-sm text-gray-500">
+                            No notifications
+                          </li>
+                        )}
+
+                        {/* View All */}
+                        <li
+                          className="p-2 text-center text-blue-500 cursor-pointer hover:bg-gray-100"
+                          onClick={() => navigate("/notifications")}
+                        >
+                          View All
+                        </li>
+                      </ul>
+                    </div>
                   </div>
 
                   {/* Share */}

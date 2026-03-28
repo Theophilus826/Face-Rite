@@ -6,6 +6,8 @@ import {
   Route,
   Navigate,
   useLocation,
+  useParams,
+  HashRouter,
 } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -14,7 +16,7 @@ import type { AppDispatch, RootState } from "./app/store";
 
 // Redux
 import { fetchCoins } from "./features/coins/CoinSlice";
-
+import useAutoLogout from "./features/UseAutoLogout";
 // Pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -32,8 +34,8 @@ import Notifications from "./pages/Notifications";
 import DepositPanel from "./pages/DepositPanel";
 import Withdraw from "./pages/Withdraw";
 import Gemes from "./pages/Gemes";
-import PostComments from "./pages/PostComments";
-
+// import PostComments from "./pages/PostComments";
+ import PostComments, { type CommentType } from "./pages/PostComments";
 // Components
 import Navbar from "./component/Navbar";
 import CardGrid from "./component/CardGrid";
@@ -44,7 +46,7 @@ import AdminRoute from "./component/AdminRoute";
 import PostGalleryWithUpload from "./component/PostGallery";
 import Profile from "./component/UserProfile";
 
-// Lazy load
+// Lazy
 const HostGame = lazy(() => import("./component/HostGame"));
 
 /* ---------------- Loader ---------------- */
@@ -56,7 +58,7 @@ function GameLoader() {
   );
 }
 
-/* ---------------- Post Wrapper ---------------- */
+/* ---------------- Post Gallery Wrapper ---------------- */
 function PostGalleryWrapper() {
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -69,8 +71,28 @@ function PostGalleryWrapper() {
       token={user.token}
       createdAt={new Date().toISOString()}
       user={user}
-      onNewComment={(comment) => console.log("New comment:", comment)}
       comments={[]}
+    />
+  );
+}
+
+/* ---------------- Post Comments Wrapper ---------------- */
+function PostCommentsWrapper() {
+  const user = useSelector((state: RootState) => state.auth.user);
+  const { id } = useParams(); // ✅ dynamic postId
+
+  if (!user?.token) return <Navigate to="/login" replace />;
+
+  const handleNewComment = (comment: CommentType) => {
+    console.log("New comment:", comment);
+  };
+
+  return (
+    <PostComments
+      postId={id || "fallback-id"}
+      user={user}
+      comments={[]}
+      onNewComment={handleNewComment}
     />
   );
 }
@@ -78,9 +100,9 @@ function PostGalleryWrapper() {
 /* ---------------- App Wrapper ---------------- */
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AppContent />
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
@@ -89,6 +111,8 @@ function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
 
+  // ✅ Auto logout hook
+  useAutoLogout();
   useEffect(() => {
     dispatch(fetchCoins());
   }, [dispatch]);
@@ -101,11 +125,12 @@ function AppContent() {
       style={{ backgroundImage: `url(${globle})` }}
     >
       <ToastContainer position="top-right" autoClose={3000} />
+
       {!hideLayout && <Navbar />}
       {!hideLayout && <BottomNav />}
 
       <Routes>
-        {/* Public Routes */}
+        {/* Public */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -113,9 +138,19 @@ function AppContent() {
         <Route path="/gemes" element={<Gemes />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/postComments" element={<PostComments />} />
+        <Route path="/profile" element={<Profile />} />
 
-        {/* Protected Routes */}
+        {/* Comments (FIXED) */}
+        <Route
+          path="/postComments/:id"
+          element={
+            <ProtectedRoute>
+              <PostCommentsWrapper />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected */}
         <Route
           path="/deposit"
           element={
@@ -157,7 +192,7 @@ function AppContent() {
           }
         />
 
-        {/* Game Route (No Navbar/BottomNav) */}
+        {/* Game */}
         <Route
           path="/host-game"
           element={

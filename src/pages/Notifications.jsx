@@ -2,60 +2,73 @@ import { useEffect, useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import axios from "axios";
-import { io } from "socket.io-client";
 import { Link } from "react-router-dom";
 
 export default function Notifications() {
-  const { token, user } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
+
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const socketRef = useRef(null);
+  const prevIds = useRef([]);
 
-  // Fetch existing notifications from backend
-  const fetchNotifications = async () => {
+  const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
+
+  /* =========================
+     FETCH NOTIFICATIONS
+     - only for logged-in user
+  ========================= */
+  const fetchNotifications = async (silent = false) => {
+    if (!token) return;
+
     try {
-      setLoading(true);
-      const { data } = await axios.get("/api/notifications", {
+      if (!silent) setLoading(true);
+
+      const { data } = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setNotifications(data);
+
+      // Detect new notifications
+      const newOnes = data.filter((n) => !prevIds.current.includes(n._id));
+      if (newOnes.length > 0 && silent) {
+        toast.info("🔔 New notification received");
+      }
+
+      prevIds.current = data.map((n) => n._id);
+
+      // Only update state if data changed
+      setNotifications((prev) =>
+        JSON.stringify(prev) === JSON.stringify(data) ? prev : data
+      );
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load notifications");
+      if (!silent) {
+        toast.error(err.response?.data?.message || "Failed to load notifications");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
+  /* =========================
+     POLLING
+  ========================= */
   useEffect(() => {
-    fetchNotifications();
-
-    // Connect to socket server
-    const socket = io("https://swordgame-5.onrender.com", {
-      auth: { token },
-      withCredentials: true,
-    });
-    socketRef.current = socket;
-
-    // Listen for new notifications
-    socket.on("notification", (notif) => {
-      setNotifications((prev) => [notif, ...prev]);
-      toast.info(`🔔 ${notif.message}`);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
+    fetchNotifications(); // initial load
+    const interval = setInterval(() => fetchNotifications(true), 5000); // poll every 5s
+    return () => clearInterval(interval);
   }, [token]);
 
-  // Mark a notification as read
+  /* =========================
+     MARK AS READ
+  ========================= */
   const handleMarkAsRead = async (id) => {
     try {
       await axios.put(
-        `/api/notifications/${id}/read`,
+        `${API_BASE}/api/notifications/${id}/read`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
@@ -65,9 +78,19 @@ export default function Notifications() {
     }
   };
 
+  /* =========================
+     DERIVED STATE
+  ========================= */
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  /* =========================
+     UI
+  ========================= */
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 text-center">🔔 Notifications</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">
+        🔔 Notifications ({unreadCount})
+      </h1>
 
       {loading ? (
         <p className="text-center text-gray-500">Loading...</p>
@@ -83,7 +106,6 @@ export default function Notifications() {
               }`}
             >
               <div>
-                {/* Show clickable link if notification has postId */}
                 {notif.postId ? (
                   <Link
                     to={`/post/${notif.postId}`}

@@ -165,3 +165,21 @@ canvas {
     background-color: #f9f9f9;
   }
 }
+@keyframes floatUp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -15px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50px) scale(1);
+  }
+}
+
+.animate-float {
+  animation: floatUp 0.8s ease-out forwards;
+}

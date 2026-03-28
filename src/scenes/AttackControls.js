@@ -104,96 +104,110 @@ export function setupAttackControls(scene, player, enemies, camera) {
     player.controller.unblock();
   });
 
-  // ================= ARROW CONTROLS (MOBILE ONLY) =================
-  if (isMobile && camera) {
-    const arrowContainer = new StackPanel();
-    arrowContainer.width = "160px";
-    arrowContainer.height = "160px";
+   // ================= ARROW CONTROLS (MOBILE ONLY) =================
+if (isMobile && camera) {
+  const arrowContainer = new StackPanel();
+  arrowContainer.width = "180px";
+  arrowContainer.height = "180px";
+  arrowContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+  arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+  arrowContainer.paddingLeft = "20px";
+  arrowContainer.paddingBottom = "100px";
+  arrowContainer.zIndex = 1000;
+  ui.addControl(arrowContainer);
 
-    arrowContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+  const createArrow = (text) => {
+  const btn = new Rectangle();
+  btn.width = "80px";
+  btn.height = "80px";
 
-    arrowContainer.paddingLeft = "20px";
-    arrowContainer.paddingBottom = "40px";
-    arrowContainer.zIndex = 1000;
+  // ✅ Transparent circular look
+  btn.background = "rgba(255,255,255,0.08)";
+  btn.color = "white";
+  btn.thickness = 2;
+  btn.cornerRadius = 30; // makes it a circle
 
-    ui.addControl(arrowContainer);
+  const label = new TextBlock();
+  label.text = text;
+  label.color = "white";
+  label.fontSize = 28;
 
-    const createArrow = (text) => {
-      const btn = new Rectangle();
-      btn.width = "50px";
-      btn.height = "50px";
-      btn.background = "rgba(0,0,0,0.6)";
-      btn.color = "white";
-      btn.thickness = 2;
-      btn.cornerRadius = 8;
+  label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+  label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
 
-      const label = new TextBlock();
-      label.text = text;
-      label.color = "white";
-      label.fontSize = 26;
+  btn.addControl(label);
+  return btn;
+};
 
-      btn.addControl(label);
-      return btn;
-    };
+  const up = createArrow("↑");
+  const down = createArrow("↓");
+  const left = createArrow("←");
+  const right = createArrow("→");
 
-    const up = createArrow("↑");
-    const down = createArrow("↓");
-    const left = createArrow("←");
-    const right = createArrow("→");
+  // Use vertical StackPanel for rows
+  const rowContainer = new StackPanel();
+  rowContainer.isVertical = true;
+  rowContainer.height = "160px";
+  rowContainer.width = "160px";
 
-    const row1 = new StackPanel();
-    row1.isVertical = false;
-    row1.addControl(new Rectangle());
-    row1.addControl(up);
-    row1.addControl(new Rectangle());
+  // Top row: Up arrow (centered)
+  const topRow = new StackPanel();
+  topRow.isVertical = false;
+  topRow.height = "50px";
+  up.marginLeft = "55px"; // centers the arrow horizontally
+  topRow.addControl(up);
 
-    const row2 = new StackPanel();
-    row2.isVertical = false;
-    row2.addControl(left);
-    row2.addControl(new Rectangle());
-    row2.addControl(right);
+  // Middle row: Left & Right arrows
+  const middleRow = new StackPanel();
+  middleRow.isVertical = false;
+  middleRow.height = "50px";
+  left.marginRight = "10px"; // spacing between arrows
+  middleRow.addControl(left);
+  middleRow.addControl(right);
 
-    const row3 = new StackPanel();
-    row3.isVertical = false;
-    row3.addControl(new Rectangle());
-    row3.addControl(down);
-    row3.addControl(new Rectangle());
+  // Bottom row: Down arrow (centered)
+  const bottomRow = new StackPanel();
+  bottomRow.isVertical = false;
+  bottomRow.height = "50px";
+  down.marginLeft = "55px"; // centers the arrow horizontally
+  bottomRow.addControl(down);
 
-    arrowContainer.addControl(row1);
-    arrowContainer.addControl(row2);
-    arrowContainer.addControl(row3);
+  // Add rows to container
+  rowContainer.addControl(topRow);
+  rowContainer.addControl(middleRow);
+  rowContainer.addControl(bottomRow);
+  arrowContainer.addControl(rowContainer);
 
-    // ✅ CAMERA ONLY (does NOT touch player logic)
-    const speed = 0.03;
-
-    let upHold = false,
+  // ---------------- CAMERA MOVEMENT ----------------
+  const speed = 0.03;
+  let upHold = false,
       downHold = false,
       leftHold = false,
       rightHold = false;
 
-    up.onPointerDownObservable.add(() => (upHold = true));
-    up.onPointerUpObservable.add(() => (upHold = false));
+  up.onPointerDownObservable.add(() => (upHold = true));
+  up.onPointerUpObservable.add(() => (upHold = false));
+  down.onPointerDownObservable.add(() => (downHold = true));
+  down.onPointerUpObservable.add(() => (downHold = false));
+  left.onPointerDownObservable.add(() => (leftHold = true));
+  left.onPointerUpObservable.add(() => (leftHold = false));
+  right.onPointerDownObservable.add(() => (rightHold = true));
+  right.onPointerUpObservable.add(() => (rightHold = false));
 
-    down.onPointerDownObservable.add(() => (downHold = true));
-    down.onPointerUpObservable.add(() => (downHold = false));
+  // Apply movement each frame
+  scene.onBeforeRenderObservable.add(() => {
+    const camState = scene.cameraControl;
+    if (!camState) return;
 
-    left.onPointerDownObservable.add(() => (leftHold = true));
-    left.onPointerUpObservable.add(() => (leftHold = false));
+    if (leftHold) camState.rotationY -= speed;
+    if (rightHold) camState.rotationY += speed;
+    if (upHold) camState.offsetY += 0.2;
+    if (downHold) camState.offsetY -= 0.2;
 
-    right.onPointerDownObservable.add(() => (rightHold = true));
-    right.onPointerUpObservable.add(() => (rightHold = false));
-
-    scene.onBeforeRenderObservable.add(() => {
-      const camState = scene.cameraControl;
-      if (!camState) return;
-
-      if (leftHold) camState.rotationY -= speed;
-      if (rightHold) camState.rotationY += speed;
-      if (upHold) camState.offsetY += 0.2;
-      if (downHold) camState.offsetY -= 0.2;
-    });
-  }
+    // Clamp offsetY to prevent extreme vertical movement
+    camState.offsetY = Math.max(-3, Math.min(5, camState.offsetY));
+  });
+}
 
   // ================= KEYBOARD =================
   const keyDown = (e) => {
