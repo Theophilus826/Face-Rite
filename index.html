@@ -3,25 +3,30 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>game</title>
-  <meta name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>KingStream</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 
-  <!-- ✅ PWA / MOBILE FULLSCREEN SUPPORT -->
+  <!-- ✅ PWA / Mobile Fullscreen Support -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <!-- ✅ ADD THIS -->
+  <!-- ✅ Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
 
+  <!-- ✅ Favicon -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/logo.png" />
+  <!-- ✅ Optional: Manifest for PWA -->
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 </head>
 
-<body>
+<body class="bg-gray-900 text-white">
+  <!-- React Root -->
   <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
+
+  <!-- ✅ React entry -->
+<script type="module" src="/src/main.jsx"></script>
 </body>
 
 </html>
