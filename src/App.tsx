@@ -109,6 +109,7 @@ export default function App() {
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
+  const user = useSelector((state: RootState) => state.auth.user);
 
   // ✅ Auto logout hook
   // useAutoLogout();
@@ -132,6 +133,10 @@ function AppContent() {
         {/* Public */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
+        <Route
+          path="/login"
+          element={user?.token ? <Navigate to="/home" replace /> : <Login />}
+        />
         <Route
           path="/home"
           element={
