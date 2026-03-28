@@ -34,7 +34,7 @@ import DepositPanel from "./pages/DepositPanel";
 import Withdraw from "./pages/Withdraw";
 import Gemes from "./pages/Gemes";
 // import PostComments from "./pages/PostComments";
- import PostComments, { type CommentType } from "./pages/PostComments";
+import PostComments, { type CommentType } from "./pages/PostComments";
 // Components
 import Navbar from "./component/Navbar";
 import CardGrid from "./component/CardGrid";
@@ -109,7 +109,7 @@ export default function App() {
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
-
+  const user = useSelector((state: RootState) => state.auth.user);
   // ✅ Auto logout hook
   // useAutoLogout();
   useEffect(() => {
@@ -130,8 +130,10 @@ function AppContent() {
 
       <Routes>
         {/* Public */}
-        
-        <Route path="/" element={<Home />} />
+        <Route
+          path="/"
+          element={user?.token ? <Home /> : <Navigate to="/login" replace />}
+        />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/notifications" element={<Notifications />} />
