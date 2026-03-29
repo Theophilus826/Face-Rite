@@ -3,80 +3,92 @@ import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import { io } from "socket.io-client";
 
 export default function Notifications() {
-  const { token } = useSelector((state) => state.auth);
-
+  const { token, user } = useSelector((state) => state.auth);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const prevIds = useRef([]);
 
   const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
+  const socketRef = useRef(null);
 
   // =========================
-  // 1️⃣ Fetch all notifications from DB
+  // 1️⃣ Fetch notifications from DB
   // =========================
-  const fetchNotifications = async (silent = false) => {
-    if (!token) {
-      console.log("No token, skipping fetch.");
-      return;
-    }
-
+  const fetchNotifications = async () => {
+    if (!token) return;
+    setLoading(true);
     try {
-      if (!silent) setLoading(true);
-
-      console.log("Fetching notifications from DB...");
-
       const { data } = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log("Fetched notifications:", data);
-
-      // Reset prevIds if DB has fewer notifications (helps after reconnect)
-      if (data.length < prevIds.current.length) prevIds.current = [];
-
       // Detect new notifications
       const newOnes = data.filter((n) => !prevIds.current.includes(n._id));
-      if (newOnes.length > 0 && silent) {
-        console.log("New notifications detected:", newOnes);
-        toast.info("🔔 New notification received");
+      if (newOnes.length > 0) {
+        newOnes.forEach((n) => toast.info(`🔔 ${n.message}`));
       }
 
       prevIds.current = data.map((n) => n._id);
       setNotifications(data);
-
     } catch (err) {
       console.error("Fetch notifications error:", err);
-      if (!silent) toast.error(err.response?.data?.message || "Failed to load notifications");
+      toast.error(err.response?.data?.message || "Failed to load notifications");
     } finally {
-      if (!silent) setLoading(false);
+      setLoading(false);
     }
   };
 
   // =========================
-  // 2️⃣ Polling every 5s
+  // 2️⃣ Initialize Socket.IO
+  // =========================
+  useEffect(() => {
+    if (!token || !user) return;
+
+    // Connect socket
+    socketRef.current = io(API_BASE, {
+      path: "/socket.io",
+      auth: { token },
+      transports: ["websocket", "polling"],
+    });
+
+    socketRef.current.on("connect", () => {
+      console.log("🟢 Connected to socket.io");
+    });
+
+    // Listen for new notifications pushed from server
+    socketRef.current.on("notification:new", (notification) => {
+      if (!prevIds.current.includes(notification._id)) {
+        toast.info(`🔔 ${notification.message}`);
+        setNotifications((prev) => [notification, ...prev]);
+        prevIds.current.unshift(notification._id);
+      }
+    });
+
+    socketRef.current.on("disconnect", () => {
+      console.log("🔴 Disconnected from socket.io");
+    });
+
+    return () => {
+      socketRef.current.disconnect();
+    };
+  }, [token, user]);
+
+  // =========================
+  // 3️⃣ Initial DB fetch
   // =========================
   useEffect(() => {
     if (!token) return;
-
-    console.log("Initial fetch...");
-    fetchNotifications(); // fetch all notifications immediately
-
-    const interval = setInterval(() => {
-      console.log("Polling for new notifications...");
-      fetchNotifications(true); // silent fetch to detect new notifications
-    }, 5000);
-
-    return () => clearInterval(interval);
+    fetchNotifications();
   }, [token]);
 
   // =========================
-  // 3️⃣ Mark notification as read
+  // 4️⃣ Mark as read
   // =========================
   const handleMarkAsRead = async (id) => {
     try {
-      console.log("Marking notification as read:", id);
       await axios.put(`${API_BASE}/api/notifications/${id}/read`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -84,7 +96,6 @@ export default function Notifications() {
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
-
     } catch (err) {
       console.error("Mark as read error:", err);
       toast.error("Failed to mark as read");
@@ -94,7 +105,7 @@ export default function Notifications() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   // =========================
-  // 4️⃣ Render UI
+  // 5️⃣ Render UI
   // =========================
   return (
     <div className="max-w-3xl mx-auto p-6">
