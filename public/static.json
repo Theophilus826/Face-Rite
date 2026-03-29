@@ -1,5 +1,0 @@
-{
-  "routes": [
-    { "handle": "rewrite", "src": "/.*", "dest": "/index.html" }
-  ]
-}
