@@ -48,6 +48,7 @@ export default function Notifications() {
     if (!token || !user) return;
 
     // Connect socket
+    console.log("🔌 Connecting socket with token:", token);
     socketRef.current = io(API_BASE, {
       path: "/socket.io",
       auth: { token },
@@ -80,9 +81,9 @@ export default function Notifications() {
   // 3️⃣ Initial DB fetch
   // =========================
   useEffect(() => {
-    if (!token) return;
+    if (!token || !user) return;
     fetchNotifications();
-  }, [token]);
+  }, [token, user]);
 
   // =========================
   // 4️⃣ Mark as read
