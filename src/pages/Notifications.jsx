@@ -14,29 +14,38 @@ export default function Notifications() {
   const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
 
   // =========================
-  // Fetch notifications for logged-in user
+  // 1️⃣ Fetch all notifications from DB
   // =========================
   const fetchNotifications = async (silent = false) => {
-    if (!token) return;
+    if (!token) {
+      console.log("No token, skipping fetch.");
+      return;
+    }
 
     try {
       if (!silent) setLoading(true);
+
+      console.log("Fetching notifications from DB...");
 
       const { data } = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Reset prevIds if new data length is smaller
+      console.log("Fetched notifications:", data);
+
+      // Reset prevIds if DB has fewer notifications (helps after reconnect)
       if (data.length < prevIds.current.length) prevIds.current = [];
 
+      // Detect new notifications
       const newOnes = data.filter((n) => !prevIds.current.includes(n._id));
-
       if (newOnes.length > 0 && silent) {
+        console.log("New notifications detected:", newOnes);
         toast.info("🔔 New notification received");
       }
 
       prevIds.current = data.map((n) => n._id);
       setNotifications(data);
+
     } catch (err) {
       console.error("Fetch notifications error:", err);
       if (!silent) toast.error(err.response?.data?.message || "Failed to load notifications");
@@ -46,23 +55,28 @@ export default function Notifications() {
   };
 
   // =========================
-  // Polling + fetch on mount
+  // 2️⃣ Polling every 5s
   // =========================
   useEffect(() => {
     if (!token) return;
 
-    fetchNotifications(); // immediate fetch on mount
+    console.log("Initial fetch...");
+    fetchNotifications(); // fetch all notifications immediately
 
-    const interval = setInterval(() => fetchNotifications(true), 5000); // poll every 5s
+    const interval = setInterval(() => {
+      console.log("Polling for new notifications...");
+      fetchNotifications(true); // silent fetch to detect new notifications
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [token]);
 
   // =========================
-  // Mark notification as read
+  // 3️⃣ Mark notification as read
   // =========================
   const handleMarkAsRead = async (id) => {
     try {
+      console.log("Marking notification as read:", id);
       await axios.put(`${API_BASE}/api/notifications/${id}/read`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -70,6 +84,7 @@ export default function Notifications() {
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
+
     } catch (err) {
       console.error("Mark as read error:", err);
       toast.error("Failed to mark as read");
@@ -78,6 +93,9 @@ export default function Notifications() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  // =========================
+  // 4️⃣ Render UI
+  // =========================
   return (
     <div className="max-w-3xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6 text-center">
@@ -85,7 +103,7 @@ export default function Notifications() {
       </h1>
 
       {loading ? (
-        <p className="text-center text-gray-500">Loading...</p>
+        <p className="text-center text-gray-500">Loading notifications...</p>
       ) : notifications.length === 0 ? (
         <p className="text-center text-gray-500">You have no notifications.</p>
       ) : (
