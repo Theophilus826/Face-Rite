@@ -10,12 +10,11 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const prevIds = useRef([]);
-
   const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
   const socketRef = useRef(null);
 
   // =========================
-  // 1️⃣ Fetch notifications from DB
+  // Fetch notifications from DB
   // =========================
   const fetchNotifications = async () => {
     if (!token) return;
@@ -42,24 +41,22 @@ export default function Notifications() {
   };
 
   // =========================
-  // 2️⃣ Initialize Socket.IO
+  // Initialize Socket.IO
   // =========================
   useEffect(() => {
     if (!token || !user) return;
 
-    // Connect socket
     console.log("🔌 Connecting socket with token:", token);
     socketRef.current = io(API_BASE, {
       path: "/socket.io",
       auth: { token },
-      transports: ["websocket", "polling"],
+      transports: ["polling"], // use polling for better stability on Render
     });
 
     socketRef.current.on("connect", () => {
       console.log("🟢 Connected to socket.io");
     });
 
-    // Listen for new notifications pushed from server
     socketRef.current.on("notification:new", (notification) => {
       if (!prevIds.current.includes(notification._id)) {
         toast.info(`🔔 ${notification.message}`);
@@ -78,7 +75,7 @@ export default function Notifications() {
   }, [token, user]);
 
   // =========================
-  // 3️⃣ Initial DB fetch
+  // Initial DB fetch
   // =========================
   useEffect(() => {
     if (!token || !user) return;
@@ -86,7 +83,7 @@ export default function Notifications() {
   }, [token, user]);
 
   // =========================
-  // 4️⃣ Mark as read
+  // Mark as read
   // =========================
   const handleMarkAsRead = async (id) => {
     try {
@@ -106,13 +103,23 @@ export default function Notifications() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   // =========================
-  // 5️⃣ Render UI
+  // Render UI
   // =========================
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 text-center">
+      <h1 className="text-3xl font-bold mb-4 text-center">
         🔔 Notifications ({unreadCount})
       </h1>
+
+      {/* Fetch Button */}
+      <div className="text-center mb-4">
+        <button
+          onClick={fetchNotifications}
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+        >
+          Fetch Notifications
+        </button>
+      </div>
 
       {loading ? (
         <p className="text-center text-gray-500">Loading notifications...</p>
