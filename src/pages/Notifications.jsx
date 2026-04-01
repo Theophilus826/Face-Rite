@@ -50,7 +50,7 @@ export default function Notifications() {
     socketRef.current = io(API_BASE, {
       path: "/socket.io",
       auth: { token },
-      transports: ["polling"], // use polling for better stability on Render
+      transports: ["websocket", "polling"], // use polling for better stability on Render
     });
 
     socketRef.current.on("connect", () => {
@@ -58,6 +58,7 @@ export default function Notifications() {
     });
 
     socketRef.current.on("notification:new", (notification) => {
+      console.log("🔥 RECEIVED:", n);
       if (!prevIds.current.includes(notification._id)) {
         toast.info(`🔔 ${notification.message}`);
         setNotifications((prev) => [notification, ...prev]);
