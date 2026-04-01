@@ -2,9 +2,11 @@ import { FaSignInAlt, FaUser, FaShareAlt, FaBell } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useState, useEffect, useRef } from "react";
-import Share from "./Share";
 import axios from "axios";
 import { toast } from "react-toastify";
+
+import Welcome from "../pages/Welcome";
+import Share from "./Share";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -13,29 +15,28 @@ function Navbar() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+
   const notifRef = useRef(null);
-  const prevIdsRef = useRef(new Set()); // track seen notifications for toasts
+  const prevIdsRef = useRef(new Set());
 
   const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   // =========================
   // Fetch notifications
   // =========================
   const fetchNotifications = async () => {
     if (!token) return;
-
     try {
       const res = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!Array.isArray(res.data)) return;
-
       const data = res.data;
 
-      // Detect new notifications
+      // Show toast only for new notifications
       const newOnes = data.filter((n) => !prevIdsRef.current.has(n._id));
-
       newOnes.forEach((n) => {
         toast.info(`🔔 ${n.message}`);
         prevIdsRef.current.add(n._id);
@@ -43,13 +44,12 @@ function Navbar() {
 
       setNotifications(data);
     } catch (err) {
-      console.error("Failed to fetch notifications:", err);
       toast.error("Failed to load notifications");
     }
   };
 
   // =========================
-  // Polling every 10 seconds
+  // Polling every 10s
   // =========================
   useEffect(() => {
     if (!token || !user) return;
@@ -58,6 +58,19 @@ function Navbar() {
     const interval = setInterval(fetchNotifications, 10000); // poll every 10s
     return () => clearInterval(interval);
   }, [token, user]);
+
+  // =========================
+  // Close dropdown on outside click
+  // =========================
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // =========================
   // Mark as read
@@ -74,29 +87,10 @@ function Navbar() {
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
     } catch (err) {
-      console.error("Failed to mark as read:", err);
       toast.error("Failed to mark as read");
     }
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  // =========================
-  // Close dropdown on outside click
-  // =========================
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notifRef.current && !notifRef.current.contains(event.target)) {
-        setIsNotifOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // =========================
-  // UI
-  // =========================
   return (
     <>
       <nav className="bg-gradient-to-r from-blue-500 via-teal-400 to-blue-500/30 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md shadow-sm shadow-black/20">
@@ -116,6 +110,14 @@ function Navbar() {
             <div className="flex items-center space-x-2 md:space-x-4">
               {user ? (
                 <>
+                  {/* Welcome */}
+                  <Link
+                    to="/"
+                    className="text-gray-300 hover:text-white flex items-center"
+                  >
+                    <Welcome />
+                  </Link>
+
                   {/* Notification */}
                   <div className="relative" ref={notifRef}>
                     <button
@@ -150,9 +152,10 @@ function Navbar() {
                             </li>
                           ))
                         ) : (
-                          <li className="p-2 text-sm text-gray-500">No notifications</li>
+                          <li className="p-2 text-sm text-gray-500">
+                            No notifications
+                          </li>
                         )}
-
                         <li
                           className="p-2 text-center text-blue-500 cursor-pointer hover:bg-gray-100"
                           onClick={() => navigate("/notifications")}
