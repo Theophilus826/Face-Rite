@@ -20,20 +20,51 @@ export default function Notifications() {
   // Fetch notifications
   // =========================
   const fetchNotifications = async () => {
-    if (!token) return;
+    console.log("🚀 FETCH TRIGGERED");
+
+    if (!token) {
+      console.warn("❌ NO TOKEN — fetch aborted");
+      toast.error("No token found");
+      return;
+    }
 
     setLoading(true);
+
     try {
-      const { data } = await axios.get(`${API_BASE}/api/notifications`, {
+      console.log("📡 Sending request...");
+
+      const res = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log("📦 FETCHED:", data);
+      console.log("✅ RESPONSE STATUS:", res.status);
+      console.log("📦 RAW DATA:", res.data);
+
+      const data = res.data;
+
+      // 🔥 HARD TEST: ensure array
+      if (!Array.isArray(data)) {
+        console.error("❌ NOT ARRAY:", data);
+        toast.error("Invalid response format");
+        return;
+      }
+
+      // 🔥 HARD TEST: empty check
+      if (data.length === 0) {
+        console.warn("⚠️ NO NOTIFICATIONS FOUND");
+        toast.info("No notifications in DB");
+      } else {
+        console.log(`📊 ${data.length} notifications loaded`);
+        toast.success(`Loaded ${data.length} notifications`);
+      }
 
       // Detect new ones safely
       const newOnes = data.filter((n) => !prevIds.current.has(n._id));
 
+      console.log("🆕 NEW ONES:", newOnes.length);
+
       newOnes.forEach((n) => {
+        console.log("🔔 NEW:", n.message);
         toast.info(`🔔 ${n.message}`);
       });
 
@@ -42,10 +73,21 @@ export default function Notifications() {
 
       setNotifications(data);
     } catch (err) {
-      console.error("❌ Fetch error:", err);
-      toast.error(err.response?.data?.message || "Failed to load notifications");
+      console.error("❌ FULL ERROR:", err);
+
+      if (err.response) {
+        console.error("📛 SERVER ERROR:", err.response.data);
+        console.error("📛 STATUS:", err.response.status);
+      }
+
+      toast.error(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to load notifications",
+      );
     } finally {
       setLoading(false);
+      console.log("🏁 FETCH COMPLETE");
     }
   };
 
@@ -57,30 +99,49 @@ export default function Notifications() {
 
     console.log("🔌 Connecting socket...");
 
+    // 🔥 Prevent duplicate sockets
+    if (socketRef.current) {
+      console.log("♻️ Cleaning old socket before reconnect");
+      socketRef.current.disconnect();
+    }
+
     const socket = io(API_BASE, {
       path: "/socket.io",
-      auth: { token },
-      transports: ["websocket", "polling"],
+      auth: { token }, // ✅ this is what backend reads
+      transports: ["websocket"], // 🔥 force websocket (more stable)
       reconnection: true,
     });
 
     socketRef.current = socket;
 
+    // ✅ Connected
     socket.on("connect", () => {
       console.log("🟢 Socket connected:", socket.id);
+      console.log("🔑 Token sent:", token);
     });
 
+    // 🔥 DEBUG: catch ALL events
+    socket.onAny((event, ...args) => {
+      console.log("📡 EVENT:", event, args);
+    });
+
+    // ✅ Notification handler
     socket.on("notification:new", (notification) => {
       console.log("🔥 RECEIVED:", notification);
 
-      if (!notification?._id) return;
+      if (!notification?._id) {
+        console.warn("⚠️ Invalid notification received");
+        return;
+      }
 
       if (!prevIds.current.has(notification._id)) {
-        toast.info(`🔔 ${notification.message}`);
+        toast.success(`🔔 ${notification.message}`);
 
         setNotifications((prev) => [notification, ...prev]);
 
         prevIds.current.add(notification._id);
+      } else {
+        console.log("⚠️ Duplicate notification skipped");
       }
     });
 
@@ -116,13 +177,11 @@ export default function Notifications() {
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       setNotifications((prev) =>
-        prev.map((n) =>
-          n._id === id ? { ...n, read: true } : n
-        )
+        prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
       );
     } catch (err) {
       console.error("❌ Mark as read error:", err);
@@ -143,28 +202,30 @@ export default function Notifications() {
 
       <div className="text-center mb-4">
         <button
-          onClick={fetchNotifications}
+          onClick={() => {
+            console.log("🧪 TEST BUTTON CLICKED");
+
+            toast.info("🧪 Testing fetch...");
+
+            fetchNotifications();
+          }}
           className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
         >
-          Fetch Notifications
+          🧪 Test Fetch Notifications
         </button>
       </div>
 
       {loading ? (
         <p className="text-center text-gray-500">Loading...</p>
       ) : notifications.length === 0 ? (
-        <p className="text-center text-gray-500">
-          You have no notifications.
-        </p>
+        <p className="text-center text-gray-500">You have no notifications.</p>
       ) : (
         <div className="space-y-2">
           {notifications.map((notif) => (
             <div
               key={notif._id}
               className={`p-4 rounded border flex justify-between items-center ${
-                notif.read
-                  ? "bg-gray-100 text-gray-700"
-                  : "bg-white font-bold"
+                notif.read ? "bg-gray-100 text-gray-700" : "bg-white font-bold"
               }`}
             >
               <div>
