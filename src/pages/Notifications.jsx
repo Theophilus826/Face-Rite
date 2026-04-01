@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { io } from "socket.io-client";
+import { FaTrash } from "react-icons/fa";
 
 export default function Notifications() {
   const { token, user } = useSelector((state) => state.auth);
@@ -11,8 +11,6 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
 
   const prevIds = useRef(new Set());
-  const socketRef = useRef(null);
-
   const API_BASE =
     process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
 
@@ -20,10 +18,7 @@ export default function Notifications() {
   // Fetch notifications
   // =========================
   const fetchNotifications = async () => {
-    console.log("🚀 FETCH TRIGGERED");
-
     if (!token) {
-      console.warn("❌ NO TOKEN — fetch aborted");
       toast.error("No token found");
       return;
     }
@@ -31,165 +26,72 @@ export default function Notifications() {
     setLoading(true);
 
     try {
-      console.log("📡 Sending request...");
-
       const res = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log("✅ RESPONSE STATUS:", res.status);
-      console.log("📦 RAW DATA:", res.data);
-
       const data = res.data;
 
-      // 🔥 HARD TEST: ensure array
       if (!Array.isArray(data)) {
-        console.error("❌ NOT ARRAY:", data);
         toast.error("Invalid response format");
         return;
       }
 
-      // 🔥 HARD TEST: empty check
-      if (data.length === 0) {
-        console.warn("⚠️ NO NOTIFICATIONS FOUND");
-        toast.info("No notifications in DB");
-      } else {
-        console.log(`📊 ${data.length} notifications loaded`);
-        toast.success(`Loaded ${data.length} notifications`);
-      }
-
-      // Detect new ones safely
       const newOnes = data.filter((n) => !prevIds.current.has(n._id));
+      newOnes.forEach((n) => toast.info(`🔔 ${n.message}`));
 
-      console.log("🆕 NEW ONES:", newOnes.length);
-
-      newOnes.forEach((n) => {
-        console.log("🔔 NEW:", n.message);
-        toast.info(`🔔 ${n.message}`);
-      });
-
-      // Update Set
       prevIds.current = new Set(data.map((n) => n._id));
-
       setNotifications(data);
     } catch (err) {
-      console.error("❌ FULL ERROR:", err);
-
-      if (err.response) {
-        console.error("📛 SERVER ERROR:", err.response.data);
-        console.error("📛 STATUS:", err.response.status);
-      }
-
-      toast.error(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to load notifications",
-      );
+      toast.error(err.response?.data?.message || err.message || "Failed to load notifications");
     } finally {
       setLoading(false);
-      console.log("🏁 FETCH COMPLETE");
     }
   };
 
   // =========================
-  // Socket.IO
+  // Mark as read on click
   // =========================
-  useEffect(() => {
-    if (!token || !user) return;
-
-    console.log("🔌 Connecting socket...");
-
-    // 🔥 Prevent duplicate sockets
-    if (socketRef.current) {
-      console.log("♻️ Cleaning old socket before reconnect");
-      socketRef.current.disconnect();
+  const handleSelectNotification = async (notif) => {
+    if (!notif.read) {
+      try {
+        await axios.put(
+          `${API_BASE}/api/notifications/${notif._id}/read`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notif._id ? { ...n, read: true } : n))
+        );
+      } catch {
+        toast.error("Failed to mark as read");
+      }
     }
+  };
 
-    const socket = io(API_BASE, {
-      path: "/socket.io",
-      auth: { token }, // ✅ this is what backend reads
-      transports: ["websocket"], // 🔥 force websocket (more stable)
-      reconnection: true,
-    });
+  // =========================
+  // Delete notification
+  // =========================
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${API_BASE}/api/notifications/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      toast.success("Notification deleted");
+    } catch (err) {
+      toast.error("Failed to delete notification");
+    }
+  };
 
-    socketRef.current = socket;
-
-    // ✅ Connected
-    socket.on("connect", () => {
-      console.log("🟢 Socket connected:", socket.id);
-      console.log("🔑 Token sent:", token);
-    });
-
-    // 🔥 DEBUG: catch ALL events
-    socket.onAny((event, ...args) => {
-      console.log("📡 EVENT:", event, args);
-    });
-
-    // ✅ Notification handler
-    socket.on("notification:new", (notification) => {
-      console.log("🔥 RECEIVED:", notification);
-
-      if (!notification?._id) {
-        console.warn("⚠️ Invalid notification received");
-        return;
-      }
-
-      if (!prevIds.current.has(notification._id)) {
-        toast.success(`🔔 ${notification.message}`);
-
-        setNotifications((prev) => [notification, ...prev]);
-
-        prevIds.current.add(notification._id);
-      } else {
-        console.log("⚠️ Duplicate notification skipped");
-      }
-    });
-
-    socket.on("disconnect", () => {
-      console.log("🔴 Socket disconnected");
-    });
-
-    socket.on("connect_error", (err) => {
-      console.error("❌ Socket error:", err.message);
-    });
-
-    return () => {
-      console.log("🔌 Cleaning socket...");
-      socket.disconnect();
-    };
-  }, [token, user]);
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   // =========================
   // Initial fetch
   // =========================
   useEffect(() => {
-    if (!token || !user) return;
-    fetchNotifications();
+    if (token && user) fetchNotifications();
   }, [token, user]);
-
-  // =========================
-  // Mark as read
-  // =========================
-  const handleMarkAsRead = async (id) => {
-    try {
-      await axios.put(
-        `${API_BASE}/api/notifications/${id}/read`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-
-      setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
-      );
-    } catch (err) {
-      console.error("❌ Mark as read error:", err);
-      toast.error("Failed to mark as read");
-    }
-  };
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   // =========================
   // UI
@@ -202,16 +104,10 @@ export default function Notifications() {
 
       <div className="text-center mb-4">
         <button
-          onClick={() => {
-            console.log("🧪 TEST BUTTON CLICKED");
-
-            toast.info("🧪 Testing fetch...");
-
-            fetchNotifications();
-          }}
+          onClick={fetchNotifications}
           className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
         >
-          🧪 Test Fetch Notifications
+          🧪 Refresh Notifications
         </button>
       </div>
 
@@ -224,11 +120,24 @@ export default function Notifications() {
           {notifications.map((notif) => (
             <div
               key={notif._id}
-              className={`p-4 rounded border flex justify-between items-center ${
+              className={`relative p-4 rounded border flex items-center cursor-pointer ${
                 notif.read ? "bg-gray-100 text-gray-700" : "bg-white font-bold"
               }`}
+              onClick={() => handleSelectNotification(notif)}
             >
-              <div>
+              {/* Delete Icon */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(notif._id);
+                }}
+                className="absolute top-2 left-2 text-red-500 hover:text-red-700 text-sm md:text-base"
+                title="Delete"
+              >
+                <FaTrash />
+              </button>
+
+              <div className="ml-6 w-full">
                 {notif.postId ? (
                   <Link
                     to={`/post/${notif.postId}`}
@@ -243,15 +152,6 @@ export default function Notifications() {
                   {new Date(notif.createdAt).toLocaleString()}
                 </span>
               </div>
-
-              {!notif.read && (
-                <button
-                  onClick={() => handleMarkAsRead(notif._id)}
-                  className="ml-4 bg-blue-500 text-white px-2 py-1 rounded text-sm"
-                >
-                  Mark as read
-                </button>
-              )}
             </div>
           ))}
         </div>
