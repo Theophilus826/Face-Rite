@@ -7,6 +7,7 @@ const user = JSON.parse(localStorage.getItem("user"));
 // ================= INITIAL STATE =================
 const initialState = {
     user: JSON.parse(localStorage.getItem('user')) || null,
+    token: localStorage.getItem("token") || null, 
     isError: false,
     isSuccess: false,
     isLoading: false,
@@ -49,7 +50,6 @@ export const loginUser = createAsyncThunk(
     async (userData, thunkAPI) => {
         try {
             const res = await authService.login(userData);
-            localStorage.setItem("user", JSON.stringify(res));
             return res;
         } catch (error) {
             return thunkAPI.rejectWithValue(
@@ -100,11 +100,13 @@ const authSlice = createSlice({
         },
         logout: (state) => {
             state.user = null;
+            state.token = null; 
             state.isLoading = false;
             state.isError = false;
             state.isSuccess = false;
             state.message = "";
             localStorage.removeItem("user"); // clear from storage
+            localStorage.removeItem("token");
         },
     },
     extraReducers: (builder) => {
@@ -123,6 +125,7 @@ const authSlice = createSlice({
                 state.isLoading = false;
                 state.isSuccess = true;
                 state.user = action.payload;
+                state.token = action.payload.token;
             })
             .addCase(loginUser.rejected, setRejected)
 
