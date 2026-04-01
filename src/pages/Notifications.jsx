@@ -9,31 +9,40 @@ export default function Notifications() {
   const { token, user } = useSelector((state) => state.auth);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const prevIds = useRef([]);
-  const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
+
+  const prevIds = useRef(new Set());
   const socketRef = useRef(null);
 
+  const API_BASE =
+    process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
+
   // =========================
-  // Fetch notifications from DB
+  // Fetch notifications
   // =========================
   const fetchNotifications = async () => {
     if (!token) return;
+
     setLoading(true);
     try {
       const { data } = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Detect new notifications
-      const newOnes = data.filter((n) => !prevIds.current.includes(n._id));
-      if (newOnes.length > 0) {
-        newOnes.forEach((n) => toast.info(`🔔 ${n.message}`));
-      }
+      console.log("📦 FETCHED:", data);
 
-      prevIds.current = data.map((n) => n._id);
+      // Detect new ones safely
+      const newOnes = data.filter((n) => !prevIds.current.has(n._id));
+
+      newOnes.forEach((n) => {
+        toast.info(`🔔 ${n.message}`);
+      });
+
+      // Update Set
+      prevIds.current = new Set(data.map((n) => n._id));
+
       setNotifications(data);
     } catch (err) {
-      console.error("Fetch notifications error:", err);
+      console.error("❌ Fetch error:", err);
       toast.error(err.response?.data?.message || "Failed to load notifications");
     } finally {
       setLoading(false);
@@ -41,42 +50,56 @@ export default function Notifications() {
   };
 
   // =========================
-  // Initialize Socket.IO
+  // Socket.IO
   // =========================
   useEffect(() => {
     if (!token || !user) return;
 
-    console.log("🔌 Connecting socket with token:", token);
-    socketRef.current = io(API_BASE, {
+    console.log("🔌 Connecting socket...");
+
+    const socket = io(API_BASE, {
       path: "/socket.io",
       auth: { token },
-      transports: ["websocket", "polling"], // use polling for better stability on Render
+      transports: ["websocket", "polling"],
+      reconnection: true,
     });
 
-    socketRef.current.on("connect", () => {
-      console.log("🟢 Connected to socket.io");
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("🟢 Socket connected:", socket.id);
     });
 
-    socketRef.current.on("notification:new", (notification) => {
-      console.log("🔥 RECEIVED:", n);
-      if (!prevIds.current.includes(notification._id)) {
+    socket.on("notification:new", (notification) => {
+      console.log("🔥 RECEIVED:", notification);
+
+      if (!notification?._id) return;
+
+      if (!prevIds.current.has(notification._id)) {
         toast.info(`🔔 ${notification.message}`);
+
         setNotifications((prev) => [notification, ...prev]);
-        prevIds.current.unshift(notification._id);
+
+        prevIds.current.add(notification._id);
       }
     });
 
-    socketRef.current.on("disconnect", () => {
-      console.log("🔴 Disconnected from socket.io");
+    socket.on("disconnect", () => {
+      console.log("🔴 Socket disconnected");
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("❌ Socket error:", err.message);
     });
 
     return () => {
-      socketRef.current.disconnect();
+      console.log("🔌 Cleaning socket...");
+      socket.disconnect();
     };
   }, [token, user]);
 
   // =========================
-  // Initial DB fetch
+  // Initial fetch
   // =========================
   useEffect(() => {
     if (!token || !user) return;
@@ -88,15 +111,21 @@ export default function Notifications() {
   // =========================
   const handleMarkAsRead = async (id) => {
     try {
-      await axios.put(`${API_BASE}/api/notifications/${id}/read`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.put(
+        `${API_BASE}/api/notifications/${id}/read`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, read: true } : n))
+        prev.map((n) =>
+          n._id === id ? { ...n, read: true } : n
+        )
       );
     } catch (err) {
-      console.error("Mark as read error:", err);
+      console.error("❌ Mark as read error:", err);
       toast.error("Failed to mark as read");
     }
   };
@@ -104,7 +133,7 @@ export default function Notifications() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   // =========================
-  // Render UI
+  // UI
   // =========================
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -112,7 +141,6 @@ export default function Notifications() {
         🔔 Notifications ({unreadCount})
       </h1>
 
-      {/* Fetch Button */}
       <div className="text-center mb-4">
         <button
           onClick={fetchNotifications}
@@ -123,23 +151,27 @@ export default function Notifications() {
       </div>
 
       {loading ? (
-        <p className="text-center text-gray-500">Loading notifications...</p>
+        <p className="text-center text-gray-500">Loading...</p>
       ) : notifications.length === 0 ? (
-        <p className="text-center text-gray-500">You have no notifications.</p>
+        <p className="text-center text-gray-500">
+          You have no notifications.
+        </p>
       ) : (
         <div className="space-y-2">
           {notifications.map((notif) => (
             <div
               key={notif._id}
               className={`p-4 rounded border flex justify-between items-center ${
-                notif.read ? "bg-gray-100 text-gray-700" : "bg-white font-bold"
+                notif.read
+                  ? "bg-gray-100 text-gray-700"
+                  : "bg-white font-bold"
               }`}
             >
               <div>
                 {notif.postId ? (
                   <Link
                     to={`/post/${notif.postId}`}
-                    className="underline text-blue-600 hover:text-blue-800"
+                    className="underline text-blue-600"
                   >
                     {notif.message}
                   </Link>
@@ -154,7 +186,7 @@ export default function Notifications() {
               {!notif.read && (
                 <button
                   onClick={() => handleMarkAsRead(notif._id)}
-                  className="ml-4 bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 text-sm"
+                  className="ml-4 bg-blue-500 text-white px-2 py-1 rounded text-sm"
                 >
                   Mark as read
                 </button>
