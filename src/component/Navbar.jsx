@@ -46,7 +46,7 @@ function Navbar() {
         prevIdsRef.current.add(n._id);
       });
 
-      setNotifications(data);
+      setNotifications(data.filter((n) => !n.read));
     } catch (err) {
       toast.error("Failed to load notifications");
     }
