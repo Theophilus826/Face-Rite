@@ -184,9 +184,7 @@ function Home() {
 
                 <div className="text-sm sm:text-base">
                   <p className="font-semibold">{postUser?.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(post.createdAt).toLocaleString()}
-                  </p>
+                  
                 </div>
               </div>
 
