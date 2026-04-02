@@ -19,8 +19,12 @@ function Navbar() {
   const notifRef = useRef(null);
   const prevIdsRef = useRef(new Set());
 
-  const API_BASE = process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const API_BASE =
+    process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
+
+  // ✅ Only unread notifications
+  const unreadNotifications = notifications.filter((n) => !n.read);
+  const unreadCount = unreadNotifications.length;
 
   // =========================
   // Fetch notifications
@@ -54,8 +58,8 @@ function Navbar() {
   useEffect(() => {
     if (!token || !user) return;
 
-    fetchNotifications(); // initial fetch
-    const interval = setInterval(fetchNotifications, 10000); // poll every 10s
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
   }, [token, user]);
 
@@ -69,7 +73,8 @@ function Navbar() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // =========================
@@ -84,7 +89,9 @@ function Navbar() {
       );
 
       setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, read: true } : n))
+        prev.map((n) =>
+          n._id === id ? { ...n, read: true } : n
+        )
       );
     } catch (err) {
       toast.error("Failed to mark as read");
@@ -135,17 +142,17 @@ function Navbar() {
                     {/* Dropdown */}
                     <div
                       className={`absolute right-0 mt-2 w-64 bg-white rounded shadow-lg z-50 transition-transform duration-200 origin-top-right ${
-                        isNotifOpen ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0"
+                        isNotifOpen
+                          ? "scale-y-100 opacity-100"
+                          : "scale-y-0 opacity-0"
                       } transform`}
                     >
                       <ul>
-                        {notifications.length > 0 ? (
-                          notifications.map((n) => (
+                        {unreadNotifications.length > 0 ? (
+                          unreadNotifications.map((n) => (
                             <li
                               key={n._id}
-                              className={`p-2 text-sm border-b cursor-pointer ${
-                                n.read ? "bg-gray-100" : "bg-gray-50 font-medium"
-                              } hover:bg-gray-200`}
+                              className="p-2 text-sm border-b cursor-pointer bg-gray-50 font-medium hover:bg-gray-200"
                               onClick={() => markAsRead(n._id)}
                             >
                               {n.message}
@@ -153,9 +160,10 @@ function Navbar() {
                           ))
                         ) : (
                           <li className="p-2 text-sm text-gray-500">
-                            No notifications
+                            No unread notifications
                           </li>
                         )}
+
                         <li
                           className="p-2 text-center text-blue-500 cursor-pointer hover:bg-gray-100"
                           onClick={() => navigate("/notifications")}
@@ -181,13 +189,15 @@ function Navbar() {
                     to="/login"
                     className="flex items-center gap-1 text-gray-300 hover:text-white text-sm"
                   >
-                    <FaSignInAlt /> <span className="hidden sm:inline">Login</span>
+                    <FaSignInAlt />{" "}
+                    <span className="hidden sm:inline">Login</span>
                   </Link>
                   <Link
                     to="/register"
                     className="flex items-center gap-1 text-gray-300 hover:text-white text-sm"
                   >
-                    <FaUser /> <span className="hidden sm:inline">Register</span>
+                    <FaUser />{" "}
+                    <span className="hidden sm:inline">Register</span>
                   </Link>
                 </>
               )}
