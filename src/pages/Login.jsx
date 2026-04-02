@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser, reset } from "../features/AuthSlice";
+import { loginUser, reset, sendMood } from "../features/AuthSlice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Spinner from "../component/Spinner";
-import Mode from "../component/Mode"; // ✅ import Mode
+import Mode from "../component/Mode";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showMode, setShowMode] = useState(false); // ✅ control popup
+  const [showMode, setShowMode] = useState(false); // show mood modal
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -22,16 +22,12 @@ export default function Login() {
     if (isError) toast.error(message);
 
     if (user) {
-      setShowMode(true); // ✅ show Mode first
-
-      // ⏳ delay navigation
-      setTimeout(() => {
-        navigate("/welcome");
-      }, 2500);
+      // show mood selection modal
+      setShowMode(true);
     }
 
     dispatch(reset());
-  }, [user, isError, message, navigate, dispatch]);
+  }, [user, isError, message, dispatch]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -42,17 +38,33 @@ export default function Login() {
     dispatch(loginUser({ email, password }));
   };
 
+  const handleMoodSelect = async (mood) => {
+    try {
+      // send mood to backend/admin
+      await dispatch(sendMood(mood)).unwrap();
+      // close modal and navigate
+      setShowMode(false);
+      navigate("/welcome");
+    } catch (err) {
+      toast.error("Failed to send mood: " + err);
+    }
+  };
+
   if (isLoading) return <Spinner />;
 
   return (
     <>
-      {/* ✅ MODE POPUP OVERLAY */}
+      {/* Mood Modal Overlay */}
       {showMode && (
         <div className="fixed inset-0 z-50">
-          <Mode />
+          <Mode
+            onSelectMood={handleMoodSelect}
+            onSkip={null} // ❌ disable skip, force mood selection
+          />
         </div>
       )}
 
+      {/* Login Form */}
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-4">
         <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/30 shadow-lg">
           <h2 className="text-3xl font-extrabold mb-8 text-center text-gray-900">

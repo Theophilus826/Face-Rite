@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 const moods = [
   { emoji: "😡", label: "Angry" },
@@ -9,7 +9,16 @@ const moods = [
   { emoji: "😜", label: "Fun" },
 ];
 
-const Mode = () => {
+const Mode = ({ onSelectMood, onSkip }) => {
+  const [selectedMood, setSelectedMood] = useState(null);
+
+  const handleMoodClick = (mood) => {
+    setSelectedMood(mood.label); // highlight
+    setTimeout(() => {
+      onSelectMood(mood.label); // send mood after brief animation
+    }, 300); // 0.3s for animation
+  };
+
   return (
     <div className="relative w-full h-full bg-black/70 flex items-center justify-center">
       {/* Background Image */}
@@ -19,9 +28,15 @@ const Mode = () => {
         className="absolute inset-0 w-full h-full object-cover opacity-40"
       />
 
-      {/* Skip Button */}
+      {/* Skip Button (conditionally disabled) */}
       <div className="absolute top-6 right-6 z-10">
-        <button className="text-white text-lg opacity-80 hover:opacity-100">
+        <button
+          onClick={onSkip}
+          className={`text-white text-lg opacity-80 hover:opacity-100 ${
+            !onSkip ? "cursor-not-allowed opacity-40" : ""
+          }`}
+          disabled={!onSkip}
+        >
           Skip
         </button>
       </div>
@@ -40,7 +55,12 @@ const Mode = () => {
             {moods.map((mood, index) => (
               <div
                 key={index}
-                className="flex flex-col items-center justify-center p-3 rounded-2xl hover:bg-gray-100 transition cursor-pointer"
+                className={`flex flex-col items-center justify-center p-3 rounded-2xl hover:bg-gray-100 transition cursor-pointer ${
+                  selectedMood === mood.label
+                    ? "scale-110 bg-blue-200 animate-pulse"
+                    : ""
+                }`}
+                onClick={() => handleMoodClick(mood)}
               >
                 <span className="text-2xl">{mood.emoji}</span>
                 <span className="text-xs mt-1">{mood.label}</span>
