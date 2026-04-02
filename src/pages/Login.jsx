@@ -9,7 +9,7 @@ import Mode from "../component/Mode";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showMode, setShowMode] = useState(false); // show mood modal
+  const [showMode, setShowMode] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -18,17 +18,20 @@ export default function Login() {
     (state) => state.auth
   );
 
+  // -------------------- useEffect --------------------
   useEffect(() => {
     if (isError) toast.error(message);
 
     if (user) {
-      // show mood selection modal
+      // ✅ Show mood modal when user logs in
       setShowMode(true);
     }
 
+    // ✅ Reset only flags, not user
     dispatch(reset());
   }, [user, isError, message, dispatch]);
 
+  // -------------------- Submit Login --------------------
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!email || !password) {
@@ -38,11 +41,11 @@ export default function Login() {
     dispatch(loginUser({ email, password }));
   };
 
+  // -------------------- Mood Selection --------------------
   const handleMoodSelect = async (mood) => {
     try {
-      // send mood to backend/admin
-      await dispatch(sendMood(mood)).unwrap();
-      // close modal and navigate
+      // ✅ Send mood to backend
+      await dispatch(sendMood({ mood })).unwrap();
       setShowMode(false);
       navigate("/welcome");
     } catch (err) {
@@ -50,17 +53,20 @@ export default function Login() {
     }
   };
 
+  // -------------------- Skip Mood --------------------
+  const handleSkip = () => {
+    setShowMode(false);
+    navigate("/welcome");
+  };
+
   if (isLoading) return <Spinner />;
 
   return (
     <>
-      {/* Mood Modal Overlay */}
+      {/* Mood Modal */}
       {showMode && (
         <div className="fixed inset-0 z-50">
-          <Mode
-            onSelectMood={handleMoodSelect}
-            onSkip={null} // ❌ disable skip, force mood selection
-          />
+          <Mode onSelectMood={handleMoodSelect} onSkip={handleSkip} />
         </div>
       )}
 
