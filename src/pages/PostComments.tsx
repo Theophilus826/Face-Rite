@@ -37,7 +37,11 @@ export default function PostComments({
   const [showAllComments, setShowAllComments] = useState(false);
 
   const getInitials = (name?: string) =>
-    name?.split(" ").map((n) => n[0]).join("").toUpperCase() || "U";
+    name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "U";
 
   // Only show the first comment initially
   const visibleComments = showAllComments ? comments : comments.slice(0, 1);
@@ -52,11 +56,13 @@ export default function PostComments({
         text: commentText.trim(),
       });
 
-      if (!res?.data?.comment) {
+      const newComment = res?.data?.comment || res?.data?.data || res?.data;
+
+      if (!newComment || !newComment._id) {
         throw new Error("Invalid response");
       }
 
-      onNewComment(res.data.comment);
+      onNewComment(newComment);
       toast.success("Comment posted!");
       setCommentText("");
     } catch (err) {
