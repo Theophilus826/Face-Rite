@@ -98,7 +98,6 @@ function Home() {
 
   return (
     <div className="min-h-screen px-3 sm:px-4 md:px-6 lg:px-8 max-w-7xl mx-auto overflow-x-hidden">
-      
       {/* HEADER */}
       <motion.section className="text-center mb-8 sm:mb-12">
         <div className="flex justify-center items-center gap-2 mb-3 sm:mb-4">
@@ -119,17 +118,18 @@ function Home() {
       {user && (
         <section className="max-w-3xl md:max-w-4xl mx-auto mb-8 sm:mb-10">
           <div className="p-4 sm:p-6 rounded-2xl bg-white/30 backdrop-blur-xl space-y-4">
-
             {/* TOP */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              
               {/* Avatar */}
               <div
                 onClick={() => navigate("/profile")}
                 className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full bg-purple-500 flex items-center justify-center text-white cursor-pointer overflow-hidden"
               >
                 {user?.avatar ? (
-                  <img src={user.avatar} className="w-full h-full object-cover" />
+                  <img
+                    src={user.avatar}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   getInitials(user?.name)
                 )}
@@ -170,13 +170,18 @@ function Home() {
           const postUser = post.user || {};
 
           return (
-            <div key={post._id} className="p-3 sm:p-4 bg-white/30 rounded-xl break-words">
-
+            <div
+              key={post._id}
+              className="p-3 sm:p-4 bg-white/30 rounded-xl break-words"
+            >
               {/* HEADER */}
               <div className="flex gap-3 items-center mb-2">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full bg-purple-500 flex items-center justify-center text-white overflow-hidden">
                   {postUser?.avatar ? (
-                    <img src={postUser.avatar} className="w-full h-full object-cover" />
+                    <img
+                      src={postUser.avatar}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     getInitials(postUser?.name || "U")
                   )}
@@ -184,7 +189,6 @@ function Home() {
 
                 <div className="text-sm sm:text-base">
                   <p className="font-semibold">{postUser?.name}</p>
-                  
                 </div>
               </div>
 
@@ -206,6 +210,19 @@ function Home() {
                 postId={post._id}
                 comments={post.comments || []}
                 user={user}
+                onNewComment={(newComment) => {
+                  // update this post's comments
+                  setPosts((prevPosts) =>
+                    prevPosts.map((p) =>
+                      p._id === post._id
+                        ? {
+                            ...p,
+                            comments: [...(p.comments || []), newComment],
+                          }
+                        : p,
+                    ),
+                  );
+                }}
               />
             </div>
           );

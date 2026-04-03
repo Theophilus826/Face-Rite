@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSelector } from "react-redux";
-import Cropper from "react-easy-crop";
+import { io } from "socket.io-client";
+import { toast } from "react-toastify";
 import { API } from "../features/Api";
 import PostGalleryWithUpload from "../component/PostGallery";
 
@@ -8,7 +9,6 @@ import PostGalleryWithUpload from "../component/PostGallery";
 const createCroppedImage = async (src, crop) => {
   const image = new Image();
   image.src = src;
-
   await new Promise((resolve) => (image.onload = resolve));
 
   const canvas = document.createElement("canvas");
@@ -29,51 +29,47 @@ const createCroppedImage = async (src, crop) => {
     crop.height
   );
 
-  return new Promise((resolve) =>
-    canvas.toBlob(resolve, "image/jpeg", 0.9)
-  );
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
 };
 
 /* ================= PROFILE HEADER ================= */
 function ProfileHeader({ image, isUploading, onUpload }) {
-  const [preview, setPreview] = useState(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [cropArea, setCropArea] = useState(null);
+  const DEFAULT_AVATAR =
+    "https://swordgame-5.onrender.com/default-avatar.jpg";
 
-  const handleSelectFile = (e) => {
+  const handleSelectFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = () => setPreview(reader.result);
+    reader.onload = async () => {
+      const src = reader.result;
+      const img = new Image();
+      img.src = src;
+      await new Promise((resolve) => (img.onload = resolve));
+
+      // Automatic center square crop
+      const size = Math.min(img.width, img.height);
+      const crop = {
+        x: (img.width - size) / 2,
+        y: (img.height - size) / 2,
+        width: size,
+        height: size,
+      };
+
+      const blob = await createCroppedImage(src, crop);
+      await onUpload(blob);
+    };
     reader.readAsDataURL(file);
   };
 
-  const handleCropComplete = (_, areaPixels) => {
-    setCropArea(areaPixels);
-  };
-
-  const handleSave = async () => {
-    if (!preview || !cropArea) return;
-
-    const blob = await createCroppedImage(preview, cropArea);
-    onUpload(blob);
-    setPreview(null);
-  };
-
-  const handleCancel = () => setPreview(null);
-
   return (
     <div className="flex flex-col items-center mb-10">
-      {/* Avatar */}
       <img
-        src={image || "/default-avatar.png"}
+        src={image || DEFAULT_AVATAR}
         alt="Profile"
         className="w-32 h-32 rounded-full object-cover border border-theme shadow-sm"
       />
-
-      {/* Upload */}
       <label className="mt-3 cursor-pointer text-sm text-blue-600 hover:underline">
         {isUploading ? "Uploading..." : "Change Profile Image"}
         <input
@@ -83,42 +79,6 @@ function ProfileHeader({ image, isUploading, onUpload }) {
           className="hidden"
         />
       </label>
-
-      {/* Cropper */}
-      {preview && (
-        <div className="mt-4 w-full max-w-md">
-          <div className="profile-crop-container">
-            <Cropper
-              image={preview}
-              crop={crop}
-              zoom={zoom}
-              aspect={1}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={handleCropComplete}
-            />
-            <div className="profile-crop-overlay" />
-          </div>
-
-          {/* Controls */}
-          <div className="profile-crop-controls">
-            <input
-              type="range"
-              min={1}
-              max={3}
-              step={0.1}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="profile-crop-slider"
-            />
-
-            <div className="flex gap-2">
-              <button onClick={handleCancel}>Cancel</button>
-              <button onClick={handleSave}>Save</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -131,9 +91,7 @@ function ProfilePosts({ posts, isLoading, user, onSelectMedia }) {
 
   if (!posts.length) {
     return (
-      <p className="text-center text-muted">
-        No posts yet. Start sharing 🚀
-      </p>
+      <p className="text-center text-muted">No posts yet. Start sharing 🚀</p>
     );
   }
 
@@ -161,15 +119,18 @@ function ProfilePosts({ posts, isLoading, user, onSelectMedia }) {
 /* ================= MAIN PROFILE ================= */
 export default function Profile() {
   const { user } = useSelector((state) => state.auth);
+  const socketRef = useRef(null);
+
+  const CLOUD_DEFAULT_AVATAR =
+    "https://swordgame-5.onrender.com/default-avatar.jpg";
 
   const [posts, setPosts] = useState([]);
-  const [avatar, setAvatar] = useState(user?.avatar || "");
+  const [avatar, setAvatar] = useState(user?.avatar || CLOUD_DEFAULT_AVATAR);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const loadPosts = useCallback(async () => {
     if (!user?._id) return;
-
     try {
       setIsLoading(true);
       const { data } = await API.get(`/user/${user._id}/posts`);
@@ -183,8 +144,23 @@ export default function Profile() {
 
   useEffect(() => {
     loadPosts();
-  }, [loadPosts]);
 
+    if (!user?.token) return;
+
+    const socket = io("https://swordgame-5.onrender.com", {
+      auth: { token: user.token },
+    });
+
+    socketRef.current = socket;
+
+    socket.on("new-comment", (notif) => {
+      toast.info(`🔔 ${notif.message}`);
+    });
+
+    return () => socket.disconnect();
+  }, [user?.token, loadPosts]);
+
+  /* ================= UPLOAD AVATAR ================= */
   const uploadAvatar = async (blob) => {
     if (!user?._id) return;
 
@@ -194,15 +170,20 @@ export default function Profile() {
       const formData = new FormData();
       formData.append("file", blob, "avatar.jpg");
 
-      const { data } = await API.post("/upload", formData);
-      const url = data?.url;
+      // PUT avatar to backend (backend handles Cloudinary)
+      const { data } = await API.put(
+        `/user/${user._id}/avatar`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
 
-      if (url) {
-        await API.put(`/user/${user._id}/avatar`, { avatar: url });
-        setAvatar(url);
+      if (data?.avatar) {
+        setAvatar(data.avatar);
+        toast.success("Avatar updated successfully!");
       }
     } catch (err) {
       console.error("Avatar upload failed:", err);
+      toast.error("Failed to update avatar");
     } finally {
       setIsUploading(false);
     }
