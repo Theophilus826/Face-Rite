@@ -56,13 +56,28 @@ export default function PostComments({
         text: commentText.trim(),
       });
 
-      const newComment = res?.data?.comment || res?.data?.data || res?.data;
+      console.log("API response:", res.data);
 
-      if (!newComment || !newComment._id) {
-        throw new Error("Invalid response");
+      const newComment =
+        res?.data?.comment ||
+        res?.data?.data?.comment ||
+        res?.data?.data ||
+        res?.data;
+
+      if (!newComment) {
+        throw new Error("No comment returned");
       }
 
-      onNewComment(newComment);
+      const normalizedComment = {
+        ...newComment,
+        _id: newComment._id || newComment.id,
+      };
+
+      if (!normalizedComment._id) {
+        throw new Error("Missing comment ID");
+      }
+
+      onNewComment(normalizedComment);
       toast.success("Comment posted!");
       setCommentText("");
     } catch (err) {
