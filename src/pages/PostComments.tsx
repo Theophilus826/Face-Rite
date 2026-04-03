@@ -58,24 +58,22 @@ export default function PostComments({
 
       console.log("API response:", res.data);
 
-      const newComment =
-        res?.data?.comment ||
-        res?.data?.data?.comment ||
-        res?.data?.data ||
-        res?.data;
+      const commentsArray = res?.data?.comments;
 
-      if (!newComment) {
-        throw new Error("No comment returned");
+      if (!commentsArray || !commentsArray.length) {
+        throw new Error("No comments returned");
+      }
+
+      const newComment = commentsArray[commentsArray.length - 1];
+
+      if (!newComment?._id && !newComment?.id) {
+        throw new Error("Missing comment ID");
       }
 
       const normalizedComment = {
         ...newComment,
         _id: newComment._id || newComment.id,
       };
-
-      if (!normalizedComment._id) {
-        throw new Error("Missing comment ID");
-      }
 
       onNewComment(normalizedComment);
       toast.success("Comment posted!");
