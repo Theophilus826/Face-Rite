@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { API } from "../features/Api";
 import PostGalleryWithUpload from "../component/PostGallery";
-import { setUser } from "../features/authSlice"; // Redux action to update user
+import { setUser } from "../features/AuthSlice"; // Redux action to update user
 
 /* ================= PROFILE HEADER ================= */
 function ProfileHeader({ image, isUploading, onUpload }) {
