@@ -29,7 +29,9 @@ const createCroppedImage = async (src, crop) => {
     crop.height
   );
 
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+  return new Promise((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", 0.9)
+  );
 };
 
 /* ================= PROFILE HEADER ================= */
@@ -48,7 +50,6 @@ function ProfileHeader({ image, isUploading, onUpload }) {
       img.src = src;
       await new Promise((resolve) => (img.onload = resolve));
 
-      // Automatic center square crop
       const size = Math.min(img.width, img.height);
       const crop = {
         x: (img.width - size) / 2,
@@ -91,7 +92,9 @@ function ProfilePosts({ posts, isLoading, user, onSelectMedia }) {
 
   if (!posts.length) {
     return (
-      <p className="text-center text-muted">No posts yet. Start sharing 🚀</p>
+      <p className="text-center text-muted">
+        No posts yet. Start sharing 🚀
+      </p>
     );
   }
 
@@ -129,14 +132,26 @@ export default function Profile() {
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  /* ================= LOAD POSTS ================= */
   const loadPosts = useCallback(async () => {
-    if (!user?._id) return;
+    if (!user?._id || !user?.token) return;
+
     try {
       setIsLoading(true);
-      const { data } = await API.get(`/user/${user._id}/posts`);
+
+      const { data } = await API.get(
+        `/users/${user._id}/posts`,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
       setPosts(data?.posts || []);
     } catch (err) {
       console.error("Failed to load posts:", err);
+      toast.error("Failed to load posts");
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +177,7 @@ export default function Profile() {
 
   /* ================= UPLOAD AVATAR ================= */
   const uploadAvatar = async (blob) => {
-    if (!user?._id) return;
+    if (!user?._id || !user?.token) return;
 
     try {
       setIsUploading(true);
@@ -170,11 +185,15 @@ export default function Profile() {
       const formData = new FormData();
       formData.append("file", blob, "avatar.jpg");
 
-      // PUT avatar to backend (backend handles Cloudinary)
       const { data } = await API.put(
-        `/user/${user._id}/avatar`,
+        `/users/${user._id}/avatar`,
         formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
       );
 
       if (data?.avatar) {
