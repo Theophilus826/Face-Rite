@@ -2,13 +2,12 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import authService from "./AuthService";
 
 // ================= LOAD USER FROM LOCALSTORAGE =================
-const user = JSON.parse(localStorage.getItem("user"));
+// const user = JSON.parse(localStorage.getItem("user"));
 
-// ================= INITIAL STATE =================
 const initialState = {
   user: JSON.parse(localStorage.getItem("user")) || null,
   token: localStorage.getItem("token") || null,
-  mood: null, // ✅ store selected mood
+  mood: null,
   isError: false,
   isSuccess: false,
   isLoading: false,
@@ -50,8 +49,7 @@ export const loginUser = createAsyncThunk(
   "auth/login",
   async (userData, thunkAPI) => {
     try {
-      const res = await authService.login(userData);
-      return res;
+      return await authService.login(userData);
     } catch (error) {
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || error.message || "Login failed"
@@ -88,6 +86,7 @@ export const resetPassword = createAsyncThunk(
   }
 );
 
+// Send Mood
 // ✅ Send Mood to backend/admin
 export const sendMood = createAsyncThunk(
   "auth/sendMood",
@@ -96,22 +95,21 @@ export const sendMood = createAsyncThunk(
       const state = thunkAPI.getState();
       const token = state.auth.token;
 
-      const res = await fetch("/api/mood", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ mood }),
-      });
+      if (!token) throw new Error("User not authenticated");
 
-      if (!res.ok) {
-        throw new Error("Failed to send mood");
-      }
+      // Use API instance for consistent baseURL & headers
+      const { data } = await API.post(
+        "/mood",
+        { mood },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-      return mood; // store mood in Redux
+      // Return the mood to store in Redux
+      return data.mood || mood;
     } catch (error) {
-      return thunkAPI.rejectWithValue(error.message);
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message || "Failed to send mood"
+      );
     }
   }
 );
@@ -138,6 +136,11 @@ const authSlice = createSlice({
       localStorage.removeItem("user");
       localStorage.removeItem("token");
     },
+    // ✅ Update user (e.g., avatar)
+    setUser: (state, action) => {
+      state.user = { ...state.user, ...action.payload };
+      localStorage.setItem("user", JSON.stringify(state.user));
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -156,6 +159,8 @@ const authSlice = createSlice({
         state.isSuccess = true;
         state.user = action.payload;
         state.token = action.payload.token;
+        localStorage.setItem("user", JSON.stringify(action.payload));
+        localStorage.setItem("token", action.payload.token);
       })
       .addCase(loginUser.rejected, setRejected)
 
@@ -195,5 +200,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { reset, logout } = authSlice.actions;
+export const { reset, logout, setUser } = authSlice.actions;
 export default authSlice.reducer;

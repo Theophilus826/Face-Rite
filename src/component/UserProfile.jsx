@@ -20,6 +20,7 @@ function ProfileHeader({ image, isUploading, onUpload }) {
       img.src = src;
       await new Promise((resolve) => (img.onload = resolve));
 
+      // Crop image to square
       const size = Math.min(img.width, img.height);
       const crop = {
         x: (img.width - size) / 2,
@@ -44,7 +45,9 @@ function ProfileHeader({ image, isUploading, onUpload }) {
         crop.height
       );
 
-      canvas.toBlob(async (blob) => await onUpload(blob, src), "image/jpeg", 0.9);
+      canvas.toBlob(async (blob) => {
+        await onUpload(blob, src);
+      }, "image/jpeg", 0.9);
     };
     reader.readAsDataURL(file);
   };
@@ -71,7 +74,9 @@ function ProfileHeader({ image, isUploading, onUpload }) {
 
 /* ================= POSTS ================= */
 function ProfilePosts({ posts, isLoading, user }) {
-  if (isLoading) return <p className="text-center text-muted">Loading posts...</p>;
+  if (isLoading)
+    return <p className="text-center text-muted">Loading posts...</p>;
+
   if (!posts.length)
     return <p className="text-center text-muted">No posts yet. Start sharing 🚀</p>;
 
@@ -140,8 +145,8 @@ export default function Profile() {
       });
 
       if (data?.avatar) {
-        // ✅ Update Redux so new avatar persists
-        dispatch(setUser({ ...user, avatar: data.avatar }));
+        // Update Redux & persist to localStorage
+        dispatch(setUser({ avatar: data.avatar }));
         toast.success("Avatar updated successfully!");
       }
     } catch (err) {
