@@ -1,36 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSelector } from "react-redux";
-import { io } from "socket.io-client";
 import { toast } from "react-toastify";
 import { API } from "../features/Api";
 import PostGalleryWithUpload from "../component/PostGallery";
-
-/* ================= IMAGE UTILITY ================= */
-const createCroppedImage = async (src, crop) => {
-  const image = new Image();
-  image.src = src;
-  await new Promise((resolve) => (image.onload = resolve));
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-
-  canvas.width = crop.width;
-  canvas.height = crop.height;
-
-  ctx.drawImage(
-    image,
-    crop.x,
-    crop.y,
-    crop.width,
-    crop.height,
-    0,
-    0,
-    crop.width,
-    crop.height
-  );
-
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
-};
 
 /* ================= PROFILE HEADER ================= */
 function ProfileHeader({ image, isUploading, onUpload }) {
@@ -44,7 +16,6 @@ function ProfileHeader({ image, isUploading, onUpload }) {
     const reader = new FileReader();
     reader.onload = async () => {
       const src = reader.result;
-
       const img = new Image();
       img.src = src;
       await new Promise((resolve) => (img.onload = resolve));
@@ -58,16 +29,19 @@ function ProfileHeader({ image, isUploading, onUpload }) {
         height: size,
       };
 
-      const blob = await createCroppedImage(src, crop);
+      const canvas = document.createElement("canvas");
+      canvas.width = crop.width;
+      canvas.height = crop.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
 
-      // send blob + preview URL
-      onUpload(blob, src);
+      canvas.toBlob(async (blob) => await onUpload(blob, src), "image/jpeg", 0.9);
     };
     reader.readAsDataURL(file);
   };
 
   return (
-    <div className="flex flex-col items-center mb-10 relative">
+    <div className="flex flex-col items-center mb-10">
       <img
         src={image || DEFAULT_AVATAR}
         alt="Profile"
@@ -86,18 +60,14 @@ function ProfileHeader({ image, isUploading, onUpload }) {
   );
 }
 
-/* ================= PROFILE POSTS ================= */
-function ProfilePosts({ posts, isLoading, user, onSelectMedia }) {
+/* ================= POSTS ================= */
+function ProfilePosts({ posts, isLoading, user }) {
   if (isLoading) {
     return <p className="text-center text-muted">Loading posts...</p>;
   }
 
   if (!posts.length) {
-    return (
-      <p className="text-center text-muted">
-        No posts yet. Start sharing 🚀
-      </p>
-    );
+    return <p className="text-center text-muted">No posts yet. Start sharing 🚀</p>;
   }
 
   return (
@@ -113,7 +83,7 @@ function ProfilePosts({ posts, isLoading, user, onSelectMedia }) {
             initialLoves={post.loveCount || 0}
             createdAt={post.createdAt}
             mediaFiles={post.media || []}
-            onSelectMedia={onSelectMedia}
+            onSelectMedia={() => {}}
           />
         </div>
       ))}
@@ -124,16 +94,27 @@ function ProfilePosts({ posts, isLoading, user, onSelectMedia }) {
 /* ================= MAIN PROFILE ================= */
 export default function Profile() {
   const { user } = useSelector((state) => state.auth);
-  const socketRef = useRef(null);
 
-  const CLOUD_DEFAULT_AVATAR =
-    "https://swordgame-5.onrender.com/default-avatar.jpg";
-
+  const [profile, setProfile] = useState(null); // backend user data
   const [posts, setPosts] = useState([]);
-  const [avatar, setAvatar] = useState(user?.avatar || CLOUD_DEFAULT_AVATAR);
-  const [preview, setPreview] = useState(null); // for live preview
+  const [preview, setPreview] = useState(null); // avatar preview
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  /* ================= LOAD USER PROFILE ================= */
+  const loadUserProfile = useCallback(async () => {
+    if (!user?._id || !user?.token) return;
+
+    try {
+      const { data } = await API.get(`/users/${user._id}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      setProfile(data.user);
+    } catch (err) {
+      console.error("Failed to load profile:", err);
+      toast.error("Failed to load profile");
+    }
+  }, [user]);
 
   /* ================= LOAD POSTS ================= */
   const loadPosts = useCallback(async () => {
@@ -153,49 +134,36 @@ export default function Profile() {
     }
   }, [user]);
 
-  /* ================= SOCKET ================= */
-  useEffect(() => {
-    loadPosts();
-
+  /* ================= LOAD NOTIFICATIONS ================= */
+  const loadNotifications = useCallback(async () => {
     if (!user?.token) return;
-
-    const socket = io("https://swordgame-5.onrender.com", {
-      auth: { token: user.token },
-    });
-
-    socketRef.current = socket;
-
-    socket.on("new-comment", (notif) => {
-      toast.info(`🔔 ${notif.message}`);
-    });
-
-    return () => socket.disconnect();
-  }, [user?.token, loadPosts]);
+    try {
+      const { data } = await API.get("/notification", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      data?.notifications?.forEach((notif) => toast.info(`🔔 ${notif.message}`));
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    }
+  }, [user]);
 
   /* ================= UPLOAD AVATAR ================= */
   const uploadAvatar = async (blob, previewURL) => {
     if (!user?._id || !user?.token) return;
 
-    setPreview(previewURL); // show preview immediately
+    setPreview(previewURL); // show preview
 
     try {
       setIsUploading(true);
-
       const formData = new FormData();
       formData.append("file", blob, "avatar.jpg");
 
-      const { data } = await API.put(
-        `/users/${user._id}/avatar`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`, // Axios sets Content-Type automatically
-          },
-        }
-      );
+      const { data } = await API.put(`/users/${user._id}/avatar`, formData, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
 
       if (data?.avatar) {
-        setAvatar(data.avatar); // update actual avatar from server
+        setProfile((prev) => ({ ...prev, avatar: data.avatar }));
         setPreview(null);
         toast.success("Avatar updated successfully!");
       }
@@ -208,6 +176,12 @@ export default function Profile() {
     }
   };
 
+  useEffect(() => {
+    loadUserProfile();
+    loadPosts();
+    loadNotifications();
+  }, [loadUserProfile, loadPosts, loadNotifications]);
+
   if (!user) {
     return (
       <div className="text-center mt-10 text-muted">
@@ -219,21 +193,16 @@ export default function Profile() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold text-center my-6">
-        {user.name}&apos;s Profile
+        {profile?.name || user.name}&apos;s Profile
       </h1>
 
       <ProfileHeader
-        image={preview || avatar} // show preview first
+        image={preview || profile?.avatar}
         isUploading={isUploading}
         onUpload={uploadAvatar}
       />
 
-      <ProfilePosts
-        posts={posts}
-        isLoading={isLoading}
-        user={user}
-        onSelectMedia={() => {}}
-      />
+      <ProfilePosts posts={posts} isLoading={isLoading} user={user} />
     </div>
   );
 }
