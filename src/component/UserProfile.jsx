@@ -1,13 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { API } from "../features/Api";
 import PostGalleryWithUpload from "../component/PostGallery";
+import { setUser } from "../features/authSlice"; // Redux action to update user
 
 /* ================= PROFILE HEADER ================= */
 function ProfileHeader({ image, isUploading, onUpload }) {
-  const DEFAULT_AVATAR =
-    "https://swordgame-5.onrender.com/default-avatar.jpg";
+  const DEFAULT_AVATAR = "https://swordgame-5.onrender.com/default-avatar.jpg";
 
   const handleSelectFile = async (e) => {
     const file = e.target.files?.[0];
@@ -20,7 +20,6 @@ function ProfileHeader({ image, isUploading, onUpload }) {
       img.src = src;
       await new Promise((resolve) => (img.onload = resolve));
 
-      // Center square crop
       const size = Math.min(img.width, img.height);
       const crop = {
         x: (img.width - size) / 2,
@@ -33,7 +32,17 @@ function ProfileHeader({ image, isUploading, onUpload }) {
       canvas.width = crop.width;
       canvas.height = crop.height;
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+      ctx.drawImage(
+        img,
+        crop.x,
+        crop.y,
+        crop.width,
+        crop.height,
+        0,
+        0,
+        crop.width,
+        crop.height
+      );
 
       canvas.toBlob(async (blob) => await onUpload(blob, src), "image/jpeg", 0.9);
     };
@@ -62,13 +71,9 @@ function ProfileHeader({ image, isUploading, onUpload }) {
 
 /* ================= POSTS ================= */
 function ProfilePosts({ posts, isLoading, user }) {
-  if (isLoading) {
-    return <p className="text-center text-muted">Loading posts...</p>;
-  }
-
-  if (!posts.length) {
+  if (isLoading) return <p className="text-center text-muted">Loading posts...</p>;
+  if (!posts.length)
     return <p className="text-center text-muted">No posts yet. Start sharing 🚀</p>;
-  }
 
   return (
     <>
@@ -93,28 +98,13 @@ function ProfilePosts({ posts, isLoading, user }) {
 
 /* ================= MAIN PROFILE ================= */
 export default function Profile() {
+  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
 
-  const [profile, setProfile] = useState(null); // backend user data
   const [posts, setPosts] = useState([]);
-  const [preview, setPreview] = useState(null); // avatar preview
+  const [preview, setPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  /* ================= LOAD USER PROFILE ================= */
-  const loadUserProfile = useCallback(async () => {
-    if (!user?._id || !user?.token) return;
-
-    try {
-      const { data } = await API.get(`/users/${user._id}`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      setProfile(data.user);
-    } catch (err) {
-      console.error("Failed to load profile:", err);
-      toast.error("Failed to load profile");
-    }
-  }, [user]);
 
   /* ================= LOAD POSTS ================= */
   const loadPosts = useCallback(async () => {
@@ -134,24 +124,11 @@ export default function Profile() {
     }
   }, [user]);
 
-  /* ================= LOAD NOTIFICATIONS ================= */
-  const loadNotifications = useCallback(async () => {
-    if (!user?.token) return;
-    try {
-      const { data } = await API.get("/notification", {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      data?.notifications?.forEach((notif) => toast.info(`🔔 ${notif.message}`));
-    } catch (err) {
-      console.error("Failed to load notifications:", err);
-    }
-  }, [user]);
-
   /* ================= UPLOAD AVATAR ================= */
   const uploadAvatar = async (blob, previewURL) => {
     if (!user?._id || !user?.token) return;
 
-    setPreview(previewURL); // show preview
+    setPreview(previewURL);
 
     try {
       setIsUploading(true);
@@ -163,41 +140,38 @@ export default function Profile() {
       });
 
       if (data?.avatar) {
-        setProfile((prev) => ({ ...prev, avatar: data.avatar }));
-        setPreview(null);
+        // ✅ Update Redux so new avatar persists
+        dispatch(setUser({ ...user, avatar: data.avatar }));
         toast.success("Avatar updated successfully!");
       }
     } catch (err) {
       console.error("Avatar upload failed:", err);
       toast.error("Failed to update avatar");
-      setPreview(null);
     } finally {
       setIsUploading(false);
+      setPreview(null);
     }
   };
 
   useEffect(() => {
-    loadUserProfile();
     loadPosts();
-    loadNotifications();
-  }, [loadUserProfile, loadPosts, loadNotifications]);
+  }, [loadPosts]);
 
-  if (!user) {
+  if (!user)
     return (
       <div className="text-center mt-10 text-muted">
         Please log in to view your profile.
       </div>
     );
-  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold text-center my-6">
-        {profile?.name || user.name}&apos;s Profile
+        {user.name}&apos;s Profile
       </h1>
 
       <ProfileHeader
-        image={preview || profile?.avatar}
+        image={preview || user.avatar}
         isUploading={isUploading}
         onUpload={uploadAvatar}
       />
