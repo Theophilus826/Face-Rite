@@ -151,6 +151,8 @@ function AppContent() {
         <Route path="/gemes" element={<Gemes />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/profile" element={<Profile />} />
+
         <Route path="/profile/:profileUserId" element={<Profile />} />
         {/* Comments (FIXED) */}
         <Route
