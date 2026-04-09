@@ -41,14 +41,14 @@ export default function Me() {
       </div>
 
       {/* Bottom Section - Logo + Logout */}
-      <div className="flex flex-col items-center mt-10 space-y-4">
-
+      <div className="flex flex-col items-center mt-auto space-y-4 pb-20">
         {/* React Icon Logo */}
         <div className="flex items-center gap-2 text-purple-600">
           <Sparkles size={28} />
           <span className="text-lg font-bold">AI Hub</span>
         </div>
 
+        {/* Logout Button */}
         <button
           onClick={handleLogout}
           className="w-full max-w-xs bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-semibold shadow-md transition"
