@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { FaHome, FaGamepad, FaWallet, FaEllipsisH } from "react-icons/fa";
+import { FaHome, FaGamepad, FaComments, FaEllipsisH } from "react-icons/fa";
 
 export default function BottomNav() {
   const base =
@@ -30,13 +30,13 @@ export default function BottomNav() {
       </NavLink>
 
       <NavLink
-        to="/post"
+        to="/chat"
         className={({ isActive }) =>
           `${base} ${isActive ? active : inactive}`
         }
       >
-        <FaWallet className="text-xl mb-1" />
-        Post
+        <FaComments className="text-xl mb-1" />
+        Chat
       </NavLink>
 
       <NavLink

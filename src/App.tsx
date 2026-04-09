@@ -33,6 +33,7 @@ import Notifications from "./pages/Notifications";
 import DepositPanel from "./pages/DepositPanel";
 import Withdraw from "./pages/Withdraw";
 import Gemes from "./pages/Gemes";
+import ChatPage from "./pages/ChatPage";
 // import PostComments from "./pages/PostComments";
 import PostComments, { type CommentType } from "./pages/PostComments";
 // Components
@@ -152,7 +153,8 @@ function AppContent() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/profile" element={<Profile />} />
-
+        <Route path="/chat" element={<ChatPage/>} />
+        <Route path="/chat/:chatUserId" element={<ChatPage />} />
         <Route path="/profile/:profileUserId" element={<Profile />} />
         {/* Comments (FIXED) */}
         <Route
@@ -197,7 +199,7 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
-        
+
         {/* Game */}
         <Route
           path="/host-game"

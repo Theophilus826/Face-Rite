@@ -19,7 +19,7 @@ function Home() {
 
   const [posts, setPosts] = useState([]);
   const [newPostText, setNewPostText] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [creatingPost, setCreatingPost] = useState(false);
 
   const socketRef = useRef(null);
@@ -29,7 +29,7 @@ function Home() {
     try {
       const res = await API.get("/post");
       setPosts(res.data.posts || []);
-    } catch (err) {
+    } catch {
       toast.error("Failed to load posts");
     }
   };
@@ -55,31 +55,29 @@ function Home() {
 
   // ===== Create Post =====
   const createPost = async () => {
-    if (!newPostText.trim() && !selectedFile) {
+    if (!newPostText.trim() && selectedFiles.length === 0) {
       return toast.error("Write something or select a file");
     }
 
     try {
       setCreatingPost(true);
 
-      let res = await API.post("/post", {
-        text: newPostText.trim(),
-      });
-
+      // 1️⃣ Create post first
+      let res = await API.post("/post", { text: newPostText.trim() });
       let post = res.data.post;
 
-      if (selectedFile) {
+      // 2️⃣ Upload files if any
+      if (selectedFiles.length > 0) {
         const formData = new FormData();
-        formData.append("file", selectedFile);
-
+        selectedFiles.forEach((file) => formData.append("files", file));
         const uploadRes = await API.post(`/post/${post._id}/media`, formData);
         post = uploadRes.data.post;
       }
 
+      // 3️⃣ Update state
       setPosts((prev) => [post, ...prev]);
       setNewPostText("");
-      setSelectedFile(null);
-
+      setSelectedFiles([]);
       toast.success("Post created!");
     } catch {
       toast.error("Post failed");
@@ -126,10 +124,7 @@ function Home() {
                 className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full bg-purple-500 flex items-center justify-center text-white cursor-pointer overflow-hidden"
               >
                 {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={user.avatar} className="w-full h-full object-cover" />
                 ) : (
                   getInitials(user?.name)
                 )}
@@ -144,12 +139,28 @@ function Home() {
               />
             </div>
 
+            {/* Preview selected files */}
+            {selectedFiles.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                {selectedFiles.map((file, i) => (
+                  <div key={i} className="relative rounded-xl overflow-hidden">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt=""
+                      className="w-full h-24 object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* ACTIONS */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mt-2">
               <input
                 type="file"
-                onChange={(e) => setSelectedFile(e.target.files[0])}
+                onChange={(e) => setSelectedFiles(Array.from(e.target.files))}
                 className="text-sm"
+                multiple
               />
 
               <button
@@ -170,18 +181,12 @@ function Home() {
           const postUser = post.user || {};
 
           return (
-            <div
-              key={post._id}
-              className="p-3 sm:p-4 bg-white/30 rounded-xl break-words"
-            >
+            <div key={post._id} className="p-3 sm:p-4 bg-white/30 rounded-xl break-words">
               {/* HEADER */}
               <div className="flex gap-3 items-center mb-2">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full bg-purple-500 flex items-center justify-center text-white overflow-hidden">
                   {postUser?.avatar ? (
-                    <img
-                      src={postUser.avatar}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={postUser.avatar} className="w-full h-full object-cover" />
                   ) : (
                     getInitials(postUser?.name || "U")
                   )}
@@ -211,16 +216,12 @@ function Home() {
                 comments={post.comments || []}
                 user={user}
                 onNewComment={(newComment) => {
-                  // update this post's comments
                   setPosts((prevPosts) =>
                     prevPosts.map((p) =>
                       p._id === post._id
-                        ? {
-                            ...p,
-                            comments: [...(p.comments || []), newComment],
-                          }
-                        : p,
-                    ),
+                        ? { ...p, comments: [...(p.comments || []), newComment] }
+                        : p
+                    )
                   );
                 }}
               />

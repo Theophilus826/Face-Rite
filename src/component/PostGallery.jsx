@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; 
+import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { transferCoins } from "../features/coins/CoinSlice";
 import { API } from "../features/Api";
@@ -37,9 +37,7 @@ export default function PostGalleryWithUpload({
   // ===== Reactions =====
   const handleReaction = async (type) => {
     if (!postOwnerId || token?.userId === postOwnerId) return;
-
-    if (type === "like" && liked) return;
-    if (type === "love" && loved) return;
+    if ((type === "like" && liked) || (type === "love" && loved)) return;
 
     try {
       await dispatch(
@@ -60,7 +58,6 @@ export default function PostGalleryWithUpload({
         setAnimateLike(true);
         setTimeout(() => setAnimateLike(false), 700);
       }
-
       if (type === "love") {
         setLoved(true);
         setAnimateLove(true);
@@ -75,32 +72,37 @@ export default function PostGalleryWithUpload({
 
   return (
     <div className="mb-6 p-5 rounded-2xl bg-white/30 backdrop-blur-xl shadow-lg">
-      {createdAt && (
-        <p className="text-sm text-gray-600">{formatDate(createdAt)}</p>
-      )}
-
+      {createdAt && <p className="text-sm text-gray-600">{formatDate(createdAt)}</p>}
       {postText && <p className="my-3">{postText}</p>}
 
-      {/* Media */}
-      {mediaFiles.map((m, i) => (
-        <div key={i} onClick={() => setPreviewIndex(i)}>
-          {m.type === "video" ? (
-            <video src={m.url} className="rounded-xl w-full" controls />
-          ) : (
-            <img src={m.url} className="rounded-xl w-full" alt="" />
-          )}
+      {/* Media Grid */}
+      {mediaFiles.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+          {mediaFiles.map((m, i) => (
+            <div
+              key={i}
+              className="relative cursor-pointer rounded-xl overflow-hidden"
+              onClick={() => setPreviewIndex(i)}
+            >
+              {m.type === "video" ? (
+                <video src={m.url} className="w-full h-32 object-cover" controls />
+              ) : (
+                <img src={m.url} className="w-full h-32 object-cover" alt="" />
+              )}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
-      {/* Preview */}
+      {/* Preview Modal */}
       {previewIndex !== null && (
         <div
-          className="fixed inset-0 bg-black/90 flex justify-center items-center"
+          className="fixed inset-0 bg-black/90 flex justify-center items-center z-50"
           onClick={() => setPreviewIndex(null)}
         >
           <img
             src={mediaFiles[previewIndex].url}
-            className="max-h-full max-w-full"
+            className="max-h-full max-w-full rounded-lg"
             alt=""
           />
         </div>
