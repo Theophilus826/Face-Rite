@@ -13,6 +13,7 @@ export default function ChatPage() {
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [chatText, setChatText] = useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [onlineStatus, setOnlineStatus] = useState("offline");
   const [recording, setRecording] = useState(false);
@@ -22,54 +23,61 @@ export default function ChatPage() {
   const eventSourceRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  /* ================= Fetch Users ================= */
+  const selectedUser = users.find((u) => u._id === chatUserId);
+
+  const BASE_URL = API.defaults.baseURL.replace("/api", "");
+
+  /* ================= FETCH USERS ================= */
   useEffect(() => {
     if (!user) return;
 
     const fetchUsers = async () => {
       try {
-        const { data } = await API.get("/users", {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-        const initializedUsers = data.users.map((u) => ({
+        const { data } = await API.get("/users");
+
+        const formatted = data.users.map((u) => ({
           ...u,
           status: "offline",
+          avatar: u.avatar
+            ? u.avatar.startsWith("http")
+              ? u.avatar
+              : `${BASE_URL}/${u.avatar}`
+            : null,
         }));
-        setUsers(initializedUsers);
+
+        setUsers(formatted);
       } catch (err) {
-        console.error(
-          "Failed to fetch users",
-          err.response?.data || err.message,
-        );
+        console.error("Fetch users error:", err);
       }
     };
+
     fetchUsers();
   }, [user]);
 
-  /* ================= SSE Chat ================= */
+  /* ================= SSE ================= */
   useEffect(() => {
     if (!user || !chatUserId) return;
 
-    // Close previous EventSource if exists
     if (eventSourceRef.current) eventSourceRef.current.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`,
+      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`
     );
+
     eventSourceRef.current = es;
 
     es.onmessage = (e) => {
-      const parsed = JSON.parse(e.data);
+      const data = JSON.parse(e.data);
 
-      switch (parsed.type) {
+      switch (data.type) {
         case "init":
-          setMessages(parsed.messages || []);
+          setMessages(data.messages || []);
           break;
 
         case "new_message":
-          // Avoid duplicating own messages
-          if (parsed.message.fromUser !== user._id) {
-            setMessages((prev) => [...prev, parsed.message]);
+          // prevent duplicate for own messages
+          if (data.message.fromUser !== user._id) {
+            setMessages((prev) => [...prev, data.message]);
           }
           break;
 
@@ -84,10 +92,13 @@ export default function ChatPage() {
         case "status":
           setUsers((prev) =>
             prev.map((u) =>
-              u._id === parsed.userId ? { ...u, status: parsed.status } : u,
-            ),
+              u._id === data.userId ? { ...u, status: data.status } : u
+            )
           );
-          if (parsed.userId === chatUserId) setOnlineStatus(parsed.status);
+
+          if (data.userId === chatUserId) {
+            setOnlineStatus(data.status);
+          }
           break;
 
         default:
@@ -98,87 +109,97 @@ export default function ChatPage() {
     return () => es.close();
   }, [user, chatUserId]);
 
-  /* ================= Auto Scroll to Bottom ================= */
+  /* ================= AUTO SCROLL ================= */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* ================= Send Message ================= */
+  /* ================= SEND TEXT ================= */
   const sendMessage = async () => {
     if (!chatText.trim()) return;
 
     const text = chatText.trim();
-    setChatText(""); // clear input immediately
+    setChatText("");
 
-    // Optimistic UI
     const tempMessage = {
       fromUser: user._id,
       toUser: chatUserId,
       text,
       type: "text",
-      status: "sent",
       createdAt: new Date().toISOString(),
     };
+
     setMessages((prev) => [...prev, tempMessage]);
 
     try {
-      await API.post(
-        "/chat/send",
-        { toUserId: chatUserId, text },
-        { headers: { Authorization: `Bearer ${user.token}` } },
-      );
-      await API.post(
-        "/chat/stop-typing",
-        { toUserId: chatUserId },
-        { headers: { Authorization: `Bearer ${user.token}` } },
-      );
+      await API.post("/chat/send", {
+        toUserId: chatUserId,
+        text,
+      });
+
+      await API.post("/chat/stop-typing", {
+        toUserId: chatUserId,
+      });
     } catch (err) {
-      console.error("Send failed:", err);
-      toast.error("Failed to send message");
-      // remove optimistic message if failed
+      toast.error("Send failed");
       setMessages((prev) => prev.filter((m) => m !== tempMessage));
     }
   };
 
-  /* ================= Typing ================= */
+  /* ================= SEND IMAGE ================= */
+  const sendImage = async () => {
+    if (!selectedImage) return;
+
+    const formData = new FormData();
+    formData.append("image", selectedImage);
+    formData.append("toUserId", chatUserId);
+
+    try {
+      await API.post("/chat/image", formData);
+      setSelectedImage(null);
+    } catch (err) {
+      toast.error("Image send failed");
+    }
+  };
+
+  /* ================= TYPING ================= */
   useEffect(() => {
     if (!chatText.trim()) return;
 
-    const timeout = setTimeout(async () => {
-      try {
-        await API.post(
-          "/chat/typing",
-          { toUserId: chatUserId },
-          { headers: { Authorization: `Bearer ${user.token}` } },
-        );
-      } catch {}
+    const timeout = setTimeout(() => {
+      API.post("/chat/typing", { toUserId: chatUserId }).catch(() => {});
     }, 300);
 
     return () => clearTimeout(timeout);
   }, [chatText]);
 
-  /* ================= Voice Recording ================= */
+  /* ================= VOICE ================= */
   const startRecording = async () => {
-    if (!navigator.mediaDevices)
-      return toast.error("Audio recording not supported");
+    if (!navigator.mediaDevices) {
+      return toast.error("Audio not supported");
+    }
 
     setRecording(true);
     audioChunksRef.current = [];
 
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
     mediaRecorderRef.current = new MediaRecorder(stream);
 
     mediaRecorderRef.current.ondataavailable = (e) =>
       audioChunksRef.current.push(e.data);
+
     mediaRecorderRef.current.start();
   };
 
   const stopRecording = async () => {
     if (!mediaRecorderRef.current) return;
+
     mediaRecorderRef.current.stop();
 
     mediaRecorderRef.current.onstop = async () => {
       const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+
       const formData = new FormData();
       formData.append("audio", blob);
       formData.append("toUserId", chatUserId);
@@ -186,121 +207,161 @@ export default function ChatPage() {
       setRecording(false);
 
       try {
-        await API.post("/chat/voice", formData, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-      } catch (err) {
-        console.error("Voice upload failed", err);
-        toast.error("Failed to send voice note");
+        await API.post("/chat/voice", formData);
+      } catch {
+        toast.error("Voice failed");
       }
     };
   };
 
-  if (!user) {
-    return (
-      <div className="text-center mt-10 text-gray-500">
-        Please log in to view this chat.
-      </div>
-    );
-  }
+  if (!user) return <div className="text-center mt-10">Login required</div>;
 
   return (
-    <div className="flex flex-col h-screen max-w-3xl mx-auto bg-white shadow-sm">
-      {/* ================= User List ================= */}
+    <div className="flex flex-col h-screen max-w-3xl mx-auto bg-white">
+
+      {/* ================= USERS ================= */}
       <div className="flex gap-4 overflow-x-auto border-b p-2 bg-gray-50">
         {users.map((u) => (
           <div
             key={u._id}
-            className={`flex items-center gap-1 cursor-pointer px-3 py-1 rounded-full transition-colors ${
-              u._id === chatUserId
-                ? "bg-blue-100 font-semibold"
-                : "hover:bg-gray-100"
-            }`}
             onClick={() => navigate(`/chat/${u._id}`)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer ${
+              u._id === chatUserId ? "bg-blue-100" : "hover:bg-gray-100"
+            }`}
           >
-            <span
-              className={`w-3 h-3 rounded-full ${
-                u.status === "online" ? "bg-green-500" : "bg-gray-400"
-              }`}
-            ></span>
-            <span className="text-sm">{u.name}</span>
+            <div className="relative">
+              {u.avatar ? (
+                <img
+                  src={u.avatar}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 bg-blue-500 text-white flex items-center justify-center rounded-full">
+                  {u.name?.charAt(0)}
+                </div>
+              )}
+
+              <span
+                className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${
+                  u.status === "online" ? "bg-green-500" : "bg-gray-400"
+                }`}
+              />
+            </div>
+
+            <span className="text-sm font-medium">{u.name}</span>
           </div>
         ))}
       </div>
 
-      {/* ================= Chat Header ================= */}
-      <div className="flex-shrink-0 px-4 py-2 border-b flex flex-col">
-        <h2 className="text-2xl font-semibold">
-          Chat with {chatUserId}{" "}
-          <span
-            className={`text-sm ${
-              onlineStatus === "online" ? "text-green-600" : "text-gray-400"
-            }`}
-          >
-            ({onlineStatus})
-          </span>
-        </h2>
-        {isTyping && (
-          <p className="text-sm text-gray-500">{chatUserId} is typing...</p>
+      {/* ================= HEADER ================= */}
+      <div className="flex items-center gap-3 px-4 py-2 border-b">
+        {selectedUser?.avatar ? (
+          <img
+            src={selectedUser.avatar}
+            className="w-10 h-10 rounded-full"
+          />
+        ) : (
+          <div className="w-10 h-10 bg-blue-500 text-white flex items-center justify-center rounded-full">
+            {selectedUser?.name?.charAt(0)}
+          </div>
         )}
+
+        <div>
+          <p className="font-semibold">{selectedUser?.name}</p>
+          <p className="text-xs text-gray-500">
+            {isTyping
+              ? "typing..."
+              : onlineStatus === "online"
+              ? "online"
+              : "offline"}
+          </p>
+        </div>
       </div>
 
-      {/* ================= Messages ================= */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-2 bg-gray-50">
-        {messages.map((msg, idx) => (
+      {/* ================= MESSAGES ================= */}
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 bg-gray-50">
+        {messages.map((msg, i) => (
           <div
-            key={idx}
-            className={`p-3 rounded max-w-[70%] break-words ${
+            key={i}
+            className={`p-3 rounded-2xl max-w-[70%] ${
               msg.fromUser === user._id
-                ? "bg-blue-200 self-end text-right"
-                : "bg-gray-200 self-start text-left"
+                ? "bg-blue-500 text-white self-end"
+                : "bg-white border self-start"
             }`}
           >
-            {msg.type === "voice" ? (
-              <audio controls src={msg.audio} className="w-full" />
+            {msg.type === "image" ? (
+              <img
+                src={
+                  msg.image?.startsWith("http")
+                    ? msg.image
+                    : `${BASE_URL}/${msg.image}`
+                }
+                className="rounded-lg"
+              />
+            ) : msg.type === "voice" ? (
+              <audio controls src={msg.audio} />
             ) : (
               msg.text || msg.message
             )}
           </div>
         ))}
+
         <div ref={messagesEndRef}></div>
       </div>
 
-      {/* ================= Input Area ================= */}
-      <div className="flex-shrink-0 bg-white p-2 border-t fixed bottom-0 left-0 w-full max-w-3xl flex gap-2 z-50 md:relative md:w-full">
+      {/* ================= PREVIEW ================= */}
+      {selectedImage && (
+        <div className="p-2 border-t">
+          <img
+            src={URL.createObjectURL(selectedImage)}
+            className="w-20 h-20 rounded object-cover"
+          />
+        </div>
+      )}
+
+      {/* ================= INPUT ================= */}
+      <div className="p-2 border-t flex gap-2 bg-white pb-20 md:pb-2 items-center">
+
+        <label className="cursor-pointer bg-gray-200 px-3 py-2 rounded">
+          📷
+          <input
+            type="file"
+            hidden
+            accept="image/*"
+            onChange={(e) => setSelectedImage(e.target.files[0])}
+          />
+        </label>
+
         <input
-          type="text"
-          className="flex-1 border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          placeholder="Type a message..."
           value={chatText}
           onChange={(e) => setChatText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          placeholder="Type message..."
+          className="flex-1 border rounded p-2"
         />
+
         <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
           onClick={sendMessage}
+          className="bg-blue-600 text-white px-4 rounded"
         >
           Send
         </button>
-        {!recording ? (
+
+        {selectedImage && (
           <button
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
-            onClick={startRecording}
+            onClick={sendImage}
+            className="bg-green-600 text-white px-3 rounded"
           >
-            🎤
-          </button>
-        ) : (
-          <button
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
-            onClick={stopRecording}
-          >
-            🛑
+            Img
           </button>
         )}
-      </div>
 
-      {/* Padding for mobile input */}
-      <div className="h-16 md:hidden"></div>
+        {!recording ? (
+          <button onClick={startRecording}>🎤</button>
+        ) : (
+          <button onClick={stopRecording}>🛑</button>
+        )}
+      </div>
     </div>
   );
 }
