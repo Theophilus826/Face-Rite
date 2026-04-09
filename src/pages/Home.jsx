@@ -11,7 +11,7 @@ import CardGrid from "../component/CardGrid";
 import CoinBalanceCard from "../component/CoinBalanceCard";
 import PostGalleryWithUpload from "../component/PostGallery";
 import { toast } from "react-toastify";
-import { io } from "socket.io-client";
+
 
 function Home() {
   const navigate = useNavigate();
@@ -21,8 +21,6 @@ function Home() {
   const [newPostText, setNewPostText] = useState("");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [creatingPost, setCreatingPost] = useState(false);
-
-  const socketRef = useRef(null);
 
   // ===== Load Posts =====
   const loadPosts = async () => {
@@ -36,55 +34,84 @@ function Home() {
 
   // ===== Init =====
   useEffect(() => {
-    loadPosts();
+  loadPosts();
 
-    if (!user?.token) return;
+  if (!user?.token) return;
 
-    const socket = io("https://swordgame-5.onrender.com", {
-      auth: { token: user.token },
-    });
+  // ===== Poll for new notifications every 15 seconds =====
+  const fetchNotifications = async () => {
+    try {
+      const res = await API.get("/notifications", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
 
-    socketRef.current = socket;
+      // Assume API returns array of notifications like: [{ id, message }]
+      res.data.notifications?.forEach((notif) => {
+        toast.info(`🔔 ${notif.message}`);
+      });
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err.response || err);
+    }
+  };
 
-    socket.on("new-comment", (notif) => {
-      toast.info(`🔔 ${notif.message}`);
-    });
+  // Fetch immediately and then every 15s
+  fetchNotifications();
+  const interval = setInterval(fetchNotifications, 15000);
 
-    return () => socket.disconnect();
-  }, [user?.token]);
+  return () => clearInterval(interval);
+}, [user?.token]);
 
   // ===== Create Post =====
   const createPost = async () => {
-    if (!newPostText.trim() && selectedFiles.length === 0) {
-      return toast.error("Write something or select a file");
+  // 1️⃣ Validation
+  if (!newPostText.trim() && selectedFiles.length === 0) {
+    return toast.error("Write something or select a file");
+  }
+
+  if (!user?.token) {
+    return toast.error("You must be logged in to post");
+  }
+
+  try {
+    setCreatingPost(true);
+
+    let post = null;
+
+    // 2️⃣ Handle files with FormData if any, else send JSON
+    if (selectedFiles.length > 0) {
+      const formData = new FormData();
+      formData.append("text", newPostText.trim());
+      selectedFiles.forEach((file) => formData.append("files", file));
+
+      const uploadRes = await API.post(`/post`, formData, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      post = uploadRes.data.post;
+    } else {
+      // Only text, JSON
+      const res = await API.post(
+        `/post`,
+        { text: newPostText.trim() },
+        { headers: { Authorization: `Bearer ${user.token}` } }
+      );
+      post = res.data.post;
     }
 
-    try {
-      setCreatingPost(true);
-
-      // 1️⃣ Create post first
-      let res = await API.post("/post", { text: newPostText.trim() });
-      let post = res.data.post;
-
-      // 2️⃣ Upload files if any
-      if (selectedFiles.length > 0) {
-        const formData = new FormData();
-        selectedFiles.forEach((file) => formData.append("files", file));
-        const uploadRes = await API.post(`/post/${post._id}/media`, formData);
-        post = uploadRes.data.post;
-      }
-
-      // 3️⃣ Update state
-      setPosts((prev) => [post, ...prev]);
-      setNewPostText("");
-      setSelectedFiles([]);
-      toast.success("Post created!");
-    } catch {
-      toast.error("Post failed");
-    } finally {
-      setCreatingPost(false);
-    }
-  };
+    // 3️⃣ Update state
+    setPosts((prev) => [post, ...prev]);
+    setNewPostText("");
+    setSelectedFiles([]);
+    toast.success("Post created!");
+  } catch (err) {
+    console.error("Post creation error:", err.response || err);
+    toast.error(err.response?.data?.message || "Post failed");
+  } finally {
+    setCreatingPost(false);
+  }
+};
 
   // ===== Utils =====
   const getInitials = (name) =>
