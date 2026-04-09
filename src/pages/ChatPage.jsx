@@ -37,7 +37,10 @@ export default function ChatPage() {
         }));
         setUsers(initializedUsers);
       } catch (err) {
-        console.error("Failed to fetch users", err.response?.data || err.message);
+        console.error(
+          "Failed to fetch users",
+          err.response?.data || err.message,
+        );
       }
     };
     fetchUsers();
@@ -51,7 +54,7 @@ export default function ChatPage() {
     if (eventSourceRef.current) eventSourceRef.current.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL.replace("/api", "")}/chat/stream/${user._id}/${chatUserId}`
+      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`,
     );
     eventSourceRef.current = es;
 
@@ -81,8 +84,8 @@ export default function ChatPage() {
         case "status":
           setUsers((prev) =>
             prev.map((u) =>
-              u._id === parsed.userId ? { ...u, status: parsed.status } : u
-            )
+              u._id === parsed.userId ? { ...u, status: parsed.status } : u,
+            ),
           );
           if (parsed.userId === chatUserId) setOnlineStatus(parsed.status);
           break;
@@ -122,12 +125,12 @@ export default function ChatPage() {
       await API.post(
         "/chat/send",
         { toUserId: chatUserId, text },
-        { headers: { Authorization: `Bearer ${user.token}` } }
+        { headers: { Authorization: `Bearer ${user.token}` } },
       );
       await API.post(
         "/chat/stop-typing",
         { toUserId: chatUserId },
-        { headers: { Authorization: `Bearer ${user.token}` } }
+        { headers: { Authorization: `Bearer ${user.token}` } },
       );
     } catch (err) {
       console.error("Send failed:", err);
@@ -146,7 +149,7 @@ export default function ChatPage() {
         await API.post(
           "/chat/typing",
           { toUserId: chatUserId },
-          { headers: { Authorization: `Bearer ${user.token}` } }
+          { headers: { Authorization: `Bearer ${user.token}` } },
         );
       } catch {}
     }, 300);
@@ -156,7 +159,8 @@ export default function ChatPage() {
 
   /* ================= Voice Recording ================= */
   const startRecording = async () => {
-    if (!navigator.mediaDevices) return toast.error("Audio recording not supported");
+    if (!navigator.mediaDevices)
+      return toast.error("Audio recording not supported");
 
     setRecording(true);
     audioChunksRef.current = [];
@@ -164,7 +168,8 @@ export default function ChatPage() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorderRef.current = new MediaRecorder(stream);
 
-    mediaRecorderRef.current.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+    mediaRecorderRef.current.ondataavailable = (e) =>
+      audioChunksRef.current.push(e.data);
     mediaRecorderRef.current.start();
   };
 
@@ -207,7 +212,9 @@ export default function ChatPage() {
           <div
             key={u._id}
             className={`flex items-center gap-1 cursor-pointer px-3 py-1 rounded-full transition-colors ${
-              u._id === chatUserId ? "bg-blue-100 font-semibold" : "hover:bg-gray-100"
+              u._id === chatUserId
+                ? "bg-blue-100 font-semibold"
+                : "hover:bg-gray-100"
             }`}
             onClick={() => navigate(`/chat/${u._id}`)}
           >
@@ -233,7 +240,9 @@ export default function ChatPage() {
             ({onlineStatus})
           </span>
         </h2>
-        {isTyping && <p className="text-sm text-gray-500">{chatUserId} is typing...</p>}
+        {isTyping && (
+          <p className="text-sm text-gray-500">{chatUserId} is typing...</p>
+        )}
       </div>
 
       {/* ================= Messages ================= */}
