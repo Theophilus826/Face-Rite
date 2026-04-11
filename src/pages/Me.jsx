@@ -1,14 +1,10 @@
-import { Eye, EyeOff, Sparkles } from "lucide-react";
-import { useSelector, useDispatch } from "react-redux";
-import { useState } from "react";
+import { Sparkles } from "lucide-react";
+import { useDispatch } from "react-redux";
 import { logout, reset } from "../features/AuthSlice";
 import { useNavigate } from "react-router-dom";
 import CoinBalanceCard from "../component/CoinBalanceCard";
 
 export default function Me() {
-  const coins = useSelector((state) => state.coins.value);
-  const [showBalance, setShowBalance] = useState(true);
-
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -21,30 +17,15 @@ export default function Me() {
   return (
     <div className="min-h-screen flex flex-col justify-between bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
       
-      {/* Top Section - Wallet Card */}
+      {/* Top Section - Only Coin Card */}
       <div className="space-y-6">
-        <div className="bg-white/30 backdrop-blur-md border border-white/30 rounded-2xl shadow-lg p-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">Wallet Balance</p>
-            <p className="text-2xl font-semibold text-gray-900">
-              {showBalance ? `₦${coins ?? 0}` : "••••••"}
-            </p>
-          </div>
-
-          {/* Toggle Eye */}
-          <button
-            onClick={() => setShowBalance(!showBalance)}
-            className="text-gray-600 hover:text-gray-800 transition"
-          >
-            {showBalance ? <Eye size={24} /> : <EyeOff size={24} />}
-          </button>
-        </div>
-        <CoinBalanceCard/>
+        <CoinBalanceCard />
       </div>
 
       {/* Bottom Section - Logo + Logout */}
       <div className="flex flex-col items-center mt-auto space-y-4 pb-20">
-        {/* React Icon Logo */}
+        
+        {/* Logo */}
         <div className="flex items-center gap-2 text-purple-600">
           <Sparkles size={28} />
           <span className="text-lg font-bold">AI Hub</span>
