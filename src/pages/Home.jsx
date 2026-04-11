@@ -181,16 +181,14 @@ function Home() {
             )}
 
             {/* ACTIONS */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
               <input
                 type="file"
                 multiple
+                className="w-full sm:w-auto"
                 onChange={(e) => {
                   const files = Array.from(e.target.files);
-
                   setSelectedFiles((prev) => [...prev, ...files]);
-
-                  // optional: reset input so same file can be selected again
                   e.target.value = null;
                 }}
               />
@@ -198,7 +196,7 @@ function Home() {
               <button
                 onClick={createPost}
                 disabled={creatingPost}
-                className="bg-purple-500 text-white px-5 py-2 rounded-xl"
+                className="bg-purple-500 text-white px-5 py-2 rounded-xl w-full sm:w-auto"
               >
                 {creatingPost ? "Posting..." : "Post"}
               </button>

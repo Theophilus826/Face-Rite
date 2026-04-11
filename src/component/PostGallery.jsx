@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useDispatch } from "react-redux";
 import { transferCoins } from "../features/coins/CoinSlice";
@@ -29,8 +29,38 @@ export default function PostGalleryWithUpload({
   const [animateLike, setAnimateLike] = useState(false);
   const [animateLove, setAnimateLove] = useState(false);
 
+  const videoRefs = useRef([]);
+
   const LIKE_COST = 50;
   const LOVE_COST = 100;
+
+  // ================= AUTO PLAY / PAUSE =================
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target;
+
+          if (entry.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        });
+      },
+      { threshold: 0.6 }
+    );
+
+    videoRefs.current.forEach((video) => {
+      if (video) observer.observe(video);
+    });
+
+    return () => {
+      videoRefs.current.forEach((video) => {
+        if (video) observer.unobserve(video);
+      });
+    };
+  }, [mediaFiles]);
 
   // ================= NAVIGATION =================
   const next = () =>
@@ -93,11 +123,22 @@ export default function PostGalleryWithUpload({
       {/* ================= MEDIA ================= */}
 
       {mediaFiles.length === 1 ? (
-        <img
-          src={mediaFiles[0].url}
-          className="w-full max-h-[500px] object-contain rounded-xl cursor-pointer"
-          onClick={() => setIndex(0)}
-        />
+        mediaFiles[0].type === "video" ? (
+          <video
+            ref={(el) => (videoRefs.current[0] = el)}
+            src={mediaFiles[0].url}
+            className="w-full max-h-[500px] object-contain rounded-xl"
+            muted
+            loop
+            playsInline
+          />
+        ) : (
+          <img
+            src={mediaFiles[0].url}
+            className="w-full max-h-[500px] object-contain rounded-xl cursor-pointer"
+            onClick={() => setIndex(0)}
+          />
+        )
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {mediaFiles.map((m, i) => (
@@ -108,8 +149,12 @@ export default function PostGalleryWithUpload({
             >
               {m.type === "video" ? (
                 <video
+                  ref={(el) => (videoRefs.current[i] = el)}
                   src={m.url}
                   className="w-full h-32 sm:h-40 object-cover"
+                  muted
+                  loop
+                  playsInline
                 />
               ) : (
                 <img
@@ -141,7 +186,7 @@ export default function PostGalleryWithUpload({
             ‹
           </button>
 
-          {/* IMAGE / VIDEO */}
+          {/* MEDIA */}
           <motion.div
             key={index}
             className="max-w-full max-h-full px-3"
@@ -163,6 +208,7 @@ export default function PostGalleryWithUpload({
                 className="max-h-[90vh] max-w-[95vw] rounded-xl"
                 controls
                 autoPlay
+                muted
               />
             ) : (
               <img
@@ -193,7 +239,7 @@ export default function PostGalleryWithUpload({
 
       {/* ================= REACTIONS ================= */}
 
-      <div className="flex gap-4 mt-4">
+      <div className="flex gap-4 mt-4 flex-wrap">
 
         {/* LIKE */}
         <div className="relative">
