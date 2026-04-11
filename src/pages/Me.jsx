@@ -1,4 +1,4 @@
-// import { Eye, EyeOff, Sparkles } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { useState } from "react";
 import { logout, reset } from "../features/AuthSlice";
@@ -6,8 +6,8 @@ import { useNavigate } from "react-router-dom";
 import CoinBalanceCard from "../component/CoinBalanceCard";
 
 export default function Me() {
-  // const coins = useSelector((state) => state.coins.value);
-  // const [showBalance, setShowBalance] = useState(true);
+  const coins = useSelector((state) => state.coins.value);
+  const [showBalance, setShowBalance] = useState(true);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -23,6 +23,22 @@ export default function Me() {
       
       {/* Top Section - Wallet Card */}
       <div className="space-y-6">
+        <div className="bg-white/30 backdrop-blur-md border border-white/30 rounded-2xl shadow-lg p-6 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500">Wallet Balance</p>
+            <p className="text-2xl font-semibold text-gray-900">
+              {showBalance ? `₦${coins ?? 0}` : "••••••"}
+            </p>
+          </div>
+
+          {/* Toggle Eye */}
+          <button
+            onClick={() => setShowBalance(!showBalance)}
+            className="text-gray-600 hover:text-gray-800 transition"
+          >
+            {showBalance ? <Eye size={24} /> : <EyeOff size={24} />}
+          </button>
+        </div>
         <CoinBalanceCard/>
       </div>
 
