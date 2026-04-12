@@ -12,6 +12,7 @@ export default function PostGalleryWithUpload({
   mediaFiles = [],
   initialLikes = 0,
   initialLoves = 0,
+  comments = [],
 }) {
   const dispatch = useDispatch();
 

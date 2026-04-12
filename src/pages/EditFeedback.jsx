@@ -84,7 +84,7 @@ export default function EditFeedback() {
             >
                 <option value="">Select Games</option>
                 <option value="Call of Duty">Call of Duty</option>
-                <option value="Act or War">Act or War</option>
+                <option value="Act or War">Act of War</option>
                 <option value="Car Race">Car Race</option>
                 <option value="Real Punching">Real Punching</option>
                 <option value="Real league Football">
