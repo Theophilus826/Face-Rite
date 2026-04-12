@@ -29,6 +29,8 @@ export default function PostGalleryWithUpload({
   const [animateLike, setAnimateLike] = useState(false);
   const [animateLove, setAnimateLove] = useState(false);
 
+  const [muted, setMuted] = useState(true);
+
   const videoRefs = useRef([]);
 
   const LIKE_COST = 50;
@@ -61,6 +63,16 @@ export default function PostGalleryWithUpload({
       });
     };
   }, [mediaFiles]);
+
+  // ================= MUTE TOGGLE =================
+  const toggleMute = () => {
+    const newMuted = !muted;
+    setMuted(newMuted);
+
+    videoRefs.current.forEach((video) => {
+      if (video) video.muted = newMuted;
+    });
+  };
 
   // ================= NAVIGATION =================
   const next = () =>
@@ -124,19 +136,29 @@ export default function PostGalleryWithUpload({
 
       {mediaFiles.length === 1 ? (
         mediaFiles[0].type === "video" ? (
-          <video
-            ref={(el) => (videoRefs.current[0] = el)}
-            src={mediaFiles[0].url}
-            className="w-full max-h-[500px] object-contain rounded-xl"
-            muted
-            loop
-            playsInline
-          />
+          <div className="relative">
+            <video
+              ref={(el) => (videoRefs.current[0] = el)}
+              src={mediaFiles[0].url}
+              className="w-full max-h-[500px] object-contain rounded-xl"
+              muted={muted}
+              loop
+              playsInline
+            />
+
+            <button
+              onClick={toggleMute}
+              className="absolute bottom-3 right-3 bg-black/60 text-white px-3 py-1 rounded-lg"
+            >
+              {muted ? "🔇" : "🔊"}
+            </button>
+          </div>
         ) : (
           <img
             src={mediaFiles[0].url}
             className="w-full max-h-[500px] object-contain rounded-xl cursor-pointer"
             onClick={() => setIndex(0)}
+            alt=""
           />
         )
       ) : (
@@ -148,14 +170,26 @@ export default function PostGalleryWithUpload({
               onClick={() => setIndex(i)}
             >
               {m.type === "video" ? (
-                <video
-                  ref={(el) => (videoRefs.current[i] = el)}
-                  src={m.url}
-                  className="w-full h-32 sm:h-40 object-cover"
-                  muted
-                  loop
-                  playsInline
-                />
+                <>
+                  <video
+                    ref={(el) => (videoRefs.current[i] = el)}
+                    src={m.url}
+                    className="w-full h-32 sm:h-40 object-cover"
+                    muted={muted}
+                    loop
+                    playsInline
+                  />
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMute();
+                    }}
+                    className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-2 py-1 rounded"
+                  >
+                    {muted ? "🔇" : "🔊"}
+                  </button>
+                </>
               ) : (
                 <img
                   src={m.url}
@@ -168,14 +202,13 @@ export default function PostGalleryWithUpload({
         </div>
       )}
 
-      {/* ================= SWIPE MODAL ================= */}
+      {/* ================= MODAL ================= */}
 
       {index !== null && (
         <div
           className="fixed inset-0 bg-black/95 flex items-center justify-center z-50"
           onClick={() => setIndex(null)}
         >
-          {/* LEFT */}
           <button
             className="absolute left-4 text-white text-3xl"
             onClick={(e) => {
@@ -186,10 +219,9 @@ export default function PostGalleryWithUpload({
             ‹
           </button>
 
-          {/* MEDIA */}
           <motion.div
             key={index}
-            className="max-w-full max-h-full px-3"
+            className="relative max-w-full max-h-full px-3"
             initial={{ opacity: 0, x: 80 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -80 }}
@@ -203,13 +235,22 @@ export default function PostGalleryWithUpload({
             onClick={(e) => e.stopPropagation()}
           >
             {mediaFiles[index].type === "video" ? (
-              <video
-                src={mediaFiles[index].url}
-                className="max-h-[90vh] max-w-[95vw] rounded-xl"
-                controls
-                autoPlay
-                muted
-              />
+              <>
+                <video
+                  src={mediaFiles[index].url}
+                  className="max-h-[90vh] max-w-[95vw] rounded-xl"
+                  controls
+                  autoPlay
+                  muted={muted}
+                />
+
+                <button
+                  onClick={toggleMute}
+                  className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-2 rounded-lg"
+                >
+                  {muted ? "🔇" : "🔊"}
+                </button>
+              </>
             ) : (
               <img
                 src={mediaFiles[index].url}
@@ -219,7 +260,6 @@ export default function PostGalleryWithUpload({
             )}
           </motion.div>
 
-          {/* RIGHT */}
           <button
             className="absolute right-4 text-white text-3xl"
             onClick={(e) => {
@@ -230,7 +270,6 @@ export default function PostGalleryWithUpload({
             ›
           </button>
 
-          {/* COUNTER */}
           <div className="absolute bottom-6 text-white text-sm">
             {index + 1} / {mediaFiles.length}
           </div>
@@ -241,40 +280,26 @@ export default function PostGalleryWithUpload({
 
       <div className="flex gap-4 mt-4 flex-wrap">
 
-        {/* LIKE */}
         <div className="relative">
           <button
             onClick={() => handleReaction("like")}
-            className={`px-4 py-2 rounded-xl text-white transition ${
+            className={`px-4 py-2 rounded-xl text-white ${
               liked ? "bg-blue-700" : "bg-blue-500"
             } ${animateLike ? "scale-125" : ""}`}
           >
             👍 {likeCount}
           </button>
-
-          {animateLike && (
-            <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xl animate-bounce">
-              👍
-            </span>
-          )}
         </div>
 
-        {/* LOVE */}
         <div className="relative">
           <button
             onClick={() => handleReaction("love")}
-            className={`px-4 py-2 rounded-xl text-white transition ${
+            className={`px-4 py-2 rounded-xl text-white ${
               loved ? "bg-pink-700" : "bg-pink-500"
             } ${animateLove ? "scale-125" : ""}`}
           >
             ❤️ {loveCount}
           </button>
-
-          {animateLove && (
-            <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-xl animate-bounce">
-              ❤️
-            </span>
-          )}
         </div>
       </div>
     </div>

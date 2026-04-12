@@ -82,18 +82,18 @@ export default function EditFeedback() {
                 onChange={(e) => setClub(e.target.value)}
                 className="w-full p-3 border rounded mb-4"
             >
-                <option value="">Select Club</option>
-                <option value="Chelsea">Chelsea</option>
-                <option value="Barcelona">Barcelona</option>
-                <option value="Manchester City">Manchester City</option>
-                <option value="Juventus">Juventus</option>
-                <option value="Paris Saint-Germain - PSG">
-                    Paris Saint-Germain (PSG)
+                <option value="">Select Games</option>
+                <option value="Call of Duty">Call of Duty</option>
+                <option value="Act or War">Act or War</option>
+                <option value="Car Race">Car Race</option>
+                <option value="Real Punching">Real Punching</option>
+                <option value="Real league Football">
+                    Real league Football
                 </option>
-                <option value="Liverpool FC">Liverpool FC</option>
-                <option value="AC Milan">AC Milan</option>
-                <option value="Bayern Munich">Bayern Munich</option>
-                <option value="Manchester United">Manchester United</option>
+                <option value="Spirit Sword">Spirit Sword</option>
+                <option value="Grand War">Grand War</option>
+                <option value="Ludo Game">Ludo Game</option>
+                <option value="Subway">Subway</option>
             </select>
 
             {/* Status */}

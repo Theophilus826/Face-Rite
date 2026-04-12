@@ -271,6 +271,7 @@ function Home() {
         {/* Action Cards */}
         <div className="grid sm:grid-cols-2 gap-4">
           {/* New Feedback */}
+          <h1>Create Feedback for Games You can Play</h1>
           <Link
             to="/NewFeedback"
             className="flex items-center justify-between p-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition border border-gray-100 hover:scale-[1.02]"

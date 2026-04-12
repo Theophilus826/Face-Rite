@@ -8,15 +8,15 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const clubs = [
-  { name: "Chelsea", img: "/favicon.ico/chelsea.png" },
-  { name: "Barcelona", img: "/favicon.ico/barca.png" },
-  { name: "Manchester City", img: "/favicon.ico/mancity.png" },
-  { name: "Juventus", img: "/favicon.ico/juventus.png" },
-  { name: "Paris Saint-Germain (PSG)", img: "/favicon.ico/psg.png" },
-  { name: "Liverpool FC", img: "/favicon.ico/liverpool.png" },
-  { name: "AC Milan", img: "/favicon.ico/milan.png" },
-  { name: "Bayern Munich", img: "/favicon.ico/bayern.png" },
-  { name: "Manchester United", img: "/favicon.ico/man-utd.png" },
+  { name: "Call of Duty", img: "/favicon.ico/Call of Duty.jpg" },
+  { name: "Act of War", img: "/favicon.ico/Art or War.jpg" },
+  { name: "Car Race", img: "/favicon.ico/Car race.jpg" },
+  { name: "Real Punching", img: "/multpunch.jpg" },
+  { name: "Real league Football", img: "/multRball.jpg" },
+  { name: "Spirit Sword", img: "/multA.jpg" },
+  { name: "Grand War", img: "/multGra.jpg" },
+  { name: "Ludo Game", img: "/favicon.ico/Ludo.jpg" },
+  { name: "Subway", img: "/favicon.ico/Subway.jpg" },
 ];
 
 export default function NewFeedback() {
