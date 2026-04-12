@@ -14,7 +14,7 @@ export default function PostGalleryWithUpload({
   mediaFiles = [],
   initialLikes = 0,
   initialLoves = 0,
-  comments = []
+  comments = [],
 }) {
   const dispatch = useDispatch();
 
@@ -50,7 +50,7 @@ export default function PostGalleryWithUpload({
           }
         });
       },
-      { threshold: 0.6 }
+      { threshold: 0.6 },
     );
 
     videoRefs.current.forEach((video) => {
@@ -93,7 +93,7 @@ export default function PostGalleryWithUpload({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type} reaction`,
-        })
+        }),
       ).unwrap();
 
       const res = await API.post(`/post/${postId}/react`, { type });
@@ -121,12 +121,9 @@ export default function PostGalleryWithUpload({
 
   return (
     <div className="space-y-3">
-
       {/* DATE */}
       {createdAt && (
-        <p className="text-sm text-gray-600">
-          {formatDate(createdAt)}
-        </p>
+        <p className="text-sm text-gray-600">{formatDate(createdAt)}</p>
       )}
 
       {/* TEXT */}
@@ -136,19 +133,34 @@ export default function PostGalleryWithUpload({
 
       {mediaFiles.length === 1 ? (
         mediaFiles[0].type === "video" ? (
-          <div className="relative">
+          <div className="relative w-full flex justify-center">
             <video
               ref={(el) => (videoRefs.current[0] = el)}
               src={mediaFiles[0].url}
-              className="w-full max-h-[500px] object-contain rounded-xl"
+              className="
+          w-full 
+          max-h-[70vh] 
+          sm:max-h-[75vh] 
+          object-contain 
+          rounded-xl
+        "
               muted={muted}
               loop
               playsInline
             />
 
+            {/* 🔊 TOP MUTE BUTTON */}
             <button
               onClick={toggleMute}
-              className="absolute bottom-3 right-3 bg-black/60 text-white px-3 py-1 rounded-lg"
+              className="
+          absolute 
+          top-3 right-3 
+          bg-black/60 
+          text-white 
+          px-3 py-1 
+          rounded-lg 
+          text-sm
+        "
             >
               {muted ? "🔇" : "🔊"}
             </button>
@@ -156,7 +168,14 @@ export default function PostGalleryWithUpload({
         ) : (
           <img
             src={mediaFiles[0].url}
-            className="w-full max-h-[500px] object-contain rounded-xl cursor-pointer"
+            className="
+        w-full 
+        max-h-[70vh] 
+        sm:max-h-[75vh] 
+        object-contain 
+        rounded-xl 
+        cursor-pointer
+      "
             onClick={() => setIndex(0)}
             alt=""
           />
@@ -174,18 +193,31 @@ export default function PostGalleryWithUpload({
                   <video
                     ref={(el) => (videoRefs.current[i] = el)}
                     src={m.url}
-                    className="w-full h-32 sm:h-40 object-cover"
+                    className="
+                w-full 
+                h-36 sm:h-44 md:h-52 
+                object-cover
+              "
                     muted={muted}
                     loop
                     playsInline
                   />
 
+                  {/* 🔊 TOP ICON */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleMute();
                     }}
-                    className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-2 py-1 rounded"
+                    className="
+                absolute 
+                top-2 right-2 
+                bg-black/60 
+                text-white 
+                text-xs 
+                px-2 py-1 
+                rounded
+              "
                   >
                     {muted ? "🔇" : "🔊"}
                   </button>
@@ -193,7 +225,7 @@ export default function PostGalleryWithUpload({
               ) : (
                 <img
                   src={m.url}
-                  className="w-full h-32 sm:h-40 object-cover"
+                  className="w-full h-36 sm:h-44 md:h-52 object-cover"
                   alt=""
                 />
               )}
@@ -238,15 +270,29 @@ export default function PostGalleryWithUpload({
               <>
                 <video
                   src={mediaFiles[index].url}
-                  className="max-h-[90vh] max-w-[95vw] rounded-xl"
+                  className="
+      max-h-[85vh] 
+      max-w-[95vw] 
+      sm:max-w-[80vw] 
+      object-contain 
+      rounded-xl
+    "
                   controls
                   autoPlay
                   muted={muted}
                 />
 
+                {/* 🔊 TOP BUTTON */}
                 <button
                   onClick={toggleMute}
-                  className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-2 rounded-lg"
+                  className="
+      absolute 
+      top-4 right-4 
+      bg-black/60 
+      text-white 
+      px-3 py-2 
+      rounded-lg
+    "
                 >
                   {muted ? "🔇" : "🔊"}
                 </button>
@@ -279,7 +325,6 @@ export default function PostGalleryWithUpload({
       {/* ================= REACTIONS ================= */}
 
       <div className="flex gap-4 mt-4 flex-wrap">
-
         <div className="relative">
           <button
             onClick={() => handleReaction("like")}

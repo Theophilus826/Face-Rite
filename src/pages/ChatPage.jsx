@@ -77,7 +77,7 @@ export default function ChatPage() {
     if (eventSourceRef.current) eventSourceRef.current.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`
+      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`,
     );
 
     eventSourceRef.current = es;
@@ -107,8 +107,8 @@ export default function ChatPage() {
         case "status":
           setUsers((prev) =>
             prev.map((u) =>
-              u._id === data.userId ? { ...u, status: data.status } : u
-            )
+              u._id === data.userId ? { ...u, status: data.status } : u,
+            ),
           );
 
           if (data.userId === chatUserId) {
@@ -233,32 +233,46 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen max-w-4xl mx-auto bg-white">
-
       {/* USERS */}
-      <div className="flex gap-3 overflow-x-auto p-2 border-b bg-gray-50">
+      <div className="flex gap-4 overflow-x-auto p-2 border-b bg-gray-50">
         {users.map((u) => (
           <div
             key={u._id}
             onClick={() => navigate(`/chat/${u._id}`)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer ${
-              u._id === chatUserId ? "bg-blue-100" : "hover:bg-gray-100"
-            }`}
+            className={`
+        flex flex-col items-center justify-center
+        min-w-[70px] sm:min-w-[80px]
+        cursor-pointer rounded-xl p-2
+        ${u._id === chatUserId ? "bg-blue-100" : "hover:bg-gray-100"}
+      `}
           >
+            {/* AVATAR */}
             <div className="relative">
               {u.avatar ? (
-                <img src={u.avatar} className="w-10 h-10 rounded-full" />
+                <img
+                  src={u.avatar}
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover"
+                />
               ) : (
-                <div className="w-10 h-10 bg-blue-500 text-white flex items-center justify-center rounded-full">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-500 text-white flex items-center justify-center rounded-full">
                   {u.name?.charAt(0)}
                 </div>
               )}
+
+              {/* ONLINE DOT */}
               <span
-                className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
-                  u.status === "online" ? "bg-green-500" : "bg-gray-400"
-                }`}
+                className={`
+            absolute bottom-0 right-0 
+            w-2.5 h-2.5 rounded-full border border-white
+            ${u.status === "online" ? "bg-green-500" : "bg-gray-400"}
+          `}
               />
             </div>
-            <span className="text-sm">{u.name}</span>
+
+            {/* USERNAME UNDER AVATAR */}
+            <span className="text-xs sm:text-sm mt-1 text-center truncate w-full">
+              {u.name}
+            </span>
           </div>
         ))}
       </div>
@@ -305,33 +319,25 @@ export default function ChatPage() {
       </div>
 
       {/* INPUT */}
-      <div className="p-2 flex gap-2 items-center border-t bg-white flex-wrap sm:flex-nowrap">
-
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t pb-24 flex gap-2 items-center z-50 sm:static sm:border-none">
         <input
           value={chatText}
           onChange={(e) => setChatText(e.target.value)}
-          className="flex-1 border rounded p-2"
+          placeholder="Type message..."
+          className="flex-1 border rounded p-2 text-sm sm:text-base"
         />
 
-        <button onClick={sendMessage} className="bg-blue-600 text-white px-3 py-2 rounded">
+        <button
+          onClick={sendMessage}
+          className="bg-blue-600 text-white px-3 py-2 rounded"
+        >
           Send
         </button>
 
         {!recording ? (
           <button onClick={startRecording}>🎤</button>
         ) : (
-          <div className="flex items-center gap-2 bg-red-100 px-3 py-1 rounded-full">
-            <span className="animate-pulse w-2 h-2 bg-red-500 rounded-full"></span>
-            <span>{formatRecordTime(recordTime)}</span>
-
-            <div className="flex gap-[2px] h-4">
-              {[...Array(5)].map((_, i) => (
-                <span key={i} className="w-[2px] bg-red-500 animate-pulse" />
-              ))}
-            </div>
-
-            <button onClick={stopRecording}>■</button>
-          </div>
+          <button onClick={stopRecording}>🛑</button>
         )}
       </div>
     </div>
