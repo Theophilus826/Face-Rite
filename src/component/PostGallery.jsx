@@ -7,18 +7,14 @@ import { API } from "../features/Api";
 export default function PostGalleryWithUpload({
   postId,
   postOwnerId,
-  token,
-  user,
   text = "",
   createdAt,
   mediaFiles = [],
   initialLikes = 0,
   initialLoves = 0,
-  comments = [],
 }) {
   const dispatch = useDispatch();
 
-  // ================= STATES =================
   const [index, setIndex] = useState(null);
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [loveCount, setLoveCount] = useState(initialLoves);
@@ -36,50 +32,42 @@ export default function PostGalleryWithUpload({
   const LIKE_COST = 50;
   const LOVE_COST = 100;
 
-  // ================= AUTO PLAY / PAUSE =================
+  // ================= AUTO PLAY =================
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           const video = entry.target;
-
-          if (entry.isIntersecting) {
-            video.play().catch(() => {});
-          } else {
-            video.pause();
-          }
+          if (entry.isIntersecting) video.play().catch(() => {});
+          else video.pause();
         });
       },
-      { threshold: 0.6 },
+      { threshold: 0.6 }
     );
 
-    videoRefs.current.forEach((video) => {
-      if (video) observer.observe(video);
-    });
+    videoRefs.current.forEach((v) => v && observer.observe(v));
 
     return () => {
-      videoRefs.current.forEach((video) => {
-        if (video) observer.unobserve(video);
-      });
+      videoRefs.current.forEach((v) => v && observer.unobserve(v));
     };
   }, [mediaFiles]);
 
-  // ================= MUTE TOGGLE =================
+  // ================= MUTE =================
   const toggleMute = () => {
     const newMuted = !muted;
     setMuted(newMuted);
 
-    videoRefs.current.forEach((video) => {
-      if (video) video.muted = newMuted;
+    videoRefs.current.forEach((v) => {
+      if (v) v.muted = newMuted;
     });
   };
 
-  // ================= NAVIGATION =================
+  // ================= NAV =================
   const next = () =>
-    setIndex((prev) => (prev === mediaFiles.length - 1 ? 0 : prev + 1));
+    setIndex((p) => (p === mediaFiles.length - 1 ? 0 : p + 1));
 
   const prev = () =>
-    setIndex((prev) => (prev === 0 ? mediaFiles.length - 1 : prev - 1));
+    setIndex((p) => (p === 0 ? mediaFiles.length - 1 : p - 1));
 
   // ================= REACTIONS =================
   const handleReaction = async (type) => {
@@ -93,7 +81,7 @@ export default function PostGalleryWithUpload({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type} reaction`,
-        }),
+        })
       ).unwrap();
 
       const res = await API.post(`/post/${postId}/react`, { type });
@@ -104,16 +92,16 @@ export default function PostGalleryWithUpload({
       if (type === "like") {
         setLiked(true);
         setAnimateLike(true);
-        setTimeout(() => setAnimateLike(false), 600);
+        setTimeout(() => setAnimateLike(false), 500);
       }
 
       if (type === "love") {
         setLoved(true);
         setAnimateLove(true);
-        setTimeout(() => setAnimateLove(false), 600);
+        setTimeout(() => setAnimateLove(false), 500);
       }
     } catch (err) {
-      console.error("Reaction error:", err);
+      console.error(err);
     }
   };
 
@@ -121,9 +109,12 @@ export default function PostGalleryWithUpload({
 
   return (
     <div className="space-y-3">
+
       {/* DATE */}
       {createdAt && (
-        <p className="text-sm text-gray-600">{formatDate(createdAt)}</p>
+        <p className="text-sm text-gray-600">
+          {formatDate(createdAt)}
+        </p>
       )}
 
       {/* TEXT */}
@@ -134,103 +125,82 @@ export default function PostGalleryWithUpload({
       {mediaFiles.length === 1 ? (
         mediaFiles[0].type === "video" ? (
           <div className="relative w-full flex justify-center">
-            <video
-              ref={(el) => (videoRefs.current[0] = el)}
-              src={mediaFiles[0].url}
-              className="
-          w-full 
-          max-h-[70vh] 
-          sm:max-h-[75vh] 
-          object-contain 
-          rounded-xl
-        "
-              muted={muted}
-              loop
-              playsInline
-            />
+            <div className="relative w-full max-w-6xl">
 
-            {/* 🔊 TOP MUTE BUTTON */}
-            <button
-              onClick={toggleMute}
-              className="
-          absolute 
-          top-3 right-3 
-          bg-black/60 
-          text-white 
-          px-3 py-1 
-          rounded-lg 
-          text-sm
-        "
-            >
-              {muted ? "🔇" : "🔊"}
-            </button>
+              <video
+                ref={(el) => (videoRefs.current[0] = el)}
+                src={mediaFiles[0].url}
+                className="
+                  w-full
+                  max-h-[80vh]
+                  object-cover
+                  rounded-lg
+                  border border-gray-200
+                "
+                muted={muted}
+                loop
+                playsInline
+              />
+
+              {/* 🔊 MUTE */}
+              <button
+                onClick={toggleMute}
+                className="absolute top-3 right-3 bg-black/60 text-white px-3 py-1 rounded-md text-sm"
+              >
+                {muted ? "🔇" : "🔊"}
+              </button>
+
+            </div>
           </div>
         ) : (
           <img
             src={mediaFiles[0].url}
-            className="
-        w-full 
-        max-h-[70vh] 
-        sm:max-h-[75vh] 
-        object-contain 
-        rounded-xl 
-        cursor-pointer
-      "
-            onClick={() => setIndex(0)}
+            className="w-full max-h-[80vh] object-contain rounded-lg"
             alt=""
           />
         )
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+
           {mediaFiles.map((m, i) => (
             <div
               key={i}
-              className="relative cursor-pointer overflow-hidden rounded-lg"
+              className="relative overflow-hidden rounded-md border border-gray-200"
               onClick={() => setIndex(i)}
             >
               {m.type === "video" ? (
-                <>
+                <div className="relative w-full h-44 sm:h-52 md:h-60">
+
                   <video
                     ref={(el) => (videoRefs.current[i] = el)}
                     src={m.url}
-                    className="
-                w-full 
-                h-36 sm:h-44 md:h-52 
-                object-cover
-              "
+                    className="w-full h-full object-cover"
                     muted={muted}
                     loop
                     playsInline
                   />
 
-                  {/* 🔊 TOP ICON */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleMute();
                     }}
-                    className="
-                absolute 
-                top-2 right-2 
-                bg-black/60 
-                text-white 
-                text-xs 
-                px-2 py-1 
-                rounded
-              "
+                    className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded"
                   >
                     {muted ? "🔇" : "🔊"}
                   </button>
-                </>
+
+                </div>
               ) : (
                 <img
                   src={m.url}
-                  className="w-full h-36 sm:h-44 md:h-52 object-cover"
+                  className="w-full h-44 sm:h-52 md:h-60 object-cover"
                   alt=""
                 />
               )}
             </div>
           ))}
+
         </div>
       )}
 
@@ -253,17 +223,11 @@ export default function PostGalleryWithUpload({
 
           <motion.div
             key={index}
-            className="relative max-w-full max-h-full px-3"
+            className="relative w-full max-w-6xl px-3"
             initial={{ opacity: 0, x: 80 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -80 }}
             transition={{ duration: 0.25 }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            onDragEnd={(e, info) => {
-              if (info.offset.x < -80) next();
-              if (info.offset.x > 80) prev();
-            }}
             onClick={(e) => e.stopPropagation()}
           >
             {mediaFiles[index].type === "video" ? (
@@ -271,28 +235,20 @@ export default function PostGalleryWithUpload({
                 <video
                   src={mediaFiles[index].url}
                   className="
-      max-h-[85vh] 
-      max-w-[95vw] 
-      sm:max-w-[80vw] 
-      object-contain 
-      rounded-xl
-    "
+                    w-full
+                    max-h-[90vh]
+                    object-contain
+                    rounded-lg
+                    border border-gray-200
+                  "
                   controls
                   autoPlay
                   muted={muted}
                 />
 
-                {/* 🔊 TOP BUTTON */}
                 <button
                   onClick={toggleMute}
-                  className="
-      absolute 
-      top-4 right-4 
-      bg-black/60 
-      text-white 
-      px-3 py-2 
-      rounded-lg
-    "
+                  className="absolute top-4 right-4 bg-black/60 text-white px-3 py-2 rounded-md"
                 >
                   {muted ? "🔇" : "🔊"}
                 </button>
@@ -300,7 +256,7 @@ export default function PostGalleryWithUpload({
             ) : (
               <img
                 src={mediaFiles[index].url}
-                className="max-h-[90vh] max-w-[95vw] rounded-xl"
+                className="max-h-[90vh] max-w-full rounded-lg"
                 alt=""
               />
             )}
@@ -325,28 +281,25 @@ export default function PostGalleryWithUpload({
       {/* ================= REACTIONS ================= */}
 
       <div className="flex gap-4 mt-4 flex-wrap">
-        <div className="relative">
-          <button
-            onClick={() => handleReaction("like")}
-            className={`px-4 py-2 rounded-xl text-white ${
-              liked ? "bg-blue-700" : "bg-blue-500"
-            } ${animateLike ? "scale-125" : ""}`}
-          >
-            👍 {likeCount}
-          </button>
-        </div>
+        <button
+          onClick={() => handleReaction("like")}
+          className={`px-4 py-2 rounded-xl text-white ${
+            liked ? "bg-blue-700" : "bg-blue-500"
+          } ${animateLike ? "scale-125" : ""}`}
+        >
+          👍 {likeCount}
+        </button>
 
-        <div className="relative">
-          <button
-            onClick={() => handleReaction("love")}
-            className={`px-4 py-2 rounded-xl text-white ${
-              loved ? "bg-pink-700" : "bg-pink-500"
-            } ${animateLove ? "scale-125" : ""}`}
-          >
-            ❤️ {loveCount}
-          </button>
-        </div>
+        <button
+          onClick={() => handleReaction("love")}
+          className={`px-4 py-2 rounded-xl text-white ${
+            loved ? "bg-pink-700" : "bg-pink-500"
+          } ${animateLove ? "scale-125" : ""}`}
+        >
+          ❤️ {loveCount}
+        </button>
       </div>
+
     </div>
   );
 }
