@@ -7,6 +7,8 @@ import { API } from "../features/Api";
 export default function PostGalleryWithUpload({
   postId,
   postOwnerId,
+  token, // ✅ ADD THIS
+  user,
   text = "",
   createdAt,
   mediaFiles = [],
@@ -43,7 +45,7 @@ export default function PostGalleryWithUpload({
           else video.pause();
         });
       },
-      { threshold: 0.6 }
+      { threshold: 0.6 },
     );
 
     videoRefs.current.forEach((v) => v && observer.observe(v));
@@ -64,11 +66,9 @@ export default function PostGalleryWithUpload({
   };
 
   // ================= NAV =================
-  const next = () =>
-    setIndex((p) => (p === mediaFiles.length - 1 ? 0 : p + 1));
+  const next = () => setIndex((p) => (p === mediaFiles.length - 1 ? 0 : p + 1));
 
-  const prev = () =>
-    setIndex((p) => (p === 0 ? mediaFiles.length - 1 : p - 1));
+  const prev = () => setIndex((p) => (p === 0 ? mediaFiles.length - 1 : p - 1));
 
   // ================= REACTIONS =================
   const handleReaction = async (type) => {
@@ -82,7 +82,7 @@ export default function PostGalleryWithUpload({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type} reaction`,
-        })
+        }),
       ).unwrap();
 
       const res = await API.post(`/post/${postId}/react`, { type });
@@ -110,12 +110,9 @@ export default function PostGalleryWithUpload({
 
   return (
     <div className="space-y-3">
-
       {/* DATE */}
       {createdAt && (
-        <p className="text-sm text-gray-600">
-          {formatDate(createdAt)}
-        </p>
+        <p className="text-sm text-gray-600">{formatDate(createdAt)}</p>
       )}
 
       {/* TEXT */}
@@ -127,7 +124,6 @@ export default function PostGalleryWithUpload({
         mediaFiles[0].type === "video" ? (
           <div className="relative w-full flex justify-center">
             <div className="relative w-full max-w-6xl">
-
               <video
                 ref={(el) => (videoRefs.current[0] = el)}
                 src={mediaFiles[0].url}
@@ -150,7 +146,6 @@ export default function PostGalleryWithUpload({
               >
                 {muted ? "🔇" : "🔊"}
               </button>
-
             </div>
           </div>
         ) : (
@@ -162,7 +157,6 @@ export default function PostGalleryWithUpload({
         )
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-
           {mediaFiles.map((m, i) => (
             <div
               key={i}
@@ -171,7 +165,6 @@ export default function PostGalleryWithUpload({
             >
               {m.type === "video" ? (
                 <div className="relative w-full h-44 sm:h-52 md:h-60">
-
                   <video
                     ref={(el) => (videoRefs.current[i] = el)}
                     src={m.url}
@@ -190,7 +183,6 @@ export default function PostGalleryWithUpload({
                   >
                     {muted ? "🔇" : "🔊"}
                   </button>
-
                 </div>
               ) : (
                 <img
@@ -201,7 +193,6 @@ export default function PostGalleryWithUpload({
               )}
             </div>
           ))}
-
         </div>
       )}
 
@@ -300,7 +291,6 @@ export default function PostGalleryWithUpload({
           ❤️ {loveCount}
         </button>
       </div>
-
     </div>
   );
 }
