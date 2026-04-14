@@ -11,11 +11,12 @@ import {
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import globle from "/globle.png";
+
 import type { AppDispatch, RootState } from "./app/store";
 
 // Redux
 import { fetchCoins } from "./features/coins/CoinSlice";
-// import useAutoLogout from "./features/UseAutoLogout";
+
 // Pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -34,8 +35,8 @@ import DepositPanel from "./pages/DepositPanel";
 import Withdraw from "./pages/Withdraw";
 import Gemes from "./pages/Gemes";
 import ChatPage from "./pages/ChatPage";
-// import PostComments from "./pages/PostComments";
 import PostComments, { type CommentType } from "./pages/PostComments";
+
 // Components
 import Navbar from "./component/Navbar";
 import CardGrid from "./component/CardGrid";
@@ -53,7 +54,7 @@ const HostGame = lazy(() => import("./component/HostGame"));
 function GameLoader() {
   return (
     <div className="h-screen flex items-center justify-center text-white text-xl animate-pulse">
-      Loading game...
+      🎮 Loading game...
     </div>
   );
 }
@@ -79,25 +80,21 @@ function PostGalleryWrapper() {
 /* ---------------- Post Comments Wrapper ---------------- */
 function PostCommentsWrapper() {
   const user = useSelector((state: RootState) => state.auth.user);
-  const { id } = useParams(); // ✅ dynamic postId
+  const { id } = useParams();
 
   if (!user?.token) return <Navigate to="/login" replace />;
 
-  const handleNewComment = (comment: CommentType) => {
-    console.log("New comment:", comment);
-  };
-
   return (
     <PostComments
-      postId={id || "fallback-id"}
+      postId={id || ""}
       user={user}
       comments={[]}
-      onNewComment={handleNewComment}
+      onNewComment={(c: CommentType) => console.log("New comment:", c)}
     />
   );
 }
 
-/* ---------------- App Wrapper ---------------- */
+/* ---------------- App Root ---------------- */
 export default function App() {
   return (
     <BrowserRouter>
@@ -106,14 +103,12 @@ export default function App() {
   );
 }
 
-/* ---------------- Main App ---------------- */
+/* ---------------- App Content ---------------- */
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
   const user = useSelector((state: RootState) => state.auth.user);
 
-  // ✅ Auto logout hook
-  // useAutoLogout();
   useEffect(() => {
     dispatch(fetchCoins());
   }, [dispatch]);
@@ -130,132 +125,194 @@ function AppContent() {
       {!hideLayout && <Navbar />}
       {!hideLayout && <BottomNav />}
 
-      <Routes>
-        {/* Public */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* ✅ IMPORTANT: Suspense ONLY wraps lazy usage */}
+      <Suspense fallback={<GameLoader />}>
+        <Routes>
+          {/* ================= PUBLIC ================= */}
 
-        <Route
-          path="/login"
-          element={user?.token ? <Navigate to="/home" replace /> : <Login />}
-        />
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/gemes" element={<Gemes />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/chat" element={<ChatPage/>} />
-        <Route path="/chat/:chatUserId" element={<ChatPage />} />
-        <Route path="/profile/:profileUserId" element={<Profile />} />
-        {/* Comments (FIXED) */}
-        <Route
-          path="/postComments/:id"
-          element={
-            <ProtectedRoute>
-              <PostCommentsWrapper />
-            </ProtectedRoute>
-          }
-        />
+          <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Protected */}
-        <Route
-          path="/deposit"
-          element={
-            <ProtectedRoute>
-              <DepositPanel />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/withdraw"
-          element={
-            <ProtectedRoute>
-              <Withdraw />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/post"
-          element={
-            <ProtectedRoute>
-              <PostGalleryWrapper />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/me"
-          element={
-            <ProtectedRoute>
-              <Me />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/login"
+            element={
+              user?.token ? <Navigate to="/home" replace /> : <Login />
+            }
+          />
 
-        {/* Game */}
-        <Route
-          path="/host-game"
-          element={
-            <ProtectedRoute>
-              <Suspense fallback={<GameLoader />}>
-                <HostGame />
-              </Suspense>
-            </ProtectedRoute>
-          }
-        />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-        {/* Feedback */}
-        <Route
-          path="/feedbacks"
-          element={
-            <ProtectedRoute>
-              <FeedbackPages />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/newfeedback"
-          element={
-            <ProtectedRoute>
-              <NewFeedback />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/feedback/:id"
-          element={
-            <ProtectedRoute>
-              <FeedbackDetail />
-            </ProtectedRoute>
-          }
-        />
+          {/* ================= PROTECTED ================= */}
 
-        {/* Admin */}
-        <Route path="/admin" element={<AdminRoute />}>
-          <Route element={<AdminLayout />}>
-            <Route index element={<Navigate to="monitor" replace />} />
-            <Route path="monitor" element={<AdminMonitor />} />
-            <Route path="credit-coins" element={<AdminCreditCoins />} />
-            <Route path="host-game" element={<HostGame />} />
-            <Route path="feedbacks" element={<FeedbackPages />} />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/me"
+            element={
+              <ProtectedRoute>
+                <Me />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/deposit"
+            element={
+              <ProtectedRoute>
+                <DepositPanel />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/withdraw"
+            element={
+              <ProtectedRoute>
+                <Withdraw />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/profile/:profileUserId"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/post"
+            element={
+              <ProtectedRoute>
+                <PostGalleryWrapper />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/postComments/:id"
+            element={
+              <ProtectedRoute>
+                <PostCommentsWrapper />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/coin-history"
+            element={
+              <ProtectedRoute>
+                <CoinHistory />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/feedbacks"
+            element={
+              <ProtectedRoute>
+                <FeedbackPages />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/newfeedback"
+            element={
+              <ProtectedRoute>
+                <NewFeedback />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/feedback/:id"
+            element={
+              <ProtectedRoute>
+                <FeedbackDetail />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <Notifications />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/gemes"
+            element={
+              <ProtectedRoute>
+                <Gemes />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/chat/:chatUserId"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ================= ADMIN ================= */}
+
+          <Route path="/admin" element={<AdminRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route index element={<Navigate to="monitor" replace />} />
+              <Route path="monitor" element={<AdminMonitor />} />
+              <Route path="credit-coins" element={<AdminCreditCoins />} />
+
+              {/* ⚡ Lazy works safely here now */}
+              <Route path="host-game" element={<HostGame />} />
+
+              <Route path="feedbacks" element={<FeedbackPages />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Optional */}
-        <Route path="/cards" element={<CardGrid />} />
-        <Route path="/coin-history" element={<CoinHistory />} />
+          {/* ================= OPTIONAL ================= */}
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="/cards" element={<CardGrid />} />
+
+          {/* ================= FALLBACK ================= */}
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </div>
   );
 }

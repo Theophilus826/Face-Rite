@@ -7,21 +7,20 @@ import { FaTrash } from "react-icons/fa";
 
 export default function Notifications() {
   const { token, user } = useSelector((state) => state.auth);
+
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const prevIds = useRef(new Set());
+  const eventSourceRef = useRef(null);
+
   const API_BASE =
     process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
 
-  // =========================
-  // Fetch notifications
-  // =========================
+  /* ================= FETCH ================= */
+
   const fetchNotifications = async () => {
-    if (!token) {
-      toast.error("No token found");
-      return;
-    }
+    if (!token) return;
 
     setLoading(true);
 
@@ -32,26 +31,55 @@ export default function Notifications() {
 
       const data = res.data;
 
-      if (!Array.isArray(data)) {
-        toast.error("Invalid response format");
-        return;
-      }
-
+      // 🔔 only toast new ones
       const newOnes = data.filter((n) => !prevIds.current.has(n._id));
       newOnes.forEach((n) => toast.info(`🔔 ${n.message}`));
 
       prevIds.current = new Set(data.map((n) => n._id));
       setNotifications(data);
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || "Failed to load notifications");
+      toast.error("Failed to load notifications");
     } finally {
       setLoading(false);
     }
   };
 
-  // =========================
-  // Mark as read on click
-  // =========================
+  /* ================= REAL-TIME SSE ================= */
+
+  useEffect(() => {
+    if (!user) return;
+
+    eventSourceRef.current?.close();
+
+    const es = new EventSource(
+      `${API_BASE}/api/notifications/stream/${user._id}`
+    );
+
+    eventSourceRef.current = es;
+
+    es.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+
+      if (data.type === "notification") {
+        const notif = data.notification;
+
+        // prevent duplicate
+        if (prevIds.current.has(notif._id)) return;
+
+        prevIds.current.add(notif._id);
+
+        setNotifications((prev) => [notif, ...prev]);
+
+        // 🔔 instant toast
+        toast.info(`🔔 ${notif.message}`);
+      }
+    };
+
+    return () => es.close();
+  }, [user]);
+
+  /* ================= MARK READ ================= */
+
   const handleSelectNotification = async (notif) => {
     if (!notif.read) {
       try {
@@ -60,8 +88,11 @@ export default function Notifications() {
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
+
         setNotifications((prev) =>
-          prev.map((n) => (n._id === notif._id ? { ...n, read: true } : n))
+          prev.map((n) =>
+            n._id === notif._id ? { ...n, read: true } : n
+          )
         );
       } catch {
         toast.error("Failed to mark as read");
@@ -69,85 +100,77 @@ export default function Notifications() {
     }
   };
 
-  // =========================
-  // Delete notification
-  // =========================
+  /* ================= DELETE ================= */
+
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API_BASE}/api/notifications/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       setNotifications((prev) => prev.filter((n) => n._id !== id));
-      toast.success("Notification deleted");
-    } catch (err) {
-      toast.error("Failed to delete notification");
+      toast.success("Deleted");
+    } catch {
+      toast.error("Delete failed");
     }
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // =========================
-  // Initial fetch
-  // =========================
+  /* ================= INIT ================= */
+
   useEffect(() => {
     if (token && user) fetchNotifications();
   }, [token, user]);
 
-  // =========================
-  // UI
-  // =========================
+  /* ================= UI ================= */
+
   return (
     <div className="max-w-3xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-4 text-center">
         🔔 Notifications ({unreadCount})
       </h1>
 
-      <div className="text-center mb-4">
-        <button
-          onClick={fetchNotifications}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-        >
-          🧪 Refresh Notifications
-        </button>
-      </div>
-
       {loading ? (
         <p className="text-center text-gray-500">Loading...</p>
       ) : notifications.length === 0 ? (
-        <p className="text-center text-gray-500">You have no notifications.</p>
+        <p className="text-center text-gray-500">
+          You have no notifications.
+        </p>
       ) : (
         <div className="space-y-2">
           {notifications.map((notif) => (
             <div
               key={notif._id}
               className={`relative p-4 rounded border flex items-center cursor-pointer ${
-                notif.read ? "bg-gray-100 text-gray-700" : "bg-white font-bold"
+                notif.read
+                  ? "bg-gray-100 text-gray-700"
+                  : "bg-white font-bold"
               }`}
               onClick={() => handleSelectNotification(notif)}
             >
-              {/* Delete Icon */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDelete(notif._id);
                 }}
-                className="absolute top-2 left-2 text-red-500 hover:text-red-700 text-sm md:text-base"
-                title="Delete"
+                className="absolute top-2 left-2 text-red-500"
               >
                 <FaTrash />
               </button>
 
               <div className="ml-6 w-full">
-                {notif.postId ? (
+                {notif.chatUserId ? (
                   <Link
-                    to={`/post/${notif.postId}`}
-                    className="underline text-blue-600"
+                    to={`/chat/${notif.chatUserId}`}
+                    className="text-blue-600 underline"
                   >
                     {notif.message}
                   </Link>
                 ) : (
                   <p>{notif.message}</p>
                 )}
+
                 <span className="text-xs text-gray-400 block">
                   {new Date(notif.createdAt).toLocaleString()}
                 </span>

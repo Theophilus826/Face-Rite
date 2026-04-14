@@ -1,4 +1,3 @@
-// pages/ChatPage.jsx
 import { useEffect, useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
@@ -13,8 +12,6 @@ export default function ChatPage() {
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [chatText, setChatText] = useState("");
-  const [selectedImage, setSelectedImage] = useState(null);
-
   const [isTyping, setIsTyping] = useState(false);
   const [onlineStatus, setOnlineStatus] = useState("offline");
 
@@ -27,15 +24,19 @@ export default function ChatPage() {
   const eventSourceRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  const BASE_URL = API.defaults.baseURL.replace("/api", "");
+  // waveform
+  const canvasRef = useRef(null);
+  const analyserRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const animationRef = useRef(null);
 
+  // 🔔 prevent duplicate notifications
+  const notifiedIdsRef = useRef(new Set());
+
+  const BASE_URL = API.defaults.baseURL.replace("/api", "");
   const selectedUser = users.find((u) => u._id === chatUserId);
 
   /* ================= HELPERS ================= */
-  const formatTime = (date) => {
-    const d = new Date(date);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
 
   const formatRecordTime = (sec) => {
     const m = String(Math.floor(sec / 60)).padStart(2, "0");
@@ -43,41 +44,44 @@ export default function ChatPage() {
     return `${m}:${s}`;
   };
 
+  const getPreviewText = (msg) => {
+    if (msg.type === "text") return msg.text;
+    if (msg.type === "voice") return "🎤 Voice message";
+    if (msg.type === "image") return "🖼️ Image";
+    return "New message";
+  };
+
   /* ================= FETCH USERS ================= */
+
   useEffect(() => {
     if (!user) return;
 
-    const fetchUsers = async () => {
-      try {
-        const { data } = await API.get("/users");
-
-        const formatted = data.users.map((u) => ({
-          ...u,
-          status: "offline",
-          avatar: u.avatar
-            ? u.avatar.startsWith("http")
+    API.get("/users")
+      .then(({ data }) => {
+        setUsers(
+          data.users.map((u) => ({
+            ...u,
+            status: "offline",
+            avatar: u.avatar?.startsWith("http")
               ? u.avatar
-              : `${BASE_URL}/${u.avatar}`
-            : null,
-        }));
-
-        setUsers(formatted);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    fetchUsers();
+              : u.avatar
+              ? `${BASE_URL}/${u.avatar}`
+              : null,
+          }))
+        );
+      })
+      .catch(console.error);
   }, [user]);
 
   /* ================= SSE ================= */
+
   useEffect(() => {
     if (!user || !chatUserId) return;
 
-    if (eventSourceRef.current) eventSourceRef.current.close();
+    eventSourceRef.current?.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`,
+      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`
     );
 
     eventSourceRef.current = es;
@@ -88,12 +92,26 @@ export default function ChatPage() {
       switch (data.type) {
         case "init":
           setMessages(data.messages || []);
+          notifiedIdsRef.current.clear();
           break;
 
         case "new_message":
-          if (data.message.fromUser !== user._id) {
-            setMessages((prev) => [...prev, data.message]);
+          setMessages((prev) => {
+            const exists = prev.some((m) => m._id === data.message._id);
+            if (exists) return prev;
+            return [...prev, data.message];
+          });
+
+          // 🔔 SMART NOTIFICATION
+          if (
+            data.message.fromUser !== user._id &&
+            !notifiedIdsRef.current.has(data.message._id)
+          ) {
+            notifiedIdsRef.current.add(data.message._id);
+
+            toast.info(`💬 ${getPreviewText(data.message)}`);
           }
+
           break;
 
         case "typing":
@@ -107,16 +125,13 @@ export default function ChatPage() {
         case "status":
           setUsers((prev) =>
             prev.map((u) =>
-              u._id === data.userId ? { ...u, status: data.status } : u,
-            ),
+              u._id === data.userId ? { ...u, status: data.status } : u
+            )
           );
 
           if (data.userId === chatUserId) {
             setOnlineStatus(data.status);
           }
-          break;
-
-        default:
           break;
       }
     };
@@ -125,11 +140,13 @@ export default function ChatPage() {
   }, [user, chatUserId]);
 
   /* ================= AUTO SCROLL ================= */
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   /* ================= SEND TEXT ================= */
+
   const sendMessage = async () => {
     if (!chatText.trim()) return;
 
@@ -137,6 +154,7 @@ export default function ChatPage() {
     setChatText("");
 
     const temp = {
+      _id: Date.now(), // temp ID
       fromUser: user._id,
       toUser: chatUserId,
       text,
@@ -154,69 +172,102 @@ export default function ChatPage() {
     }
   };
 
-  /* ================= SEND IMAGE ================= */
-  const sendImage = async () => {
-    if (!selectedImage) return;
+  /* ================= WAVEFORM ================= */
 
-    const formData = new FormData();
-    formData.append("image", selectedImage);
-    formData.append("toUserId", chatUserId);
+  const drawWaveform = () => {
+    const canvas = canvasRef.current;
+    const analyser = analyserRef.current;
 
-    try {
-      await API.post("/chat/image", formData);
-      setSelectedImage(null);
-    } catch {
-      toast.error("Image failed");
-    }
+    if (!canvas || !analyser) return;
+
+    const ctx = canvas.getContext("2d");
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    const draw = () => {
+      animationRef.current = requestAnimationFrame(draw);
+
+      analyser.getByteTimeDomainData(dataArray);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+
+      let x = 0;
+      const sliceWidth = canvas.width / dataArray.length;
+
+      dataArray.forEach((v, i) => {
+        const y = (v / 128) * (canvas.height / 2);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        x += sliceWidth;
+      });
+
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
+
+    draw();
   };
 
-  /* ================= TYPING ================= */
-  useEffect(() => {
-    if (!chatText.trim()) return;
-
-    const t = setTimeout(() => {
-      API.post("/chat/typing", { toUserId: chatUserId }).catch(() => {});
-    }, 300);
-
-    return () => clearTimeout(t);
-  }, [chatText]);
-
   /* ================= VOICE ================= */
+
   const startRecording = async () => {
-    if (!navigator.mediaDevices) {
-      return toast.error("Audio not supported");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+
+      setRecording(true);
+      setRecordTime(0);
+      audioChunksRef.current = [];
+
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) =>
+        audioChunksRef.current.push(e.data);
+
+      recorder.start();
+
+      // waveform
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+
+      source.connect(analyser);
+      analyser.fftSize = 256;
+
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+
+      drawWaveform();
+
+      timerRef.current = setInterval(() => {
+        setRecordTime((p) => p + 1);
+      }, 1000);
+    } catch {
+      toast.error("Mic error");
     }
-
-    setRecording(true);
-    setRecordTime(0);
-    audioChunksRef.current = [];
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-    mediaRecorderRef.current = new MediaRecorder(stream);
-
-    mediaRecorderRef.current.ondataavailable = (e) =>
-      audioChunksRef.current.push(e.data);
-
-    mediaRecorderRef.current.start();
-
-    timerRef.current = setInterval(() => {
-      setRecordTime((p) => p + 1);
-    }, 1000);
   };
 
   const stopRecording = async () => {
-    if (!mediaRecorderRef.current) return;
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
 
-    mediaRecorderRef.current.stop();
+    recorder.stop();
+
     clearInterval(timerRef.current);
+    cancelAnimationFrame(animationRef.current);
+    audioContextRef.current?.close();
 
-    mediaRecorderRef.current.onstop = async () => {
-      const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+    recorder.onstop = async () => {
+      const blob = new Blob(audioChunksRef.current, {
+        type: "audio/webm",
+      });
 
       const formData = new FormData();
       formData.append("audio", blob);
       formData.append("toUserId", chatUserId);
+      formData.append("duration", recordTime);
 
       setRecording(false);
       setRecordTime(0);
@@ -234,51 +285,37 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-screen max-w-4xl mx-auto bg-white">
       {/* USERS */}
-      <div className="flex gap-4 overflow-x-auto p-2 border-b bg-gray-50">
+      <div className="flex gap-3 overflow-x-auto p-2 border-b bg-gray-50">
         {users.map((u) => (
           <div
             key={u._id}
             onClick={() => navigate(`/chat/${u._id}`)}
-            className={`
-        flex flex-col items-center justify-center
-        min-w-[70px] sm:min-w-[80px]
-        cursor-pointer rounded-xl p-2
-        ${u._id === chatUserId ? "bg-blue-100" : "hover:bg-gray-100"}
-      `}
+            className={`cursor-pointer p-2 rounded-xl ${
+              u._id === chatUserId ? "bg-blue-100" : ""
+            }`}
           >
-            {/* AVATAR */}
             <div className="relative">
               {u.avatar ? (
-                <img
-                  src={u.avatar}
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover"
-                />
+                <img src={u.avatar} className="w-12 h-12 rounded-full" />
               ) : (
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-500 text-white flex items-center justify-center rounded-full">
+                <div className="w-12 h-12 bg-blue-500 text-white flex items-center justify-center rounded-full">
                   {u.name?.charAt(0)}
                 </div>
               )}
-
-              {/* ONLINE DOT */}
               <span
-                className={`
-            absolute bottom-0 right-0 
-            w-2.5 h-2.5 rounded-full border border-white
-            ${u.status === "online" ? "bg-green-500" : "bg-gray-400"}
-          `}
+                className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${
+                  u.status === "online"
+                    ? "bg-green-500"
+                    : "bg-gray-400"
+                }`}
               />
             </div>
-
-            {/* USERNAME UNDER AVATAR */}
-            <span className="text-xs sm:text-sm mt-1 text-center truncate w-full">
-              {u.name}
-            </span>
           </div>
         ))}
       </div>
 
       {/* HEADER */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b">
+      <div className="px-4 py-2 border-b flex gap-2">
         <p className="font-semibold">{selectedUser?.name}</p>
         <span className="text-xs text-gray-500">
           {isTyping ? "typing..." : onlineStatus}
@@ -288,56 +325,37 @@ export default function ChatPage() {
       {/* MESSAGES */}
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-gray-50">
         {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex flex-col max-w-[80%] ${
-              msg.fromUser === user._id ? "self-end items-end" : "self-start"
-            }`}
-          >
-            <div
-              className={`px-3 py-2 rounded-2xl ${
-                msg.fromUser === user._id
-                  ? "bg-blue-500 text-white"
-                  : "bg-white border"
-              }`}
-            >
-              {msg.type === "image" ? (
-                <img src={msg.image} className="rounded max-w-xs" />
-              ) : msg.type === "voice" ? (
-                <audio controls src={msg.audio} />
-              ) : (
-                msg.text
-              )}
-            </div>
-
-            <span className="text-[10px] text-gray-500 mt-1">
-              {formatTime(msg.createdAt)}
-            </span>
+          <div key={i}>
+            {msg.type === "voice" ? (
+              <audio controls src={msg.audio} />
+            ) : msg.type === "image" ? (
+              <img src={msg.image} className="max-w-xs rounded" />
+            ) : (
+              msg.text
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
 
       {/* INPUT */}
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t pb-24 flex gap-2 items-center z-50 sm:static sm:border-none">
-        <input
-          value={chatText}
-          onChange={(e) => setChatText(e.target.value)}
-          placeholder="Type message..."
-          className="flex-1 border rounded p-2 text-sm sm:text-base"
-        />
-
-        <button
-          onClick={sendMessage}
-          className="bg-blue-600 text-white px-3 py-2 rounded"
-        >
-          Send
-        </button>
-
+      <div className="p-2 border-t flex items-center gap-2">
         {!recording ? (
-          <button onClick={startRecording}>🎤</button>
+          <>
+            <input
+              value={chatText}
+              onChange={(e) => setChatText(e.target.value)}
+              className="flex-1 border p-2 rounded"
+            />
+            <button onClick={sendMessage}>Send</button>
+            <button onClick={startRecording}>🎤</button>
+          </>
         ) : (
-          <button onClick={stopRecording}>🛑</button>
+          <>
+            <canvas ref={canvasRef} width={150} height={40} />
+            <span>{formatRecordTime(recordTime)}</span>
+            <button onClick={stopRecording}>🛑</button>
+          </>
         )}
       </div>
     </div>
