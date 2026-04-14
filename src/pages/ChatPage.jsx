@@ -18,20 +18,14 @@ export default function ChatPage() {
   const [recording, setRecording] = useState(false);
   const [recordTime, setRecordTime] = useState(0);
 
-  const timerRef = useRef(null);
+  const eventSourceRef = useRef(null);
+  const notificationSourceRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const notifiedIdsRef = useRef(new Set());
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
-  const eventSourceRef = useRef(null);
-  const messagesEndRef = useRef(null);
-
-  // waveform
-  const canvasRef = useRef(null);
-  const analyserRef = useRef(null);
-  const audioContextRef = useRef(null);
-  const animationRef = useRef(null);
-
-  // 🔔 prevent duplicate notifications
-  const notifiedIdsRef = useRef(new Set());
+  const timerRef = useRef(null);
 
   const BASE_URL = API.defaults.baseURL.replace("/api", "");
   const selectedUser = users.find((u) => u._id === chatUserId);
@@ -73,7 +67,7 @@ export default function ChatPage() {
       .catch(console.error);
   }, [user]);
 
-  /* ================= SSE ================= */
+  /* ================= CHAT SSE ================= */
 
   useEffect(() => {
     if (!user || !chatUserId) return;
@@ -96,19 +90,20 @@ export default function ChatPage() {
           break;
 
         case "new_message":
+          if (!data.message?._id) return;
+
           setMessages((prev) => {
-            const exists = prev.some((m) => m._id === data.message._id);
+            const exists = prev.find((m) => m._id === data.message._id);
             if (exists) return prev;
             return [...prev, data.message];
           });
 
-          // 🔔 SMART NOTIFICATION
+          // 🔔 show toast only if not from me
           if (
-            data.message.fromUser !== user._id &&
+            String(data.message.fromUser) !== String(user._id) &&
             !notifiedIdsRef.current.has(data.message._id)
           ) {
             notifiedIdsRef.current.add(data.message._id);
-
             toast.info(`💬 ${getPreviewText(data.message)}`);
           }
 
@@ -133,11 +128,47 @@ export default function ChatPage() {
             setOnlineStatus(data.status);
           }
           break;
+
+        default:
+          break;
       }
     };
 
     return () => es.close();
   }, [user, chatUserId]);
+
+  /* ================= NOTIFICATION SSE ================= */
+
+  useEffect(() => {
+    if (!user) return;
+
+    notificationSourceRef.current?.close();
+
+    const es = new EventSource(
+      `${API.defaults.baseURL}/notifications/stream/${user._id}`
+    );
+
+    notificationSourceRef.current = es;
+
+    es.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+
+      if (data.type === "notification") {
+        const notif = data.notification;
+
+        if (!notif?._id) return;
+
+        // 🚫 prevent duplicates
+        if (notifiedIdsRef.current.has(notif._id)) return;
+
+        notifiedIdsRef.current.add(notif._id);
+
+        toast.info(`🔔 ${notif.message}`);
+      }
+    };
+
+    return () => es.close();
+  }, [user]);
 
   /* ================= AUTO SCROLL ================= */
 
@@ -154,7 +185,7 @@ export default function ChatPage() {
     setChatText("");
 
     const temp = {
-      _id: Date.now(), // temp ID
+      _id: Date.now(),
       fromUser: user._id,
       toUser: chatUserId,
       text,
@@ -172,49 +203,11 @@ export default function ChatPage() {
     }
   };
 
-  /* ================= WAVEFORM ================= */
-
-  const drawWaveform = () => {
-    const canvas = canvasRef.current;
-    const analyser = analyserRef.current;
-
-    if (!canvas || !analyser) return;
-
-    const ctx = canvas.getContext("2d");
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-    const draw = () => {
-      animationRef.current = requestAnimationFrame(draw);
-
-      analyser.getByteTimeDomainData(dataArray);
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.beginPath();
-
-      let x = 0;
-      const sliceWidth = canvas.width / dataArray.length;
-
-      dataArray.forEach((v, i) => {
-        const y = (v / 128) * (canvas.height / 2);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        x += sliceWidth;
-      });
-
-      ctx.strokeStyle = "#ef4444";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    };
-
-    draw();
-  };
-
   /* ================= VOICE ================= */
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
       setRecording(true);
       setRecordTime(0);
@@ -223,23 +216,9 @@ export default function ChatPage() {
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
-      recorder.ondataavailable = (e) =>
-        audioChunksRef.current.push(e.data);
+      recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
 
       recorder.start();
-
-      // waveform
-      const audioContext = new AudioContext();
-      const analyser = audioContext.createAnalyser();
-      const source = audioContext.createMediaStreamSource(stream);
-
-      source.connect(analyser);
-      analyser.fftSize = 256;
-
-      audioContextRef.current = audioContext;
-      analyserRef.current = analyser;
-
-      drawWaveform();
 
       timerRef.current = setInterval(() => {
         setRecordTime((p) => p + 1);
@@ -254,10 +233,7 @@ export default function ChatPage() {
     if (!recorder) return;
 
     recorder.stop();
-
     clearInterval(timerRef.current);
-    cancelAnimationFrame(animationRef.current);
-    audioContextRef.current?.close();
 
     recorder.onstop = async () => {
       const blob = new Blob(audioChunksRef.current, {
@@ -304,9 +280,7 @@ export default function ChatPage() {
               )}
               <span
                 className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${
-                  u.status === "online"
-                    ? "bg-green-500"
-                    : "bg-gray-400"
+                  u.status === "online" ? "bg-green-500" : "bg-gray-400"
                 }`}
               />
             </div>
@@ -323,9 +297,9 @@ export default function ChatPage() {
       </div>
 
       {/* MESSAGES */}
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-gray-50">
-        {messages.map((msg, i) => (
-          <div key={i}>
+      <div className="flex-1 overflow-y-auto pb-24 flex flex-col gap-2 bg-gray-50">
+        {messages.map((msg) => (
+          <div key={msg._id}>
             {msg.type === "voice" ? (
               <audio controls src={msg.audio} />
             ) : msg.type === "image" ? (
@@ -339,7 +313,7 @@ export default function ChatPage() {
       </div>
 
       {/* INPUT */}
-      <div className="p-2 border-t flex items-center gap-2">
+      <div className="p-2 border-t flex items-center gap-2 pb-24">
         {!recording ? (
           <>
             <input
@@ -352,7 +326,6 @@ export default function ChatPage() {
           </>
         ) : (
           <>
-            <canvas ref={canvasRef} width={150} height={40} />
             <span>{formatRecordTime(recordTime)}</span>
             <button onClick={stopRecording}>🛑</button>
           </>

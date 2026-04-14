@@ -22,22 +22,23 @@ export default function Notifications() {
   const fetchNotifications = async () => {
     if (!token) return;
 
-    setLoading(true);
-
     try {
+      setLoading(true);
+
       const res = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = res.data;
 
-      // 🔔 only toast new ones
+      // 🔔 only toast NEW ones
       const newOnes = data.filter((n) => !prevIds.current.has(n._id));
       newOnes.forEach((n) => toast.info(`🔔 ${n.message}`));
 
       prevIds.current = new Set(data.map((n) => n._id));
       setNotifications(data);
     } catch (err) {
+      console.error(err);
       toast.error("Failed to load notifications");
     } finally {
       setLoading(false);
@@ -47,9 +48,12 @@ export default function Notifications() {
   /* ================= REAL-TIME SSE ================= */
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?._id) return;
 
-    eventSourceRef.current?.close();
+    // 🔥 close old connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
 
     const es = new EventSource(
       `${API_BASE}/api/notifications/stream/${user._id}`
@@ -57,25 +61,52 @@ export default function Notifications() {
 
     eventSourceRef.current = es;
 
+    es.onopen = () => {
+      console.log("✅ SSE connected");
+    };
+
+    es.onerror = (err) => {
+      console.error("❌ SSE error:", err);
+      toast.error("Connection lost. Reconnecting...");
+
+      es.close();
+
+      // 🔥 auto reconnect
+      setTimeout(() => {
+        eventSourceRef.current = null;
+      }, 3000);
+    };
+
     es.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+      try {
+        const data = JSON.parse(e.data);
 
-      if (data.type === "notification") {
-        const notif = data.notification;
+        if (!data) return;
 
-        // prevent duplicate
-        if (prevIds.current.has(notif._id)) return;
+        // ignore ping / connected
+        if (data.type === "ping" || data.type === "connected") return;
 
-        prevIds.current.add(notif._id);
+        if (data.type === "notification") {
+          const notif = data.notification;
 
-        setNotifications((prev) => [notif, ...prev]);
+          // prevent duplicates
+          if (prevIds.current.has(notif._id)) return;
 
-        // 🔔 instant toast
-        toast.info(`🔔 ${notif.message}`);
+          prevIds.current.add(notif._id);
+
+          setNotifications((prev) => [notif, ...prev]);
+
+          // 🔔 instant toast
+          toast.info(`🔔 ${notif.message}`);
+        }
+      } catch (err) {
+        console.error("SSE PARSE ERROR:", err);
       }
     };
 
-    return () => es.close();
+    return () => {
+      es.close();
+    };
   }, [user]);
 
   /* ================= MARK READ ================= */
@@ -86,7 +117,9 @@ export default function Notifications() {
         await axios.put(
           `${API_BASE}/api/notifications/${notif._id}/read`,
           {},
-          { headers: { Authorization: `Bearer ${token}` } }
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         );
 
         setNotifications((prev) =>
@@ -109,6 +142,10 @@ export default function Notifications() {
       });
 
       setNotifications((prev) => prev.filter((n) => n._id !== id));
+
+      // remove from cache
+      prevIds.current.delete(id);
+
       toast.success("Deleted");
     } catch {
       toast.error("Delete failed");
@@ -120,7 +157,9 @@ export default function Notifications() {
   /* ================= INIT ================= */
 
   useEffect(() => {
-    if (token && user) fetchNotifications();
+    if (token && user) {
+      fetchNotifications();
+    }
   }, [token, user]);
 
   /* ================= UI ================= */
@@ -142,24 +181,26 @@ export default function Notifications() {
           {notifications.map((notif) => (
             <div
               key={notif._id}
-              className={`relative p-4 rounded border flex items-center cursor-pointer ${
+              className={`relative p-4 rounded border flex items-center cursor-pointer transition ${
                 notif.read
                   ? "bg-gray-100 text-gray-700"
-                  : "bg-white font-bold"
+                  : "bg-white font-bold shadow"
               }`}
               onClick={() => handleSelectNotification(notif)}
             >
+              {/* DELETE */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDelete(notif._id);
                 }}
-                className="absolute top-2 left-2 text-red-500"
+                className="absolute top-2 left-2 text-red-500 hover:scale-110"
               >
                 <FaTrash />
               </button>
 
               <div className="ml-6 w-full">
+                {/* CHAT LINK */}
                 {notif.chatUserId ? (
                   <Link
                     to={`/chat/${notif.chatUserId}`}
@@ -167,11 +208,18 @@ export default function Notifications() {
                   >
                     {notif.message}
                   </Link>
+                ) : notif.postId ? (
+                  <Link
+                    to={`/post/${notif.postId}`}
+                    className="text-purple-600 underline"
+                  >
+                    {notif.message}
+                  </Link>
                 ) : (
                   <p>{notif.message}</p>
                 )}
 
-                <span className="text-xs text-gray-400 block">
+                <span className="text-xs text-gray-400 block mt-1">
                   {new Date(notif.createdAt).toLocaleString()}
                 </span>
               </div>
