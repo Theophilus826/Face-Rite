@@ -59,9 +59,9 @@ export default function ChatPage() {
             avatar: u.avatar?.startsWith("http")
               ? u.avatar
               : u.avatar
-                ? `${BASE_URL}/${u.avatar}`
-                : null,
-          })),
+              ? `${BASE_URL}/${u.avatar}`
+              : null,
+          }))
         );
       })
       .catch(console.error);
@@ -75,7 +75,7 @@ export default function ChatPage() {
     eventSourceRef.current?.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`,
+      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`
     );
 
     eventSourceRef.current = es;
@@ -120,8 +120,8 @@ export default function ChatPage() {
         case "status":
           setUsers((prev) =>
             prev.map((u) =>
-              u._id === data.userId ? { ...u, status: data.status } : u,
-            ),
+              u._id === data.userId ? { ...u, status: data.status } : u
+            )
           );
 
           if (data.userId === chatUserId) {
@@ -145,9 +145,8 @@ export default function ChatPage() {
     notificationSourceRef.current?.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/notifications/stream/${token}`,
+      `${API.defaults.baseURL}/notifications/stream`
     );
-    
 
     notificationSourceRef.current = es;
 
@@ -267,32 +266,24 @@ export default function ChatPage() {
           <div
             key={u._id}
             onClick={() => navigate(`/chat/${u._id}`)}
-            className={`cursor-pointer flex flex-col items-center min-w-[70px] ${
-              u._id === chatUserId ? "bg-blue-100 rounded-xl p-1" : ""
+            className={`cursor-pointer p-2 rounded-xl ${
+              u._id === chatUserId ? "bg-blue-100" : ""
             }`}
           >
             <div className="relative">
               {u.avatar ? (
-                <img
-                  src={u.avatar}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
+                <img src={u.avatar} className="w-12 h-12 rounded-full" />
               ) : (
                 <div className="w-12 h-12 bg-blue-500 text-white flex items-center justify-center rounded-full">
                   {u.name?.charAt(0)}
                 </div>
               )}
-
-              {/* Online indicator */}
               <span
                 className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${
                   u.status === "online" ? "bg-green-500" : "bg-gray-400"
                 }`}
               />
             </div>
-
-            {/* 👇 NAME */}
-            <p className="text-xs mt-1 text-center truncate w-full">{u.name}</p>
           </div>
         ))}
       </div>
