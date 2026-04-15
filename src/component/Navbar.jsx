@@ -46,7 +46,7 @@ function Navbar() {
         prevIdsRef.current.add(n._id);
       });
 
-      setNotifications(data.filter((n) => !n.read));
+      setNotifications(data);
     } catch (err) {
       toast.error("Failed to load notifications");
     }
@@ -73,8 +73,7 @@ function Navbar() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // =========================
@@ -85,13 +84,11 @@ function Navbar() {
       await axios.put(
         `${API_BASE}/api/notifications/${id}/read`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setNotifications((prev) =>
-        prev.map((n) =>
-          n._id === id ? { ...n, read: true } : n
-        )
+        prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
       );
     } catch (err) {
       toast.error("Failed to mark as read");
