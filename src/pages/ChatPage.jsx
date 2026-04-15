@@ -145,8 +145,9 @@ export default function ChatPage() {
     notificationSourceRef.current?.close();
 
     const es = new EventSource(
-      `${API_BASE}/api/notifications/stream?token=${token}`
+      `${API.defaults.baseURL}/notifications/stream/${token}`,
     );
+    
 
     notificationSourceRef.current = es;
 
