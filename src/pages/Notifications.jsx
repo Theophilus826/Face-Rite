@@ -29,9 +29,9 @@ export default function Notifications() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = res.data;
+      const data = res.data.notifications || res.data;
 
-      // 🔔 only toast NEW ones
+      // toast only new ones
       const newOnes = data.filter((n) => !prevIds.current.has(n._id));
       newOnes.forEach((n) => toast.info(`🔔 ${n.message}`));
 
@@ -48,15 +48,16 @@ export default function Notifications() {
   /* ================= REAL-TIME SSE ================= */
 
   useEffect(() => {
-    if (!user?._id) return;
+    if (!user || !token) return;
 
-    // 🔥 close old connection
+    // close old connection
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
 
+    // ⚠️ IMPORTANT: NO userId in URL
     const es = new EventSource(
-      `${API_BASE}/api/notifications/stream/${user._id}`
+      `${API_BASE}/api/notifications/stream?token=${token}`
     );
 
     eventSourceRef.current = es;
@@ -65,13 +66,12 @@ export default function Notifications() {
       console.log("✅ SSE connected");
     };
 
-    es.onerror = (err) => {
-      console.error("❌ SSE error:", err);
-      toast.error("Connection lost. Reconnecting...");
+    es.onerror = () => {
+      console.error("❌ SSE error");
 
       es.close();
 
-      // 🔥 auto reconnect
+      // silent reconnect (no spam toast)
       setTimeout(() => {
         eventSourceRef.current = null;
       }, 3000);
@@ -83,20 +83,28 @@ export default function Notifications() {
 
         if (!data) return;
 
-        // ignore ping / connected
+        // ignore keep-alive
         if (data.type === "ping" || data.type === "connected") return;
 
+        // ✅ INITIAL LOAD (FIXES YOUR ERROR)
+        if (data.type === "init") {
+          const list = data.notifications || [];
+
+          prevIds.current = new Set(list.map((n) => n._id));
+          setNotifications(list);
+          return;
+        }
+
+        // ✅ NEW NOTIFICATION
         if (data.type === "notification") {
           const notif = data.notification;
 
-          // prevent duplicates
-          if (prevIds.current.has(notif._id)) return;
+          if (!notif || prevIds.current.has(notif._id)) return;
 
           prevIds.current.add(notif._id);
 
           setNotifications((prev) => [notif, ...prev]);
 
-          // 🔔 instant toast
           toast.info(`🔔 ${notif.message}`);
         }
       } catch (err) {
@@ -107,7 +115,7 @@ export default function Notifications() {
     return () => {
       es.close();
     };
-  }, [user]);
+  }, [user, token]);
 
   /* ================= MARK READ ================= */
 
@@ -143,7 +151,6 @@ export default function Notifications() {
 
       setNotifications((prev) => prev.filter((n) => n._id !== id));
 
-      // remove from cache
       prevIds.current.delete(id);
 
       toast.success("Deleted");
@@ -188,7 +195,6 @@ export default function Notifications() {
               }`}
               onClick={() => handleSelectNotification(notif)}
             >
-              {/* DELETE */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -200,7 +206,6 @@ export default function Notifications() {
               </button>
 
               <div className="ml-6 w-full">
-                {/* CHAT LINK */}
                 {notif.chatUserId ? (
                   <Link
                     to={`/chat/${notif.chatUserId}`}
