@@ -5,6 +5,7 @@ import { API } from "../features/Api";
 import { toast } from "react-toastify";
 
 export default function ChatPage() {
+  const token = localStorage.getItem("token");
   const { chatUserId } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -59,9 +60,9 @@ export default function ChatPage() {
             avatar: u.avatar?.startsWith("http")
               ? u.avatar
               : u.avatar
-              ? `${BASE_URL}/${u.avatar}`
-              : null,
-          }))
+                ? `${BASE_URL}/${u.avatar}`
+                : null,
+          })),
         );
       })
       .catch(console.error);
@@ -75,7 +76,7 @@ export default function ChatPage() {
     eventSourceRef.current?.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`
+      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`,
     );
 
     eventSourceRef.current = es;
@@ -120,8 +121,8 @@ export default function ChatPage() {
         case "status":
           setUsers((prev) =>
             prev.map((u) =>
-              u._id === data.userId ? { ...u, status: data.status } : u
-            )
+              u._id === data.userId ? { ...u, status: data.status } : u,
+            ),
           );
 
           if (data.userId === chatUserId) {
@@ -145,7 +146,7 @@ export default function ChatPage() {
     notificationSourceRef.current?.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/notifications/stream`
+      `${API.defaults.baseURL}/notifications/stream?token=${token}`,
     );
 
     notificationSourceRef.current = es;
