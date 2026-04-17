@@ -7,6 +7,8 @@ import { toast } from "react-toastify";
 
 import Welcome from "../pages/Welcome";
 import Share from "./Share";
+import usePWAInstall from "./usePWAInstall";
+import { FaDownload } from "react-icons/fa";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -15,7 +17,7 @@ function Navbar() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-
+  const { isInstallable, installApp } = usePWAInstall();
   const notifRef = useRef(null);
   const prevIdsRef = useRef(new Set());
 
@@ -87,7 +89,6 @@ function Navbar() {
       <header className="bg-gradient-to-r from-blue-500 via-teal-400 to-blue-500/30 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md shadow-sm shadow-black/20">
         <div className="mx-auto max-w-screen-sm md:max-w-7xl px-3">
           <div className="flex h-14 md:h-16 items-center justify-between">
-            
             {/* Left */}
             <div className="flex items-center">
               <Link
@@ -102,12 +103,24 @@ function Navbar() {
             <div className="flex items-center space-x-2 md:space-x-4">
               {user ? (
                 <>
-                  <Link
-                    to="/"
-                    className="text-gray-300 hover:text-white flex items-center"
-                  >
-                    <Welcome />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to="/"
+                      className="text-gray-300 hover:text-white flex items-center"
+                    >
+                      <Welcome />
+                    </Link>
+
+                    {isInstallable && (
+                      <button
+                        onClick={installApp}
+                        className="flex items-center gap-1 text-yellow-400 border border-yellow-400 px-2 py-1 rounded hover:bg-yellow-400 hover:text-black transition text-xs md:text-sm"
+                      >
+                        <FaDownload />
+                        <span className="hidden sm:inline">Install</span>
+                      </button>
+                    )}
+                  </div>
 
                   {/* Notification */}
                   <div className="relative" ref={notifRef}>
