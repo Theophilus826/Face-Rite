@@ -306,9 +306,7 @@ export default function ChatPage() {
         {messages.map((msg) => (
           <div key={msg._id}>
             {msg.type === "voice" ? (
-              <audio controls>
-                <source src={msg.audio} type="audio/webm" />
-              </audio>
+              <audio controls src={msg.audio} />
             ) : msg.type === "image" ? (
               <img src={msg.image} className="max-w-xs rounded" />
             ) : (
