@@ -36,8 +36,9 @@ function Navbar() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!Array.isArray(res.data)) return;
-      const data = res.data;
+      const data = res.data.notifications || res.data;
+
+      if (!Array.isArray(data)) return;
 
       // Show toast only for new notifications
       const newOnes = data.filter((n) => !prevIdsRef.current.has(n._id));

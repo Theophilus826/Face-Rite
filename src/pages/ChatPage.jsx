@@ -250,7 +250,7 @@ export default function ChatPage() {
       setRecordTime(0);
 
       try {
-        await API.post("/chat/voice", formData);
+        await API.post("/chat/messages/voice", formData);
       } catch {
         toast.error("Voice failed");
       }
@@ -285,6 +285,10 @@ export default function ChatPage() {
                 }`}
               />
             </div>
+            {/* ✅ ADD THIS */}
+            <p className="text-xs mt-1 text-center truncate w-full">
+              {u.name || "User"}
+            </p>
           </div>
         ))}
       </div>
@@ -302,7 +306,9 @@ export default function ChatPage() {
         {messages.map((msg) => (
           <div key={msg._id}>
             {msg.type === "voice" ? (
-              <audio controls src={msg.audio} />
+              <audio controls>
+                <source src={msg.audio} type="audio/webm" />
+              </audio>
             ) : msg.type === "image" ? (
               <img src={msg.image} className="max-w-xs rounded" />
             ) : (
