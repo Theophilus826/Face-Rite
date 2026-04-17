@@ -20,28 +20,29 @@ export default defineConfig({
         name: "KingStream App",
         short_name: "KingStream",
         description: "Play, chat, and earn coins",
-        theme_color: "#d2d450b9",
-        background_color: "#580a0a",
+        theme_color: "#000000",
+        background_color: "#000000",
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
         scope: "/",
         icons: [
           {
-            src: "/globle.png",
+            src: "/logos.jpg",
             sizes: "192x192",
-            type: "image/png",
+            type: "image/jpg",
+            purpose: "any maskable",
           },
           {
-            src: "/globle.png",
+            src: "/logos.jpg",
             sizes: "512x512",
-            type: "image/png",
+            type: "image/jpg",
+            purpose: "any maskable",
           },
         ],
       },
 
       workbox: {
-        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/swordgame-5\.onrender\.com\/api/,

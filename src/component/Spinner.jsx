@@ -7,7 +7,7 @@ export default function RobotLoader() {
       {/* Robot Logo */}
       <div className="relative">
         <img
-          src="/logo.png" // replace with your robot logo path
+          src="/logos.jpg" // replace with your robot logo path
           alt="Face Rite"
           className="w-24 h-24 animate-bounce"
         />
@@ -35,7 +35,7 @@ export function GameLoader() {
     <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-blue-900 to-purple-900 text-white">
       
       <img
-        src="/logo.png"
+        src="/logos.jpg"
         alt="Face Rite"
         className="w-28 h-28 animate-spin-slow"
       />
