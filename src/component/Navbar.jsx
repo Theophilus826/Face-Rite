@@ -18,6 +18,8 @@ function Navbar() {
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const { isInstallable, installApp } = usePWAInstall();
+  const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
   const notifRef = useRef(null);
   const prevIdsRef = useRef(new Set());
 
@@ -104,23 +106,40 @@ function Navbar() {
               {user ? (
                 <>
                   <div className="flex items-center gap-2">
-                    <Link
-                      to="/"
-                      className="text-gray-300 hover:text-white flex items-center"
-                    >
-                      <Welcome />
-                    </Link>
+               <Link
+                 to="/"
+                   className="text-gray-300 hover:text-white flex items-center"
+               >
+                 <Welcome />
+               </Link>
 
-                    {isInstallable && (
-                      <button
-                        onClick={installApp}
-                        className="flex items-center gap-1 text-yellow-400 border border-yellow-400 px-2 py-1 rounded hover:bg-yellow-400 hover:text-black transition text-xs md:text-sm"
-                      >
-                        <FaDownload />
-                        <span className="hidden sm:inline">Install</span>
-                      </button>
-                    )}
-                  </div>
+  {/* ✅ ALWAYS VISIBLE INSTALL BUTTON */}
+  <button
+    onClick={() => {
+      const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+
+      if (isIOS) {
+        toast.info("📲 Tap Share → Add to Home Screen");
+        return;
+      }
+
+      // Android / Chrome
+      const promptEvent = (window as any).deferredPrompt;
+
+      if (promptEvent) {
+        promptEvent.prompt();
+        promptEvent.userChoice;
+        (window as any).deferredPrompt = null;
+      } else {
+        toast.info("📲 Install option will appear in browser menu");
+      }
+    }}
+    className="flex items-center gap-1 text-yellow-400 border border-yellow-400 px-2 py-1 rounded hover:bg-yellow-400 hover:text-black transition text-xs md:text-sm animate-pulse"
+  >
+    <FaDownload />
+    <span className="hidden sm:inline">Install</span>
+  </button>
+</div>
 
                   {/* Notification */}
                   <div className="relative" ref={notifRef}>
