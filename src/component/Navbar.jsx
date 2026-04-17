@@ -22,13 +22,9 @@ function Navbar() {
   const API_BASE =
     process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
 
-  // ✅ Only unread notifications
   const unreadNotifications = notifications.filter((n) => !n.read);
   const unreadCount = unreadNotifications.length;
 
-  // =========================
-  // Fetch notifications
-  // =========================
   const fetchNotifications = async () => {
     if (!token) return;
     try {
@@ -40,7 +36,6 @@ function Navbar() {
 
       if (!Array.isArray(data)) return;
 
-      // Show toast only for new notifications
       const newOnes = data.filter((n) => !prevIdsRef.current.has(n._id));
       newOnes.forEach((n) => {
         toast.info(`🔔 ${n.message}`);
@@ -53,9 +48,6 @@ function Navbar() {
     }
   };
 
-  // =========================
-  // Polling every 10s
-  // =========================
   useEffect(() => {
     if (!token || !user) return;
 
@@ -64,9 +56,6 @@ function Navbar() {
     return () => clearInterval(interval);
   }, [token, user]);
 
-  // =========================
-  // Close dropdown on outside click
-  // =========================
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notifRef.current && !notifRef.current.contains(event.target)) {
@@ -77,9 +66,6 @@ function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // =========================
-  // Mark as read
-  // =========================
   const markAsRead = async (id) => {
     try {
       await axios.put(
@@ -98,9 +84,10 @@ function Navbar() {
 
   return (
     <>
-      <nav className="bg-gradient-to-r from-blue-500 via-teal-400 to-blue-500/30 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md shadow-sm shadow-black/20">
+      <header className="bg-gradient-to-r from-blue-500 via-teal-400 to-blue-500/30 border-b border-white/10 sticky top-0 z-50 backdrop-blur-md shadow-sm shadow-black/20">
         <div className="mx-auto max-w-screen-sm md:max-w-7xl px-3">
           <div className="flex h-14 md:h-16 items-center justify-between">
+            
             {/* Left */}
             <div className="flex items-center">
               <Link
@@ -115,7 +102,6 @@ function Navbar() {
             <div className="flex items-center space-x-2 md:space-x-4">
               {user ? (
                 <>
-                  {/* Welcome */}
                   <Link
                     to="/"
                     className="text-gray-300 hover:text-white flex items-center"
@@ -137,7 +123,6 @@ function Navbar() {
                       )}
                     </button>
 
-                    {/* Dropdown */}
                     <div
                       className={`absolute right-0 mt-2 w-64 bg-white rounded shadow-lg z-50 transition-transform duration-200 origin-top-right ${
                         isNotifOpen
@@ -187,14 +172,14 @@ function Navbar() {
                     to="/login"
                     className="flex items-center gap-1 text-gray-300 hover:text-white text-sm"
                   >
-                    <FaSignInAlt />{" "}
+                    <FaSignInAlt />
                     <span className="hidden sm:inline">Login</span>
                   </Link>
                   <Link
                     to="/register"
                     className="flex items-center gap-1 text-gray-300 hover:text-white text-sm"
                   >
-                    <FaUser />{" "}
+                    <FaUser />
                     <span className="hidden sm:inline">Register</span>
                   </Link>
                 </>
@@ -202,7 +187,7 @@ function Navbar() {
             </div>
           </div>
         </div>
-      </nav>
+      </header>
 
       {/* Share Modal */}
       {isShareOpen && (

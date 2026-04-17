@@ -14,7 +14,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
 
-      includeAssets: ["globle.png"],
+      includeAssets: ["logos.jpg"],
 
       manifest: {
         name: "KingStream App",
@@ -30,19 +30,25 @@ export default defineConfig({
           {
             src: "/logos.jpg",
             sizes: "192x192",
-            type: "image/jpg",
+            type: "image/jpeg",
             purpose: "any maskable",
           },
           {
             src: "/logos.jpg",
             sizes: "512x512",
-            type: "image/jpg",
+            type: "image/jpeg",
             purpose: "any maskable",
           },
         ],
       },
 
       workbox: {
+        // ✅ Fix build crash (increase limit)
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+
+        // ✅ VERY IMPORTANT: ignore Babylon (huge file)
+        globIgnores: ["**/babylonVendor-*.js"],
+
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/swordgame-5\.onrender\.com\/api/,
@@ -51,7 +57,7 @@ export default defineConfig({
               cacheName: "api-cache",
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24, // 1 day
+                maxAgeSeconds: 60 * 60 * 24,
               },
             },
           },
