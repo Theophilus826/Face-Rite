@@ -124,12 +124,12 @@ function Navbar() {
       }
 
       // Android / Chrome
-      const promptEvent = (window as any).deferredPrompt;
+        const promptEvent = window.deferredPrompt;
 
       if (promptEvent) {
         promptEvent.prompt();
         promptEvent.userChoice;
-        (window as any).deferredPrompt = null;
+        window.deferredPrompt = null;
       } else {
         toast.info("📲 Install option will appear in browser menu");
       }
