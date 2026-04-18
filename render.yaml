@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: KingStream
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist   # change to 'build' if using CRA
+
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
