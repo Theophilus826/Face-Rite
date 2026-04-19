@@ -14,10 +14,12 @@ export default function PostGalleryWithUpload({
   mediaFiles = [],
   initialLikes = 0,
   initialLoves = 0,
-  comments= [],
+  comments = [],
 }) {
   const dispatch = useDispatch();
-
+  const safeMedia = Array.isArray(mediaFiles)
+    ? mediaFiles.filter((m) => m && m.url && m.type)
+    : [];
   /* ================= STATE ================= */
   const [index, setIndex] = useState(null);
 
@@ -53,7 +55,7 @@ export default function PostGalleryWithUpload({
           }
         });
       },
-      { threshold: 0.6 }
+      { threshold: 0.6 },
     );
 
     videoRefs.current.forEach((v) => {
@@ -82,12 +84,9 @@ export default function PostGalleryWithUpload({
   };
 
   /* ================= NAVIGATION ================= */
-  const next = () =>
-    setIndex((p) => (p === mediaFiles.length - 1 ? 0 : p + 1));
+  const next = () => setIndex((p) => (p === safeMedia.length - 1 ? 0 : p + 1));
 
-  const prev = () =>
-    setIndex((p) => (p === 0 ? mediaFiles.length - 1 : p - 1));
-
+  const prev = () => setIndex((p) => (p === 0 ? safeMedia.length - 1 : p - 1));
   /* ================= REACTIONS ================= */
   const handleReaction = async (type) => {
     if (!postOwnerId) return;
@@ -103,7 +102,7 @@ export default function PostGalleryWithUpload({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type} reaction`,
-        })
+        }),
       ).unwrap();
 
       // ❤️ Backend reaction
@@ -111,10 +110,8 @@ export default function PostGalleryWithUpload({
         `/post/${postId}/react`,
         { type },
         {
-          headers: token
-            ? { Authorization: `Bearer ${token}` }
-            : {},
-        }
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
       );
 
       setLikeCount(res.data.likeCount);
@@ -138,8 +135,7 @@ export default function PostGalleryWithUpload({
   };
 
   /* ================= FORMAT ================= */
-  const formatDate = (d) =>
-    d ? new Date(d).toLocaleString() : "";
+  const formatDate = (d) => (d ? new Date(d).toLocaleString() : "");
 
   /* ================= UI ================= */
 
@@ -147,9 +143,7 @@ export default function PostGalleryWithUpload({
     <div className="space-y-3">
       {/* DATE */}
       {createdAt && (
-        <p className="text-sm text-gray-500">
-          {formatDate(createdAt)}
-        </p>
+        <p className="text-sm text-gray-500">{formatDate(createdAt)}</p>
       )}
 
       {/* TEXT */}
@@ -157,19 +151,19 @@ export default function PostGalleryWithUpload({
 
       {/* ================= MEDIA ================= */}
 
-      {mediaFiles?.length === 1 ? (
-        mediaFiles[0].type === "video" ? (
+      {safeMedia.length === 1 ? (
+        /* ================= SINGLE ================= */
+        safeMedia[0].type === "video" ? (
           <div className="relative w-full flex justify-center">
             <div className="relative w-full max-w-5xl">
               <video
                 ref={(el) => (videoRefs.current[0] = el)}
-                src={mediaFiles[0].url}
+                src={safeMedia[0].url}
                 className="w-full max-h-[80vh] object-cover rounded-lg border"
                 muted={muted}
                 loop
                 playsInline
               />
-
               <button
                 onClick={toggleMute}
                 className="absolute top-3 right-3 bg-black/60 text-white px-3 py-1 rounded"
@@ -180,68 +174,158 @@ export default function PostGalleryWithUpload({
           </div>
         ) : (
           <img
-            src={mediaFiles[0].url}
+            src={safeMedia[0].url}
             className="w-full max-h-[80vh] object-contain rounded-lg"
             alt=""
           />
         )
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {mediaFiles.map((m, i) => (
+      ) : safeMedia.length === 2 ? (
+        /* ================= 2 ITEMS ================= */
+        <div className="grid grid-cols-2 gap-2">
+          {safeMedia.map((m, i) => (
             <div
               key={i}
               onClick={() => setIndex(i)}
-              className="relative rounded-md overflow-hidden border cursor-pointer"
+              className="relative h-60 rounded-lg overflow-hidden cursor-pointer"
             >
               {m.type === "video" ? (
-                <>
-                  <video
-                    ref={(el) => (videoRefs.current[i] = el)}
-                    src={m.url}
-                    className="w-full h-48 object-cover"
-                    muted={muted}
-                    loop
-                    playsInline
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleMute();
-                    }}
-                    className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 text-xs rounded"
-                  >
-                    {muted ? "🔇" : "🔊"}
-                  </button>
-                </>
-              ) : (
-                <img
+                <video
+                  ref={(el) => (videoRefs.current[i] = el)}
                   src={m.url}
-                  className="w-full h-48 object-cover"
-                  alt=""
+                  className="w-full h-full object-cover"
+                  muted={muted}
+                  loop
+                  playsInline
                 />
+              ) : (
+                <img src={m.url} className="w-full h-full object-cover" />
               )}
             </div>
           ))}
         </div>
-      )}
+      ) : safeMedia.length === 3 ? (
+        /* ================= 3 ITEMS ================= */
+        <div className="grid grid-cols-3 gap-2 h-[400px]">
+          <div
+            className="col-span-2 row-span-2 rounded-lg overflow-hidden"
+            onClick={() => setIndex(0)}
+          >
+            <img
+              src={safeMedia[0].url}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          {safeMedia.slice(1).map((m, i) => (
+            <div
+              key={i}
+              onClick={() => setIndex(i + 1)}
+              className="rounded-lg overflow-hidden"
+            >
+              <img src={m.url} className="w-full h-full object-cover" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* ================= 4+ ITEMS (INSTAGRAM STYLE) ================= */
+        <>
+          {/* DESKTOP */}
+          <div className="hidden sm:grid grid-cols-3 gap-2 h-[420px]">
+            {/* BIG */}
+            <div
+              className="col-span-2 row-span-2 relative rounded-lg overflow-hidden cursor-pointer"
+              onClick={() => setIndex(0)}
+            >
+              {safeMedia[0].type === "video" ? (
+                <video
+                  ref={(el) => (videoRefs.current[0] = el)}
+                  src={safeMedia[0].url}
+                  className="w-full h-full object-cover"
+                  muted={muted}
+                  loop
+                  playsInline
+                />
+              ) : (
+                <img
+                  src={safeMedia[0].url}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
 
+            {/* GRID */}
+            {safeMedia.slice(1, 5).map((m, i) => (
+              <div
+                key={i}
+                onClick={() => setIndex(i + 1)}
+                className="relative rounded-lg overflow-hidden cursor-pointer"
+              >
+                {m.type === "video" ? (
+                  <video
+                    ref={(el) => (videoRefs.current[i + 1] = el)}
+                    src={m.url}
+                    className="w-full h-full object-cover"
+                    muted={muted}
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <img src={m.url} className="w-full h-full object-cover" />
+                )}
+
+                {/* +MORE */}
+                {safeMedia.length > 5 && i === 3 && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xl font-bold">
+                    +{safeMedia.length - 5}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* MOBILE */}
+          <div className="grid sm:hidden grid-cols-2 gap-2">
+            {safeMedia.map((m, i) => (
+              <div
+                key={i}
+                onClick={() => setIndex(i)}
+                className="relative h-40 rounded-md overflow-hidden cursor-pointer"
+              >
+                {m.type === "video" ? (
+                  <video
+                    ref={(el) => (videoRefs.current[i] = el)}
+                    src={m.url}
+                    className="w-full h-full object-cover"
+                    muted={muted}
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <img src={m.url} className="w-full h-full object-cover" />
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       {/* ================= MODAL ================= */}
 
-      {index !== null && (
+      {index !== null && safeMedia[index] && (
         <div
           className="fixed inset-0 bg-black/95 flex items-center justify-center z-50"
           onClick={() => setIndex(null)}
         >
+          {/* PREV */}
           <button
             className="absolute left-4 text-white text-3xl"
             onClick={(e) => {
               e.stopPropagation();
-              prev();
+              setIndex((p) => (p === 0 ? safeMedia.length - 1 : p - 1));
             }}
           >
             ‹
           </button>
 
+          {/* MEDIA */}
           <motion.div
             key={index}
             className="relative max-w-6xl w-full px-3"
@@ -251,43 +335,37 @@ export default function PostGalleryWithUpload({
             transition={{ duration: 0.25 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {mediaFiles[index].type === "video" ? (
-              <>
-                <video
-                  src={mediaFiles[index].url}
-                  className="w-full max-h-[90vh] object-contain rounded-lg"
-                  controls
-                  autoPlay
-                  muted={muted}
-                />
-                <button
-                  onClick={toggleMute}
-                  className="absolute top-4 right-4 bg-black/60 text-white px-3 py-2 rounded"
-                >
-                  {muted ? "🔇" : "🔊"}
-                </button>
-              </>
+            {safeMedia[index]?.type === "video" ? (
+              <video
+                src={safeMedia[index].url}
+                className="w-full max-h-[90vh] object-contain rounded-lg"
+                controls
+                autoPlay
+                muted={muted}
+              />
             ) : (
               <img
-                src={mediaFiles[index].url}
+                src={safeMedia[index]?.url}
                 className="max-h-[90vh] max-w-full rounded-lg"
                 alt=""
               />
             )}
           </motion.div>
 
+          {/* NEXT */}
           <button
             className="absolute right-4 text-white text-3xl"
             onClick={(e) => {
               e.stopPropagation();
-              next();
+              setIndex((p) => (p === safeMedia.length - 1 ? 0 : p + 1));
             }}
           >
             ›
           </button>
 
+          {/* COUNT */}
           <div className="absolute bottom-6 text-white text-sm">
-            {index + 1} / {mediaFiles.length}
+            {index + 1} / {safeMedia.length}
           </div>
         </div>
       )}
