@@ -308,21 +308,23 @@ export default function PostGalleryWithUpload({
       )}
       {/* ================= MODAL ================= */}
 
-      {index !== null && (
+      {index !== null && safeMedia[index] && (
         <div
           className="fixed inset-0 bg-black/95 flex items-center justify-center z-50"
           onClick={() => setIndex(null)}
         >
+          {/* PREV */}
           <button
             className="absolute left-4 text-white text-3xl"
             onClick={(e) => {
               e.stopPropagation();
-              prev();
+              setIndex((p) => (p === 0 ? safeMedia.length - 1 : p - 1));
             }}
           >
             ‹
           </button>
 
+          {/* MEDIA */}
           <motion.div
             key={index}
             className="relative max-w-6xl w-full px-3"
@@ -332,43 +334,37 @@ export default function PostGalleryWithUpload({
             transition={{ duration: 0.25 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {mediaFiles[index].type === "video" ? (
-              <>
-                <video
-                  src={mediaFiles[index].url}
-                  className="w-full max-h-[90vh] object-contain rounded-lg"
-                  controls
-                  autoPlay
-                  muted={muted}
-                />
-                <button
-                  onClick={toggleMute}
-                  className="absolute top-4 right-4 bg-black/60 text-white px-3 py-2 rounded"
-                >
-                  {muted ? "🔇" : "🔊"}
-                </button>
-              </>
+            {safeMedia[index]?.type === "video" ? (
+              <video
+                src={safeMedia[index].url}
+                className="w-full max-h-[90vh] object-contain rounded-lg"
+                controls
+                autoPlay
+                muted={muted}
+              />
             ) : (
               <img
-                src={mediaFiles[index].url}
+                src={safeMedia[index]?.url}
                 className="max-h-[90vh] max-w-full rounded-lg"
                 alt=""
               />
             )}
           </motion.div>
 
+          {/* NEXT */}
           <button
             className="absolute right-4 text-white text-3xl"
             onClick={(e) => {
               e.stopPropagation();
-              next();
+              setIndex((p) => (p === safeMedia.length - 1 ? 0 : p + 1));
             }}
           >
             ›
           </button>
 
+          {/* COUNT */}
           <div className="absolute bottom-6 text-white text-sm">
-            {index + 1} / {mediaFiles.length}
+            {index + 1} / {safeMedia.length}
           </div>
         </div>
       )}
