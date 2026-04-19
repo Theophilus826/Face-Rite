@@ -150,19 +150,19 @@ export default function PostGalleryWithUpload({
 
       {/* ================= MEDIA ================= */}
 
-      {mediaFiles?.length === 1 ? (
-        mediaFiles[0].type === "video" ? (
+      {safeMedia.length === 1 ? (
+        /* ================= SINGLE ================= */
+        safeMedia[0].type === "video" ? (
           <div className="relative w-full flex justify-center">
             <div className="relative w-full max-w-5xl">
               <video
                 ref={(el) => (videoRefs.current[0] = el)}
-                src={mediaFiles[0].url}
+                src={safeMedia[0].url}
                 className="w-full max-h-[80vh] object-cover rounded-lg border"
                 muted={muted}
                 loop
                 playsInline
               />
-
               <button
                 onClick={toggleMute}
                 className="absolute top-3 right-3 bg-black/60 text-white px-3 py-1 rounded"
@@ -173,128 +173,133 @@ export default function PostGalleryWithUpload({
           </div>
         ) : (
           <img
-            src={mediaFiles[0].url}
+            src={safeMedia[0].url}
             className="w-full max-h-[80vh] object-contain rounded-lg"
             alt=""
           />
         )
+      ) : safeMedia.length === 2 ? (
+        /* ================= 2 ITEMS ================= */
+        <div className="grid grid-cols-2 gap-2">
+          {safeMedia.map((m, i) => (
+            <div
+              key={i}
+              onClick={() => setIndex(i)}
+              className="relative h-60 rounded-lg overflow-hidden cursor-pointer"
+            >
+              {m.type === "video" ? (
+                <video
+                  ref={(el) => (videoRefs.current[i] = el)}
+                  src={m.url}
+                  className="w-full h-full object-cover"
+                  muted={muted}
+                  loop
+                  playsInline
+                />
+              ) : (
+                <img src={m.url} className="w-full h-full object-cover" />
+              )}
+            </div>
+          ))}
+        </div>
+      ) : safeMedia.length === 3 ? (
+        /* ================= 3 ITEMS ================= */
+        <div className="grid grid-cols-3 gap-2 h-[400px]">
+          <div
+            className="col-span-2 row-span-2 rounded-lg overflow-hidden"
+            onClick={() => setIndex(0)}
+          >
+            <img
+              src={safeMedia[0].url}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          {safeMedia.slice(1).map((m, i) => (
+            <div
+              key={i}
+              onClick={() => setIndex(i + 1)}
+              className="rounded-lg overflow-hidden"
+            >
+              <img src={m.url} className="w-full h-full object-cover" />
+            </div>
+          ))}
+        </div>
       ) : (
+        /* ================= 4+ ITEMS (INSTAGRAM STYLE) ================= */
         <>
-          {/* ✅ DESKTOP / TABLET (Instagram Layout) */}
+          {/* DESKTOP */}
           <div className="hidden sm:grid grid-cols-3 gap-2 h-[420px]">
-            {/* BIG MEDIA */}
+            {/* BIG */}
             <div
               className="col-span-2 row-span-2 relative rounded-lg overflow-hidden cursor-pointer"
               onClick={() => setIndex(0)}
             >
-              {mediaFiles[0].type === "video" ? (
-                <>
-                  <video
-                    ref={(el) => (videoRefs.current[0] = el)}
-                    src={mediaFiles[0].url}
-                    className="w-full h-full object-cover"
-                    muted={muted}
-                    loop
-                    playsInline
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleMute();
-                    }}
-                    className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 text-xs rounded"
-                  >
-                    {muted ? "🔇" : "🔊"}
-                  </button>
-                </>
+              {safeMedia[0].type === "video" ? (
+                <video
+                  ref={(el) => (videoRefs.current[0] = el)}
+                  src={safeMedia[0].url}
+                  className="w-full h-full object-cover"
+                  muted={muted}
+                  loop
+                  playsInline
+                />
               ) : (
                 <img
-                  src={mediaFiles[0].url}
+                  src={safeMedia[0].url}
                   className="w-full h-full object-cover"
-                  alt=""
                 />
               )}
             </div>
 
-            {/* SMALL GRID (next 4) */}
-            {mediaFiles.slice(1, 5).map((m, i) => (
+            {/* GRID */}
+            {safeMedia.slice(1, 5).map((m, i) => (
               <div
                 key={i}
                 onClick={() => setIndex(i + 1)}
                 className="relative rounded-lg overflow-hidden cursor-pointer"
               >
                 {m.type === "video" ? (
-                  <>
-                    <video
-                      ref={(el) => (videoRefs.current[i + 1] = el)}
-                      src={m.url}
-                      className="w-full h-full object-cover"
-                      muted={muted}
-                      loop
-                      playsInline
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMute();
-                      }}
-                      className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 text-xs rounded"
-                    >
-                      {muted ? "🔇" : "🔊"}
-                    </button>
-                  </>
-                ) : (
-                  <img
+                  <video
+                    ref={(el) => (videoRefs.current[i + 1] = el)}
                     src={m.url}
                     className="w-full h-full object-cover"
-                    alt=""
+                    muted={muted}
+                    loop
+                    playsInline
                   />
+                ) : (
+                  <img src={m.url} className="w-full h-full object-cover" />
                 )}
 
-                {/* +MORE OVERLAY */}
-                {mediaFiles.length > 5 && i === 3 && (
+                {/* +MORE */}
+                {safeMedia.length > 5 && i === 3 && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xl font-bold">
-                    +{mediaFiles.length - 5}
+                    +{safeMedia.length - 5}
                   </div>
                 )}
               </div>
             ))}
           </div>
 
-          {/* ✅ MOBILE (simple grid fallback) */}
+          {/* MOBILE */}
           <div className="grid sm:hidden grid-cols-2 gap-2">
-            {mediaFiles.map((m, i) => (
+            {safeMedia.map((m, i) => (
               <div
                 key={i}
                 onClick={() => setIndex(i)}
-                className="relative rounded-md overflow-hidden border cursor-pointer"
+                className="relative h-40 rounded-md overflow-hidden cursor-pointer"
               >
                 {m.type === "video" ? (
-                  <>
-                    <video
-                      ref={(el) => (videoRefs.current[i] = el)}
-                      src={m.url}
-                      className="w-full h-40 object-cover"
-                      muted={muted}
-                      loop
-                      playsInline
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMute();
-                      }}
-                      className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 text-xs rounded"
-                    >
-                      {muted ? "🔇" : "🔊"}
-                    </button>
-                  </>
-                ) : (
-                  <img
+                  <video
+                    ref={(el) => (videoRefs.current[i] = el)}
                     src={m.url}
-                    className="w-full h-40 object-cover"
-                    alt=""
+                    className="w-full h-full object-cover"
+                    muted={muted}
+                    loop
+                    playsInline
                   />
+                ) : (
+                  <img src={m.url} className="w-full h-full object-cover" />
                 )}
               </div>
             ))}
