@@ -14,7 +14,7 @@ export default function PostGalleryWithUpload({
   mediaFiles = [],
   initialLikes = 0,
   initialLoves = 0,
-  comments= [],
+  comments = [],
 }) {
   const dispatch = useDispatch();
 
@@ -53,7 +53,7 @@ export default function PostGalleryWithUpload({
           }
         });
       },
-      { threshold: 0.6 }
+      { threshold: 0.6 },
     );
 
     videoRefs.current.forEach((v) => {
@@ -82,11 +82,9 @@ export default function PostGalleryWithUpload({
   };
 
   /* ================= NAVIGATION ================= */
-  const next = () =>
-    setIndex((p) => (p === mediaFiles.length - 1 ? 0 : p + 1));
+  const next = () => setIndex((p) => (p === mediaFiles.length - 1 ? 0 : p + 1));
 
-  const prev = () =>
-    setIndex((p) => (p === 0 ? mediaFiles.length - 1 : p - 1));
+  const prev = () => setIndex((p) => (p === 0 ? mediaFiles.length - 1 : p - 1));
 
   /* ================= REACTIONS ================= */
   const handleReaction = async (type) => {
@@ -103,7 +101,7 @@ export default function PostGalleryWithUpload({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type} reaction`,
-        })
+        }),
       ).unwrap();
 
       // ❤️ Backend reaction
@@ -111,10 +109,8 @@ export default function PostGalleryWithUpload({
         `/post/${postId}/react`,
         { type },
         {
-          headers: token
-            ? { Authorization: `Bearer ${token}` }
-            : {},
-        }
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
       );
 
       setLikeCount(res.data.likeCount);
@@ -138,8 +134,7 @@ export default function PostGalleryWithUpload({
   };
 
   /* ================= FORMAT ================= */
-  const formatDate = (d) =>
-    d ? new Date(d).toLocaleString() : "";
+  const formatDate = (d) => (d ? new Date(d).toLocaleString() : "");
 
   /* ================= UI ================= */
 
@@ -147,9 +142,7 @@ export default function PostGalleryWithUpload({
     <div className="space-y-3">
       {/* DATE */}
       {createdAt && (
-        <p className="text-sm text-gray-500">
-          {formatDate(createdAt)}
-        </p>
+        <p className="text-sm text-gray-500">{formatDate(createdAt)}</p>
       )}
 
       {/* TEXT */}
@@ -186,19 +179,20 @@ export default function PostGalleryWithUpload({
           />
         )
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {mediaFiles.map((m, i) => (
+        <>
+          {/* ✅ DESKTOP / TABLET (Instagram Layout) */}
+          <div className="hidden sm:grid grid-cols-3 gap-2 h-[420px]">
+            {/* BIG MEDIA */}
             <div
-              key={i}
-              onClick={() => setIndex(i)}
-              className="relative rounded-md overflow-hidden border cursor-pointer"
+              className="col-span-2 row-span-2 relative rounded-lg overflow-hidden cursor-pointer"
+              onClick={() => setIndex(0)}
             >
-              {m.type === "video" ? (
+              {mediaFiles[0].type === "video" ? (
                 <>
                   <video
-                    ref={(el) => (videoRefs.current[i] = el)}
-                    src={m.url}
-                    className="w-full h-48 object-cover"
+                    ref={(el) => (videoRefs.current[0] = el)}
+                    src={mediaFiles[0].url}
+                    className="w-full h-full object-cover"
                     muted={muted}
                     loop
                     playsInline
@@ -215,16 +209,98 @@ export default function PostGalleryWithUpload({
                 </>
               ) : (
                 <img
-                  src={m.url}
-                  className="w-full h-48 object-cover"
+                  src={mediaFiles[0].url}
+                  className="w-full h-full object-cover"
                   alt=""
                 />
               )}
             </div>
-          ))}
-        </div>
-      )}
 
+            {/* SMALL GRID (next 4) */}
+            {mediaFiles.slice(1, 5).map((m, i) => (
+              <div
+                key={i}
+                onClick={() => setIndex(i + 1)}
+                className="relative rounded-lg overflow-hidden cursor-pointer"
+              >
+                {m.type === "video" ? (
+                  <>
+                    <video
+                      ref={(el) => (videoRefs.current[i + 1] = el)}
+                      src={m.url}
+                      className="w-full h-full object-cover"
+                      muted={muted}
+                      loop
+                      playsInline
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleMute();
+                      }}
+                      className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 text-xs rounded"
+                    >
+                      {muted ? "🔇" : "🔊"}
+                    </button>
+                  </>
+                ) : (
+                  <img
+                    src={m.url}
+                    className="w-full h-full object-cover"
+                    alt=""
+                  />
+                )}
+
+                {/* +MORE OVERLAY */}
+                {mediaFiles.length > 5 && i === 3 && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xl font-bold">
+                    +{mediaFiles.length - 5}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ✅ MOBILE (simple grid fallback) */}
+          <div className="grid sm:hidden grid-cols-2 gap-2">
+            {mediaFiles.map((m, i) => (
+              <div
+                key={i}
+                onClick={() => setIndex(i)}
+                className="relative rounded-md overflow-hidden border cursor-pointer"
+              >
+                {m.type === "video" ? (
+                  <>
+                    <video
+                      ref={(el) => (videoRefs.current[i] = el)}
+                      src={m.url}
+                      className="w-full h-40 object-cover"
+                      muted={muted}
+                      loop
+                      playsInline
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleMute();
+                      }}
+                      className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 text-xs rounded"
+                    >
+                      {muted ? "🔇" : "🔊"}
+                    </button>
+                  </>
+                ) : (
+                  <img
+                    src={m.url}
+                    className="w-full h-40 object-cover"
+                    alt=""
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       {/* ================= MODAL ================= */}
 
       {index !== null && (
