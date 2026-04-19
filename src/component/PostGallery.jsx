@@ -17,7 +17,9 @@ export default function PostGalleryWithUpload({
   comments = [],
 }) {
   const dispatch = useDispatch();
-
+  const safeMedia = (props.mediaFiles || []).filter(
+    (m) => m && m.url && m.type
+  );
   /* ================= STATE ================= */
   const [index, setIndex] = useState(null);
 
