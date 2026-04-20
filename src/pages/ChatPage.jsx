@@ -180,29 +180,30 @@ export default function ChatPage() {
   /* ================= SEND TEXT ================= */
 
   const sendMessage = async () => {
-    if (!chatText.trim()) return;
+  if (!chatText.trim()) return;
 
-    const text = chatText.trim();
-    setChatText("");
+  const text = chatText.trim();
+  setChatText("");
 
-    const temp = {
-      _id: Date.now(),
-      fromUser: user._id,
-      toUser: chatUserId,
-      text,
-      type: "text",
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, temp]);
-
-    try {
-      await API.post("/chat/send", { toUserId: chatUserId, text });
-      await API.post("/chat/stop-typing", { toUserId: chatUserId });
-    } catch {
-      toast.error("Send failed");
-    }
+  const temp = {
+    _id: Date.now(),
+    fromUser: user._id,
+    toUser: chatUserId,
+    text,
+    type: "text",
+    createdAt: new Date().toISOString(),
   };
+
+  setMessages((prev) => [...prev, temp]);
+
+  try {
+    // ✅ FIXED ROUTES
+    await API.post("/chat/messages", { toUserId: chatUserId, text });
+    await API.post("/chat/typing/stop", { toUserId: chatUserId });
+  } catch {
+    toast.error("Send failed");
+  }
+};
 
   /* ================= VOICE ================= */
 
