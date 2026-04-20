@@ -33,11 +33,6 @@ export default function ChatPage() {
 
   /* ================= HELPERS ================= */
 
-  const isValidUrl = (url) =>
-    typeof url === "string" &&
-    url.startsWith("http") &&
-    !url.includes("undefined");
-
   const formatRecordTime = (sec) => {
     const m = String(Math.floor(sec / 60)).padStart(2, "0");
     const s = String(sec % 60).padStart(2, "0");
@@ -65,9 +60,9 @@ export default function ChatPage() {
             avatar: u.avatar?.startsWith("http")
               ? u.avatar
               : u.avatar
-              ? `${BASE_URL}/${u.avatar}`
-              : null,
-          }))
+                ? `${BASE_URL}/${u.avatar}`
+                : null,
+          })),
         );
       })
       .catch(console.error);
@@ -81,7 +76,7 @@ export default function ChatPage() {
     eventSourceRef.current?.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`
+      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`,
     );
 
     eventSourceRef.current = es;
@@ -104,6 +99,7 @@ export default function ChatPage() {
             return [...prev, data.message];
           });
 
+          // 🔔 show toast only if not from me
           if (
             String(data.message.fromUser) !== String(user._id) &&
             !notifiedIdsRef.current.has(data.message._id)
@@ -111,6 +107,7 @@ export default function ChatPage() {
             notifiedIdsRef.current.add(data.message._id);
             toast.info(`💬 ${getPreviewText(data.message)}`);
           }
+
           break;
 
         case "typing":
@@ -124,8 +121,8 @@ export default function ChatPage() {
         case "status":
           setUsers((prev) =>
             prev.map((u) =>
-              u._id === data.userId ? { ...u, status: data.status } : u
-            )
+              u._id === data.userId ? { ...u, status: data.status } : u,
+            ),
           );
 
           if (data.userId === chatUserId) {
@@ -138,13 +135,10 @@ export default function ChatPage() {
       }
     };
 
-    return () => {
-      es.close();
-      eventSourceRef.current = null;
-    };
+    return () => es.close();
   }, [user, chatUserId]);
 
-  /* ================= NOTIFICATIONS SSE ================= */
+  /* ================= NOTIFICATION SSE ================= */
 
   useEffect(() => {
     if (!user) return;
@@ -152,7 +146,7 @@ export default function ChatPage() {
     notificationSourceRef.current?.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/notifications/stream?token=${token}`
+      `${API.defaults.baseURL}/notifications/stream?token=${token}`,
     );
 
     notificationSourceRef.current = es;
@@ -165,17 +159,16 @@ export default function ChatPage() {
 
         if (!notif?._id) return;
 
+        // 🚫 prevent duplicates
         if (notifiedIdsRef.current.has(notif._id)) return;
 
         notifiedIdsRef.current.add(notif._id);
+
         toast.info(`🔔 ${notif.message}`);
       }
     };
 
-    return () => {
-      es.close();
-      notificationSourceRef.current = null;
-    };
+    return () => es.close();
   }, [user]);
 
   /* ================= AUTO SCROLL ================= */
@@ -184,7 +177,7 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* ================= SEND MESSAGE ================= */
+  /* ================= SEND TEXT ================= */
 
   const sendMessage = async () => {
     if (!chatText.trim()) return;
@@ -204,14 +197,9 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, temp]);
 
     try {
-      await API.post("/chat/messages", {
-        toUserId: chatUserId,
-        text,
-      });
-
-      await API.post("/chat/typing/stop", {
-        toUserId: chatUserId,
-      });
+      // ✅ FIXED ROUTES
+      await API.post("/chat/messages", { toUserId: chatUserId, text });
+      await API.post("/chat/typing/stop", { toUserId: chatUserId });
     } catch {
       toast.error("Send failed");
     }
@@ -221,9 +209,7 @@ export default function ChatPage() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
       setRecording(true);
       setRecordTime(0);
@@ -232,10 +218,9 @@ export default function ChatPage() {
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
-      recorder.ondataavailable = (e) =>
-        audioChunksRef.current.push(e.data);
+      recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
 
-      recorder.start(1000);
+      recorder.start();
 
       timerRef.current = setInterval(() => {
         setRecordTime((p) => p + 1);
@@ -249,10 +234,7 @@ export default function ChatPage() {
     const recorder = mediaRecorderRef.current;
     if (!recorder) return;
 
-    const stream = recorder.stream;
-
     recorder.stop();
-    stream?.getTracks().forEach((t) => t.stop());
     clearInterval(timerRef.current);
 
     recorder.onstop = async () => {
@@ -276,10 +258,7 @@ export default function ChatPage() {
     };
   };
 
-  if (!user)
-    return <div className="text-center mt-10">Login required</div>;
-
-  /* ================= UI ================= */
+  if (!user) return <div className="text-center mt-10">Login required</div>;
 
   return (
     <div className="flex flex-col h-screen max-w-4xl mx-auto bg-white">
@@ -295,10 +274,7 @@ export default function ChatPage() {
           >
             <div className="relative">
               {u.avatar ? (
-                <img
-                  src={u.avatar}
-                  className="w-12 h-12 rounded-full"
-                />
+                <img src={u.avatar} className="w-12 h-12 rounded-full" />
               ) : (
                 <div className="w-12 h-12 bg-blue-500 text-white flex items-center justify-center rounded-full">
                   {u.name?.charAt(0)}
@@ -306,15 +282,13 @@ export default function ChatPage() {
               )}
               <span
                 className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${
-                  u.status === "online"
-                    ? "bg-green-500"
-                    : "bg-gray-400"
+                  u.status === "online" ? "bg-green-500" : "bg-gray-400"
                 }`}
               />
             </div>
-
+            {/* ✅ ADD THIS */}
             <p className="text-xs mt-1 text-center truncate w-full">
-              {u.name}
+              {u.name || "User"}
             </p>
           </div>
         ))}
@@ -332,24 +306,24 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto pb-24 flex flex-col gap-2 bg-gray-50">
         {messages.map((msg) => (
           <div key={msg._id} className="mb-2">
-            {msg.type === "voice" && isValidUrl(msg.audio) ? (
-              <audio controls preload="metadata">
+            {msg.type === "voice" && msg.audio?.startsWith("http") ? (
+              <audio controls preload="metadata" className="w-full max-w-xs">
                 <source src={msg.audio} type="audio/webm" />
+                Your browser does not support audio playback.
               </audio>
-            ) : msg.type === "image" && isValidUrl(msg.image) ? (
+            ) : msg.type === "image" && msg.image?.startsWith("http") ? (
               <img
                 src={msg.image}
                 className="max-w-xs rounded-lg border"
-                alt="media"
+                alt="sent media"
+                loading="lazy"
               />
             ) : msg.type === "text" ? (
-              <p className="px-3 py-2 rounded bg-gray-100 inline-block max-w-xs break-words">
+              <p className="px-3 py-2 rounded bg-gray-100 inline-block">
                 {msg.text}
               </p>
             ) : (
-              <p className="text-gray-400 text-sm">
-                Unsupported message
-              </p>
+              <p className="text-gray-400 text-sm">Unsupported message</p>
             )}
           </div>
         ))}
