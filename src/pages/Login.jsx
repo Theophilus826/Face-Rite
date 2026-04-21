@@ -7,7 +7,7 @@ import Spinner from "../component/Spinner";
 import Mode from "../component/Mode";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState(""); // ✅ email OR phone
   const [password, setPassword] = useState("");
   const [showMode, setShowMode] = useState(false);
 
@@ -27,25 +27,32 @@ export default function Login() {
       setShowMode(true);
     }
 
-    // ✅ Reset only flags, not user
     dispatch(reset());
   }, [user, isError, message, dispatch]);
 
   // -------------------- Submit Login --------------------
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please enter both email and password");
+
+    if (!identifier || !password) {
+      toast.error("Enter email/phone and password");
       return;
     }
-    dispatch(loginUser({ email, password }));
+
+    dispatch(
+      loginUser({
+        identifier,
+        password,
+      })
+    );
   };
 
   // -------------------- Mood Selection --------------------
   const handleMoodSelect = async (mood) => {
     try {
-      // ✅ Send mood to backend
-      await dispatch(sendMood({ mood })).unwrap();
+      // ✅ FIXED: send string, not object
+      await dispatch(sendMood(mood)).unwrap();
+
       setShowMode(false);
       navigate("/welcome");
     } catch (err) {
@@ -78,12 +85,14 @@ export default function Login() {
           </h2>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            
+            {/* ✅ Identifier Input */}
             <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+              type="text"
+              placeholder="Email or Phone Number"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              className="p-4 rounded-lg bg-white/50 border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
               required
             />
 
@@ -92,22 +101,30 @@ export default function Login() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+              className="p-4 rounded-lg bg-white/50 border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
               required
             />
 
             <button
               type="submit"
-              className="mt-2 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition disabled:bg-gray-400"
+              className="mt-2 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md disabled:bg-gray-400"
               disabled={isLoading}
             >
               {isLoading ? "Logging in..." : "Login"}
             </button>
           </form>
 
+          {/* ✅ Optional hint */}
+          <p className="text-xs text-center text-gray-500 mt-2">
+            Use your email or Nigerian phone number
+          </p>
+
           <p className="mt-6 text-center text-gray-700 text-sm">
             Don't have an account?{" "}
-            <span className="text-blue-500 hover:underline cursor-pointer">
+            <span
+              onClick={() => navigate("/register")}
+              className="text-blue-500 hover:underline cursor-pointer"
+            >
               Sign up
             </span>
           </p>

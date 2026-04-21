@@ -9,12 +9,14 @@ export default function Register() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "", // ✅ NEW
     password: "",
     confirmPassword: "",
   });
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
   const { user, isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.auth
   );
@@ -22,11 +24,18 @@ export default function Register() {
   useEffect(() => {
     if (isError) toast.error(message);
 
-    // Automatically log in after successful registration
+    // ✅ Auto login after register (email OR phone)
     if (isSuccess) {
       toast.success("Registration successful");
+
+      const identifier =
+        formData.email?.trim() || formData.phone?.trim();
+
       dispatch(
-        loginUser({ email: formData.email, password: formData.password })
+        loginUser({
+          identifier,
+          password: formData.password,
+        })
       );
     }
 
@@ -41,6 +50,7 @@ export default function Register() {
     navigate,
     user,
     formData.email,
+    formData.phone,
     formData.password,
   ]);
 
@@ -49,6 +59,11 @@ export default function Register() {
 
   const onSubmit = (e) => {
     e.preventDefault();
+
+    if (!formData.email && !formData.phone) {
+      toast.error("Provide email or phone number");
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       toast.error("Passwords do not match");
@@ -66,50 +81,66 @@ export default function Register() {
         <h2 className="text-3xl font-extrabold mb-8 text-center text-gray-900">
           Register
         </h2>
+
         <form onSubmit={onSubmit} className="flex flex-col gap-5">
           <input
             name="name"
             placeholder="Name"
             value={formData.name}
             onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
             required
           />
+
+          {/* ✅ Email */}
           <input
             name="email"
             type="email"
-            placeholder="Email"
+            placeholder="Email (optional)"
             value={formData.email}
             onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
-            required
+            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
           />
+
+          {/* ✅ Phone */}
+          <input
+            name="phone"
+            type="tel"
+            placeholder="Phone (e.g. 08012345678)"
+            value={formData.phone}
+            onChange={onChange}
+            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
+          />
+
           <input
             name="password"
             type="password"
             placeholder="Password"
             value={formData.password}
             onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
             required
           />
+
           <input
             name="confirmPassword"
             type="password"
             placeholder="Confirm Password"
             value={formData.confirmPassword}
             onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
             required
           />
+
           <button
             type="submit"
             disabled={isLoading}
-            className="mt-2 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition disabled:bg-gray-400"
+            className="mt-2 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md disabled:bg-gray-400"
           >
             {isLoading ? "Registering..." : "Register"}
           </button>
         </form>
+
         <p className="mt-6 text-center text-gray-700 text-sm">
           Already have an account?{" "}
           <span

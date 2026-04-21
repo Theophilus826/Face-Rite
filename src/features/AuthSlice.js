@@ -1,9 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import authService from "./AuthService";
+import API from "../features/Api"; // ✅ FIXED
 
-// ================= LOAD USER FROM LOCALSTORAGE =================
-// const user = JSON.parse(localStorage.getItem("user"));
-
+// ================= INITIAL STATE =================
 const initialState = {
   user: JSON.parse(localStorage.getItem("user")) || null,
   token: localStorage.getItem("token") || null,
@@ -30,7 +29,7 @@ const setRejected = (state, action) => {
 
 // ================= ASYNC THUNKS =================
 
-// Register
+// ✅ REGISTER
 export const registerUser = createAsyncThunk(
   "auth/register",
   async (userData, thunkAPI) => {
@@ -44,7 +43,7 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-// Login
+// ✅ LOGIN (identifier supported already)
 export const loginUser = createAsyncThunk(
   "auth/login",
   async (userData, thunkAPI) => {
@@ -58,12 +57,12 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-// Forgot Password
+// ✅ FORGOT PASSWORD (UPDATED → identifier)
 export const forgotPassword = createAsyncThunk(
   "auth/forgotPassword",
-  async (email, thunkAPI) => {
+  async (identifier, thunkAPI) => {
     try {
-      return await authService.forgotPassword(email);
+      return await authService.forgotPassword(identifier);
     } catch (error) {
       return thunkAPI.rejectWithValue(
         error.response?.data?.message || error.message || "Request failed"
@@ -72,7 +71,7 @@ export const forgotPassword = createAsyncThunk(
   }
 );
 
-// Reset Password
+// ✅ RESET PASSWORD
 export const resetPassword = createAsyncThunk(
   "auth/resetPassword",
   async ({ token, password }, thunkAPI) => {
@@ -86,8 +85,7 @@ export const resetPassword = createAsyncThunk(
   }
 );
 
-// Send Mood
-// ✅ Send Mood to backend/admin
+// ✅ SEND MOOD
 export const sendMood = createAsyncThunk(
   "auth/sendMood",
   async (mood, thunkAPI) => {
@@ -97,14 +95,12 @@ export const sendMood = createAsyncThunk(
 
       if (!token) throw new Error("User not authenticated");
 
-      // Use API instance for consistent baseURL & headers
       const { data } = await API.post(
         "/mood",
         { mood },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Return the mood to store in Redux
       return data.mood || mood;
     } catch (error) {
       return thunkAPI.rejectWithValue(
@@ -125,6 +121,7 @@ const authSlice = createSlice({
       state.isSuccess = false;
       state.message = "";
     },
+
     logout: (state) => {
       state.user = null;
       state.token = null;
@@ -136,15 +133,17 @@ const authSlice = createSlice({
       localStorage.removeItem("user");
       localStorage.removeItem("token");
     },
-    // ✅ Update user (e.g., avatar)
+
+    // ✅ update user (e.g avatar)
     setUser: (state, action) => {
       state.user = { ...state.user, ...action.payload };
       localStorage.setItem("user", JSON.stringify(state.user));
     },
   },
+
   extraReducers: (builder) => {
     builder
-      // Register
+      // REGISTER
       .addCase(registerUser.pending, setPending)
       .addCase(registerUser.fulfilled, (state) => {
         state.isLoading = false;
@@ -152,37 +151,40 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.rejected, setRejected)
 
-      // Login
+      // LOGIN
       .addCase(loginUser.pending, setPending)
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
         state.user = action.payload;
         state.token = action.payload.token;
+
         localStorage.setItem("user", JSON.stringify(action.payload));
         localStorage.setItem("token", action.payload.token);
       })
       .addCase(loginUser.rejected, setRejected)
 
-      // Forgot Password
+      // FORGOT PASSWORD
       .addCase(forgotPassword.pending, setPending)
       .addCase(forgotPassword.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.message = action.payload?.message || "Password reset link sent";
+        state.message =
+          action.payload?.message || "Reset instructions sent";
       })
       .addCase(forgotPassword.rejected, setRejected)
 
-      // Reset Password
+      // RESET PASSWORD
       .addCase(resetPassword.pending, setPending)
       .addCase(resetPassword.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.message = action.payload?.message || "Password reset successful";
+        state.message =
+          action.payload?.message || "Password reset successful";
       })
       .addCase(resetPassword.rejected, setRejected)
 
-      // Send Mood
+      // SEND MOOD
       .addCase(sendMood.pending, (state) => {
         state.isLoading = true;
         state.isError = false;
