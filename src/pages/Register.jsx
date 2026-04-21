@@ -8,8 +8,7 @@ import Spinner from "../component/Spinner";
 export default function Register() {
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
-    phone: "", // ✅ NEW
+    identifier: "", // email OR phone
     password: "",
     confirmPassword: "",
   });
@@ -21,135 +20,161 @@ export default function Register() {
     (state) => state.auth
   );
 
+  // ================= EFFECT =================
   useEffect(() => {
-    if (isError) toast.error(message);
+    if (isError) {
+      toast.error(message);
+    }
 
-    // ✅ Auto login after register (email OR phone)
     if (isSuccess) {
-      toast.success("Registration successful");
+      toast.success("Account created successfully");
 
-      const identifier =
-        formData.email?.trim() || formData.phone?.trim();
+      const isEmail = formData.identifier.includes("@");
 
       dispatch(
         loginUser({
-          identifier,
+          identifier: formData.identifier,
           password: formData.password,
         })
       );
     }
 
-    if (user) navigate("/welcome");
+    if (user) {
+      navigate("/welcome");
+    }
 
     dispatch(reset());
   }, [
     isError,
     isSuccess,
     message,
+    user,
     dispatch,
     navigate,
-    user,
-    formData.email,
-    formData.phone,
+    formData.identifier,
     formData.password,
   ]);
 
-  const onChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // ================= HANDLERS =================
+  const onChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const validatePhoneOrEmail = (value) => {
+    if (value.includes("@")) return true; // email
+    return /^[0-9+]{10,15}$/.test(value); // phone basic check
+  };
 
   const onSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.email && !formData.phone) {
-      toast.error("Provide email or phone number");
-      return;
+    if (!formData.name || !formData.identifier) {
+      return toast.error("Name and email/phone are required");
+    }
+
+    if (!validatePhoneOrEmail(formData.identifier)) {
+      return toast.error("Enter a valid email or phone number");
     }
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
+      return toast.error("Passwords do not match");
     }
 
-    dispatch(registerUser(formData));
+    dispatch(
+      registerUser({
+        name: formData.name,
+        email: formData.identifier.includes("@")
+          ? formData.identifier
+          : undefined,
+        phone: !formData.identifier.includes("@")
+          ? formData.identifier
+          : undefined,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      })
+    );
   };
 
   if (isLoading) return <Spinner />;
 
+  // ================= UI =================
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-4">
+
       <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/30 shadow-lg">
-        <h2 className="text-3xl font-extrabold mb-8 text-center text-gray-900">
-          Register
+
+        <h2 className="text-3xl font-bold text-center mb-8">
+          Create Account
         </h2>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-5">
+
+          {/* Name */}
           <input
+            type="text"
             name="name"
-            placeholder="Name"
+            placeholder="Full Name"
             value={formData.name}
             onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
+            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
             required
           />
 
-          {/* ✅ Email */}
+          {/* Email or Phone */}
           <input
-            name="email"
-            type="email"
-            placeholder="Email (optional)"
-            value={formData.email}
+            type="text"
+            name="identifier"
+            placeholder="Email or Phone Number"
+            value={formData.identifier}
             onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
+            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            required
           />
 
-          {/* ✅ Phone */}
+          {/* Password */}
           <input
-            name="phone"
-            type="tel"
-            placeholder="Phone (e.g. 08012345678)"
-            value={formData.phone}
-            onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
-          />
-
-          <input
-            name="password"
             type="password"
+            name="password"
             placeholder="Password"
             value={formData.password}
             onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
+            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
             required
           />
 
+          {/* Confirm Password */}
           <input
-            name="confirmPassword"
             type="password"
+            name="confirmPassword"
             placeholder="Confirm Password"
             value={formData.confirmPassword}
             onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:ring-2 focus:ring-blue-400"
+            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
             required
           />
 
           <button
             type="submit"
+            className="py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition disabled:bg-gray-400"
             disabled={isLoading}
-            className="mt-2 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md disabled:bg-gray-400"
           >
-            {isLoading ? "Registering..." : "Register"}
+            {isLoading ? "Creating Account..." : "Register"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-gray-700 text-sm">
+        <p className="text-center text-sm mt-6 text-gray-700">
           Already have an account?{" "}
           <span
-            className="text-blue-500 hover:underline cursor-pointer"
+            className="text-blue-600 cursor-pointer hover:underline"
             onClick={() => navigate("/login")}
           >
             Login
           </span>
         </p>
+
       </div>
     </div>
   );
