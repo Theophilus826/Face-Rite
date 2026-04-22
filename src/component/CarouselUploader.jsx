@@ -1,88 +1,160 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
-function CarouselUploader() {
-  const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [preview, setPreview] = useState(null);
+const API_BASE = "https://swordgame-5.onrender.com";
 
-  const API_BASE = "https://swordgame-5.onrender.com";
+export default function Carousel() {
+  const [slides, setSlides] = useState([]);
+  const [current, setCurrent] = useState(0);
 
-  const handleFileChange = (e) => {
-    const selected = e.target.files?.[0];
-    if (!selected) return;
+  const touchStart = useRef(0);
+  const touchEnd = useRef(0);
 
-    setFile(selected);
-    setPreview(URL.createObjectURL(selected));
+  /* ================= LOAD SLIDES ================= */
+  const loadSlides = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/carousel/slides`);
+      const data = await res.json();
+      setSlides(data?.slides || []);
+    } catch (err) {
+      console.error("Error loading slides:", err);
+      setSlides([]);
+    }
   };
 
-  const uploadImage = async () => {
-    if (!file) return alert("Select an image first");
+  useEffect(() => {
+    loadSlides();
+  }, []);
 
-    setLoading(true);
+  useEffect(() => {
+    setCurrent(0);
+  }, [slides]);
+
+  /* ================= AUTO SLIDE ================= */
+  useEffect(() => {
+    if (slides.length < 2) return;
+
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % slides.length);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [slides.length]);
+
+  /* ================= NAVIGATION ================= */
+  const nextSlide = () => {
+    if (!slides.length) return;
+    setCurrent((p) => (p + 1) % slides.length);
+  };
+
+  const prevSlide = () => {
+    if (!slides.length) return;
+    setCurrent((p) => (p === 0 ? slides.length - 1 : p - 1));
+  };
+
+  /* ================= DELETE SLIDE ================= */
+  const deleteSlide = async (id) => {
+    if (!window.confirm("Delete this slide?")) return;
 
     try {
-      const formData = new FormData();
-      formData.append("image", file);
-
       const res = await fetch(
-        `${API_BASE}/api/admin/carousel/upload`,
+        `${API_BASE}/api/admin/carousel/delete/${id}`,
         {
-          method: "POST",
+          method: "DELETE",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-          body: formData,
         }
       );
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data?.message || "Upload failed");
-      }
+      if (!res.ok) throw new Error(data?.message || "Delete failed");
 
-      alert("✅ Uploaded to carousel!");
+      // remove from UI instantly
+      setSlides((prev) => prev.filter((s) => s._id !== id));
 
-      setFile(null);
-      setPreview(null);
+      // reset index safely
+      setCurrent(0);
     } catch (err) {
-      console.error("Upload error:", err);
-      alert("❌ Upload failed");
-    } finally {
-      setLoading(false);
+      console.error("Delete error:", err);
+      alert("❌ Failed to delete slide");
     }
   };
 
-  return (
-    <div className="flex flex-col gap-3">
+  /* ================= TOUCH ================= */
+  const handleTouchStart = (e) => {
+    touchStart.current = e.changedTouches[0].clientX;
+  };
 
-      {/* File Input */}
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleFileChange}
-        className="p-2 border rounded"
+  const handleTouchEnd = (e) => {
+    touchEnd.current = e.changedTouches[0].clientX;
+
+    const diff = touchStart.current - touchEnd.current;
+
+    if (diff > 50) nextSlide();
+    if (diff < -50) prevSlide();
+  };
+
+  /* ================= EMPTY ================= */
+  if (!slides.length) {
+    return (
+      <div className="w-full h-48 flex items-center justify-center">
+        No slides found
+      </div>
+    );
+  }
+
+  const activeSlide = slides[current];
+
+  return (
+    <div
+      className="relative w-full overflow-hidden rounded-xl aspect-[16/9] h-48 sm:h-64 md:h-[400px]"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* IMAGE */}
+      <img
+        src={activeSlide?.src}
+        alt="slide"
+        className="w-full h-full object-cover transition duration-700"
       />
 
-      {/* Preview */}
-      {preview && (
-        <img
-          src={preview}
-          alt="preview"
-          className="w-40 h-24 object-cover rounded border"
-        />
-      )}
-
-      {/* Upload Button */}
+      {/* DELETE BUTTON (ADMIN TOOL) */}
       <button
-        onClick={uploadImage}
-        disabled={loading}
-        className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+        onClick={() => deleteSlide(activeSlide._id)}
+        className="absolute top-2 right-2 bg-red-600 text-white px-3 py-1 text-xs rounded"
       >
-        {loading ? "Uploading..." : "Upload to Carousel"}
+        🗑 Delete
       </button>
+
+      {/* PREV */}
+      <button
+        onClick={prevSlide}
+        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-8 h-8 rounded-full"
+      >
+        ❮
+      </button>
+
+      {/* NEXT */}
+      <button
+        onClick={nextSlide}
+        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-8 h-8 rounded-full"
+      >
+        ❯
+      </button>
+
+      {/* INDICATORS */}
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+        {slides.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrent(i)}
+            className={`h-2.5 w-2.5 rounded-full ${
+              current === i ? "bg-white" : "bg-white/50"
+            }`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
-
-export default CarouselUploader;

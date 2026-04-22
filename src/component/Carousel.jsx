@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
+const API_BASE = "https://swordgame-5.onrender.com";
+
 export default function Carousel() {
   const [slides, setSlides] = useState([]);
   const [current, setCurrent] = useState(0);
@@ -7,15 +9,17 @@ export default function Carousel() {
   const touchStart = useRef(0);
   const touchEnd = useRef(0);
 
-  // Fetch slides from backend
+  // Fetch slides
   useEffect(() => {
     const loadSlides = async () => {
       try {
-        const res = await fetch("/api/slides");
+        const res = await fetch(`${API_BASE}/api/admin/carousel/slides`);
+
+        if (!res.ok) throw new Error("Failed to load slides");
+
         const data = await res.json();
 
-        // supports both: [] or { slides: [] }
-        setSlides(data?.slides || data || []);
+        setSlides(data?.slides || []);
       } catch (err) {
         console.error("Error loading slides:", err);
         setSlides([]);
@@ -25,12 +29,12 @@ export default function Carousel() {
     loadSlides();
   }, []);
 
-  // Reset index when slides change
+  // reset index
   useEffect(() => {
     setCurrent(0);
   }, [slides]);
 
-  // Auto slide
+  // auto slide
   useEffect(() => {
     if (slides.length < 2) return;
 
@@ -43,14 +47,12 @@ export default function Carousel() {
 
   const nextSlide = () => {
     if (!slides.length) return;
-    setCurrent((prev) => (prev + 1) % slides.length);
+    setCurrent((p) => (p + 1) % slides.length);
   };
 
   const prevSlide = () => {
     if (!slides.length) return;
-    setCurrent((prev) =>
-      prev === 0 ? slides.length - 1 : prev - 1
-    );
+    setCurrent((p) => (p === 0 ? slides.length - 1 : p - 1));
   };
 
   const handleTouchStart = (e) => {
@@ -80,39 +82,29 @@ export default function Carousel() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Image */}
       <img
         src={slides[current]?.src}
         alt={`Slide ${current + 1}`}
         className="w-full h-full object-cover transition duration-700"
       />
 
-      {/* Prev Button */}
-      <button
-        onClick={prevSlide}
-        className="absolute left-2 top-1/2 -translate-y-1/2
-                   bg-black/40 text-white w-8 h-8 rounded-full"
-      >
+      {/* buttons */}
+      <button onClick={prevSlide} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-8 h-8 rounded-full">
         ❮
       </button>
 
-      {/* Next Button */}
-      <button
-        onClick={nextSlide}
-        className="absolute right-2 top-1/2 -translate-y-1/2
-                   bg-black/40 text-white w-8 h-8 rounded-full"
-      >
+      <button onClick={nextSlide} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-8 h-8 rounded-full">
         ❯
       </button>
 
-      {/* Indicators */}
+      {/* indicators */}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
-        {slides.map((_, index) => (
+        {slides.map((_, i) => (
           <button
-            key={index}
-            onClick={() => setCurrent(index)}
-            className={`h-2.5 w-2.5 rounded-full transition ${
-              current === index ? "bg-white" : "bg-white/50"
+            key={i}
+            onClick={() => setCurrent(i)}
+            className={`h-2.5 w-2.5 rounded-full ${
+              current === i ? "bg-white" : "bg-white/50"
             }`}
           />
         ))}
