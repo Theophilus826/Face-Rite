@@ -88,50 +88,52 @@ export default function PostGalleryWithUpload({
 
   /* ================= REACTIONS ================= */
   const handleReaction = async (type) => {
-    if (!postOwnerId) return;
+  if (!postOwnerId) return;
 
-    if ((type === "like" && liked) || (type === "love" && loved)) {
-      return;
-    }
+  try {
+    // 💰 Only charge if adding reaction (not removing)
+    const isRemoving =
+      (type === "like" && liked) || (type === "love" && loved);
 
-    try {
-      // 💰 Transfer coins
+    if (!isRemoving) {
       await dispatch(
         transferCoins({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type} reaction`,
-        }),
+        })
       ).unwrap();
-
-      // ❤️ Backend reaction
-      const res = await API.post(
-        `/post/${postId}/react`,
-        { type },
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
-      );
-
-      setLikeCount(res.data.likeCount);
-      setLoveCount(res.data.loveCount);
-
-      // ✨ Animation
-      if (type === "like") {
-        setLiked(true);
-        setAnimateLike(true);
-        setTimeout(() => setAnimateLike(false), 400);
-      }
-
-      if (type === "love") {
-        setLoved(true);
-        setAnimateLove(true);
-        setTimeout(() => setAnimateLove(false), 400);
-      }
-    } catch (err) {
-      console.error("Reaction error:", err);
     }
-  };
+
+    const res = await API.post(
+      `/post/${postId}/react`,
+      { type },
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }
+    );
+
+    setLikeCount(res.data.likeCount);
+    setLoveCount(res.data.loveCount);
+
+    // ✅ Sync UI state properly
+    if (type === "like") {
+      setLiked(!liked);
+      setLoved(false);
+      setAnimateLike(true);
+      setTimeout(() => setAnimateLike(false), 400);
+    }
+
+    if (type === "love") {
+      setLoved(!loved);
+      setLiked(false);
+      setAnimateLove(true);
+      setTimeout(() => setAnimateLove(false), 400);
+    }
+  } catch (err) {
+    console.error("Reaction error:", err);
+  }
+};
 
   /* ================= FORMAT ================= */
   const formatDate = (d) => (d ? new Date(d).toLocaleString() : "");
