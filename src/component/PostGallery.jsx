@@ -24,9 +24,6 @@ export default function PostGalleryWithUpload({
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [loveCount, setLoveCount] = useState(initialLoves);
 
-  const [liked, setLiked] = useState(false);
-  const [loved, setLoved] = useState(false);
-
   const [animateLike, setAnimateLike] = useState(false);
   const [animateLove, setAnimateLove] = useState(false);
 
@@ -37,6 +34,12 @@ export default function PostGalleryWithUpload({
 
   const LIKE_COST = 50;
   const LOVE_COST = 100;
+
+  /* ================= SYNC COUNTS ================= */
+  useEffect(() => {
+    setLikeCount(initialLikes);
+    setLoveCount(initialLoves);
+  }, [initialLikes, initialLoves]);
 
   /* ================= AUTO PLAY ================= */
   useEffect(() => {
@@ -53,7 +56,7 @@ export default function PostGalleryWithUpload({
           }
         });
       },
-      { threshold: 0.6 },
+      { threshold: 0.6 }
     );
 
     videoRefs.current.forEach((v) => {
@@ -82,17 +85,15 @@ export default function PostGalleryWithUpload({
   };
 
   /* ================= NAVIGATION ================= */
-  const next = () => setIndex((p) => (p === mediaFiles.length - 1 ? 0 : p + 1));
+  const next = () =>
+    setIndex((p) => (p === mediaFiles.length - 1 ? 0 : p + 1));
 
-  const prev = () => setIndex((p) => (p === 0 ? mediaFiles.length - 1 : p - 1));
+  const prev = () =>
+    setIndex((p) => (p === 0 ? mediaFiles.length - 1 : p - 1));
 
   /* ================= REACTIONS ================= */
   const handleReaction = async (type) => {
     if (!postOwnerId) return;
-
-    if ((type === "like" && liked) || (type === "love" && loved)) {
-      return;
-    }
 
     try {
       // 💰 Transfer coins
@@ -101,7 +102,7 @@ export default function PostGalleryWithUpload({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type} reaction`,
-        }),
+        })
       ).unwrap();
 
       // ❤️ Backend reaction
@@ -110,23 +111,22 @@ export default function PostGalleryWithUpload({
         { type },
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
+        }
       );
 
+      // ✅ Update counts from backend
       setLikeCount(res.data.likeCount);
       setLoveCount(res.data.loveCount);
 
       // ✨ Animation
       if (type === "like") {
-        setLiked(true);
         setAnimateLike(true);
-        setTimeout(() => setAnimateLike(false), 400);
+        setTimeout(() => setAnimateLike(false), 250);
       }
 
       if (type === "love") {
-        setLoved(true);
         setAnimateLove(true);
-        setTimeout(() => setAnimateLove(false), 400);
+        setTimeout(() => setAnimateLove(false), 250);
       }
     } catch (err) {
       console.error("Reaction error:", err);
@@ -134,7 +134,8 @@ export default function PostGalleryWithUpload({
   };
 
   /* ================= FORMAT ================= */
-  const formatDate = (d) => (d ? new Date(d).toLocaleString() : "");
+  const formatDate = (d) =>
+    d ? new Date(d).toLocaleString() : "";
 
   /* ================= UI ================= */
 
@@ -142,7 +143,9 @@ export default function PostGalleryWithUpload({
     <div className="space-y-3">
       {/* DATE */}
       {createdAt && (
-        <p className="text-sm text-gray-500">{formatDate(createdAt)}</p>
+        <p className="text-sm text-gray-500">
+          {formatDate(createdAt)}
+        </p>
       )}
 
       {/* TEXT */}
@@ -151,7 +154,6 @@ export default function PostGalleryWithUpload({
       {/* ================= MEDIA ================= */}
 
       {mediaFiles?.length === 1 ? (
-        // ===== SAME SINGLE VIEW (UNCHANGED) =====
         mediaFiles[0].type === "video" ? (
           <div className="relative w-full flex justify-center">
             <div className="relative w-full max-w-5xl">
@@ -178,93 +180,7 @@ export default function PostGalleryWithUpload({
             alt=""
           />
         )
-      ) : mediaFiles?.length >= 3 ? (
-        // ===== 🔥 COLLAGE LAYOUT =====
-        <div className="grid grid-cols-3 grid-rows-2 gap-2 h-[400px]">
-          {/* LEFT BIG */}
-          <div
-            onClick={() => setIndex(0)}
-            className="col-span-1 row-span-2 cursor-pointer overflow-hidden rounded-xl"
-          >
-            {mediaFiles[0]?.type === "video" ? (
-              <video
-                ref={(el) => (videoRefs.current[0] = el)}
-                src={mediaFiles[0]?.url}
-                className="w-full h-full object-cover"
-                muted={muted}
-                loop
-              />
-            ) : (
-              <img
-                src={mediaFiles[0]?.url}
-                className="w-full h-full object-cover"
-                alt=""
-              />
-            )}
-          </div>
-
-          {/* RIGHT TOP */}
-          <div
-            onClick={() => setIndex(1)}
-            className="col-span-2 row-span-1 cursor-pointer overflow-hidden rounded-xl"
-          >
-            {mediaFiles[1]?.type === "video" ? (
-              <video
-                ref={(el) => (videoRefs.current[1] = el)}
-                src={mediaFiles[1]?.url}
-                className="w-full h-full object-cover"
-                muted={muted}
-                loop
-              />
-            ) : (
-              <img
-                src={mediaFiles[1]?.url}
-                className="w-full h-full object-cover"
-                alt=""
-              />
-            )}
-          </div>
-
-          {/* BOTTOM RIGHT */}
-          <div className="col-span-2 grid grid-cols-2 gap-2">
-            {mediaFiles.slice(2, 4).map((m, i) => {
-              if (!m) return null;
-
-              return (
-                <div
-                  key={i}
-                  onClick={() => setIndex(i + 2)}
-                  className="cursor-pointer relative overflow-hidden rounded-xl"
-                >
-                  {m.type === "video" ? (
-                    <video
-                      ref={(el) => (videoRefs.current[i + 2] = el)}
-                      src={m.url}
-                      className="w-full h-full object-cover"
-                      muted={muted}
-                      loop
-                    />
-                  ) : (
-                    <img
-                      src={m.url}
-                      className="w-full h-full object-cover"
-                      alt=""
-                    />
-                  )}
-
-                  {/* +MORE */}
-                  {i === 1 && mediaFiles.length > 4 && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-lg font-bold">
-                      +{mediaFiles.length - 4}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
       ) : (
-        // ===== YOUR ORIGINAL GRID (SAFE FALLBACK) =====
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {mediaFiles.map((m, i) => (
             <div
@@ -293,7 +209,11 @@ export default function PostGalleryWithUpload({
                   </button>
                 </>
               ) : (
-                <img src={m.url} className="w-full h-48 object-cover" alt="" />
+                <img
+                  src={m.url}
+                  className="w-full h-48 object-cover"
+                  alt=""
+                />
               )}
             </div>
           ))}
@@ -307,41 +227,20 @@ export default function PostGalleryWithUpload({
           className="fixed inset-0 bg-black/95 flex items-center justify-center z-50"
           onClick={() => setIndex(null)}
         >
-          <button
-            className="absolute left-4 text-white text-3xl"
-            onClick={(e) => {
-              e.stopPropagation();
-              prev();
-            }}
-          >
-            ‹
-          </button>
-
           <motion.div
             key={index}
             className="relative max-w-6xl w-full px-3"
-            initial={{ opacity: 0, x: 60 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -60 }}
-            transition={{ duration: 0.25 }}
-            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
           >
             {mediaFiles[index].type === "video" ? (
-              <>
-                <video
-                  src={mediaFiles[index].url}
-                  className="w-full max-h-[90vh] object-contain rounded-lg"
-                  controls
-                  autoPlay
-                  muted={muted}
-                />
-                <button
-                  onClick={toggleMute}
-                  className="absolute top-4 right-4 bg-black/60 text-white px-3 py-2 rounded"
-                >
-                  {muted ? "🔇" : "🔊"}
-                </button>
-              </>
+              <video
+                src={mediaFiles[index].url}
+                className="w-full max-h-[90vh] object-contain rounded-lg"
+                controls
+                autoPlay
+                muted={muted}
+              />
             ) : (
               <img
                 src={mediaFiles[index].url}
@@ -350,20 +249,6 @@ export default function PostGalleryWithUpload({
               />
             )}
           </motion.div>
-
-          <button
-            className="absolute right-4 text-white text-3xl"
-            onClick={(e) => {
-              e.stopPropagation();
-              next();
-            }}
-          >
-            ›
-          </button>
-
-          <div className="absolute bottom-6 text-white text-sm">
-            {index + 1} / {mediaFiles.length}
-          </div>
         </div>
       )}
 
@@ -372,18 +257,18 @@ export default function PostGalleryWithUpload({
       <div className="flex gap-4 mt-4 flex-wrap">
         <button
           onClick={() => handleReaction("like")}
-          className={`px-4 py-2 rounded-xl text-white ${
-            liked ? "bg-blue-700" : "bg-blue-500"
-          } ${animateLike ? "scale-110" : ""}`}
+          className={`px-4 py-2 rounded-xl text-white bg-blue-500 ${
+            animateLike ? "scale-110" : ""
+          }`}
         >
           👍 {likeCount}
         </button>
 
         <button
           onClick={() => handleReaction("love")}
-          className={`px-4 py-2 rounded-xl text-white ${
-            loved ? "bg-pink-700" : "bg-pink-500"
-          } ${animateLove ? "scale-110" : ""}`}
+          className={`px-4 py-2 rounded-xl text-white bg-pink-500 ${
+            animateLove ? "scale-110" : ""
+          }`}
         >
           ❤️ {loveCount}
         </button>
