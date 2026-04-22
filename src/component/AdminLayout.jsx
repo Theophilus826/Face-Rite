@@ -441,7 +441,7 @@ export default function AdminLayout() {
         </div>
       </section>
       {/* ================= CAROUSEL UPLOAD ================= */}
-      <section className="mt-4 bg-white p-4 shadow rounded">
+      <section className="mt-4 bg-white p-4 shadow rounded pb-25">
         <h2 className="text-lg font-semibold mb-3">🖼 Upload For Carousel</h2>
 
         <CarouselUploader />
