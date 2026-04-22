@@ -88,32 +88,50 @@ export default function PostGalleryWithUpload({
 
   /* ================= REACTIONS ================= */
   const handleReaction = async (type) => {
-  if (!postOwnerId) return;
+    if (!postOwnerId) return;
 
-  try {
-    const res = await API.post(
-      `/post/${postId}/react`,
-      { type },
-      { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-    );
-
-    setLikeCount(res.data.likeCount);
-    setLoveCount(res.data.loveCount);
-
-    // toggle UI based on response OR local
-    if (type === "like") {
-      setLiked((prev) => !prev);
-      setLoved(false);
+    if ((type === "like" && liked) || (type === "love" && loved)) {
+      return;
     }
 
-    if (type === "love") {
-      setLoved((prev) => !prev);
-      setLiked(false);
+    try {
+      // 💰 Transfer coins
+      await dispatch(
+        transferCoins({
+          toUserId: postOwnerId,
+          coins: type === "like" ? LIKE_COST : LOVE_COST,
+          description: `${type} reaction`,
+        }),
+      ).unwrap();
+
+      // ❤️ Backend reaction
+      const res = await API.post(
+        `/post/${postId}/react`,
+        { type },
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
+
+      setLikeCount(res.data.likeCount);
+      setLoveCount(res.data.loveCount);
+
+      // ✨ Animation
+      if (type === "like") {
+        setLiked(true);
+        setAnimateLike(true);
+        setTimeout(() => setAnimateLike(false), 400);
+      }
+
+      if (type === "love") {
+        setLoved(true);
+        setAnimateLove(true);
+        setTimeout(() => setAnimateLove(false), 400);
+      }
+    } catch (err) {
+      console.error("Reaction error:", err);
     }
-  } catch (err) {
-    console.error(err);
-  }
-};
+  };
 
   /* ================= FORMAT ================= */
   const formatDate = (d) => (d ? new Date(d).toLocaleString() : "");

@@ -44,6 +44,7 @@ import ProtectedRoute from "./component/ProtectedRoute";
 import BottomNav from "./component/BottomNav";
 import AdminLayout from "./component/AdminLayout";
 import AdminRoute from "./component/AdminRoute";
+import CarouselUploader from "./component/CarouselUploader";
 import PostGalleryWithUpload from "./component/PostGallery";
 import Profile from "./component/UserProfile";
 
@@ -297,6 +298,7 @@ function AppContent() {
               <Route index element={<Navigate to="monitor" replace />} />
               <Route path="monitor" element={<AdminMonitor />} />
               <Route path="credit-coins" element={<AdminCreditCoins />} />
+              <Route path="carousel-upload" element={<CarouselUploader />} />
 
               {/* ⚡ Lazy works safely here now */}
               <Route path="host-game" element={<HostGame />} />
