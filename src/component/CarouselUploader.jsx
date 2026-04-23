@@ -56,18 +56,17 @@ export default function Carousel() {
     try {
       for (const file of files) {
         const formData = new FormData();
-        formData.append("image", file);
+        files.forEach((file) => {
+          formData.append("images", file); // 👈 MUST match backend name
+        });
 
-        const res = await fetch(
-          `${API_BASE}/api/admin/carousel/upload`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: formData,
-          }
-        );
+        const res = await fetch(`${API_BASE}/api/admin/carousel/upload`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        });
 
         const data = await res.json();
 
@@ -93,15 +92,12 @@ export default function Carousel() {
     if (!window.confirm("Delete this slide?")) return;
 
     try {
-      const res = await fetch(
-        `${API_BASE}/api/admin/carousel/delete/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/admin/carousel/delete/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
       const data = await res.json();
 
@@ -141,10 +137,11 @@ export default function Carousel() {
   const activeSlide = slides[current];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
+      {/* ================= UPLOAD (ALWAYS VISIBLE) ================= */}
+      <div className="bg-white p-4 rounded-lg shadow flex flex-col gap-3">
+        <h2 className="font-semibold">📤 Upload Carousel Images</h2>
 
-      {/* ================= UPLOAD SECTION (ABOVE DELETE) ================= */}
-      <div className="bg-white p-3 rounded shadow flex flex-col gap-2">
         <input
           type="file"
           multiple
@@ -162,58 +159,48 @@ export default function Carousel() {
         </button>
       </div>
 
-      {/* ================= CAROUSEL ================= */}
-      <div
-        className="relative w-full overflow-hidden rounded-xl aspect-[16/9] h-48 sm:h-64 md:h-[400px]"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* IMAGE */}
-        <img
-          src={activeSlide?.src}
-          alt="slide"
-          className="w-full h-full object-cover transition duration-700"
-        />
-
-        {/* DELETE BUTTON */}
-        <button
-          onClick={() => deleteSlide(activeSlide._id)}
-          className="absolute top-2 right-2 bg-red-600 text-white px-3 py-1 text-xs rounded"
-        >
-          🗑 Delete
-        </button>
-
-        {/* PREV */}
-        <button
-          onClick={() =>
-            setCurrent((p) => (p === 0 ? slides.length - 1 : p - 1))
-          }
-          className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-8 h-8 rounded-full"
-        >
-          ❮
-        </button>
-
-        {/* NEXT */}
-        <button
-          onClick={() => setCurrent((p) => (p + 1) % slides.length)}
-          className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-8 h-8 rounded-full"
-        >
-          ❯
-        </button>
-
-        {/* INDICATORS */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className={`h-2.5 w-2.5 rounded-full ${
-                current === i ? "bg-white" : "bg-white/50"
-              }`}
-            />
-          ))}
+      {/* ================= EMPTY STATE ================= */}
+      {slides.length === 0 ? (
+        <div className="w-full h-48 flex items-center justify-center text-gray-500">
+          No slides yet — upload above 👆
         </div>
-      </div>
+      ) : (
+        /* ================= CAROUSEL ================= */
+        <div
+          className="relative w-full overflow-hidden rounded-xl h-64 md:h-[400px]"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <img
+            src={slides[current]?.src}
+            alt="slide"
+            className="w-full h-full object-cover"
+          />
+
+          <button
+            onClick={() => deleteSlide(slides[current]._id)}
+            className="absolute top-2 right-2 bg-red-600 text-white px-3 py-1 text-xs rounded"
+          >
+            🗑 Delete
+          </button>
+
+          <button
+            onClick={() =>
+              setCurrent((p) => (p === 0 ? slides.length - 1 : p - 1))
+            }
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-8 h-8 rounded-full"
+          >
+            ❮
+          </button>
+
+          <button
+            onClick={() => setCurrent((p) => (p + 1) % slides.length)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white w-8 h-8 rounded-full"
+          >
+            ❯
+          </button>
+        </div>
+      )}
     </div>
   );
 }
