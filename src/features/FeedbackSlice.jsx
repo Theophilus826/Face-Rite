@@ -178,7 +178,7 @@ const feedbackSlice = createSlice({
       .addCase(createFeedback.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.feedbacks.unshift(action.payload);
+        state.feedbacks.unshift(action.payload.feedback || action.payload);
       })
       .addCase(createFeedback.rejected, handleRejected)
 
