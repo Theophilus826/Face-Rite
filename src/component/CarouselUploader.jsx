@@ -125,14 +125,7 @@ export default function Carousel() {
     if (diff < -50) setCurrent((p) => (p === 0 ? slides.length - 1 : p - 1));
   };
 
-  /* ================= EMPTY ================= */
-  // if (!slides.length) {
-  // return (
-  // <div className="w-full h-48 flex flex-col items-center justify-center gap-3">
-  // <p>No slides found</p>
-  // </div>
-  // );
-  // }
+  
   return (
     <div className="flex flex-col gap-4">
       {/* ✅ UPLOAD ALWAYS VISIBLE */}
