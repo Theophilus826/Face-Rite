@@ -3,8 +3,8 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/AuthSlice";
 import { io } from "socket.io-client";
-import CarouselUploader from "../component/CarouselUploader";
-
+// import CarouselUploader from "../component/CarouselUploader";
+import Carousel from "../component/CarouselUploader";
 export default function AdminLayout() {
   const dispatch = useDispatch();
   const socketRef = useRef(null);
@@ -444,7 +444,7 @@ export default function AdminLayout() {
       <section className="mt-4 bg-white p-4 shadow rounded">
         <h2 className="text-lg font-semibold mb-3">🖼 Upload For Carousel</h2>
 
-        <CarouselUploader />
+        <Carousel/>
       </section>
     </>
   );
