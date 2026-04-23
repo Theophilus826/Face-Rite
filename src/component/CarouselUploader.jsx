@@ -126,13 +126,59 @@ export default function Carousel() {
   };
 
   /* ================= EMPTY ================= */
-  if (!slides.length) {
-    return (
-      <div className="w-full h-48 flex flex-col items-center justify-center gap-3">
-        <p>No slides found</p>
+  // if (!slides.length) {
+  // return (
+  // <div className="w-full h-48 flex flex-col items-center justify-center gap-3">
+  // <p>No slides found</p>
+  // </div>
+  // );
+  // }
+  return (
+    <div className="flex flex-col gap-4">
+      {/* ✅ UPLOAD ALWAYS VISIBLE */}
+      <div className="bg-white p-4 rounded-lg shadow flex flex-col gap-3">
+        <h2 className="font-semibold">📤 Upload Carousel Images</h2>
+
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={handleFileChange}
+          className="border p-2 rounded"
+        />
+
+        <button
+          onClick={uploadImages}
+          disabled={uploading}
+          className="bg-green-600 text-white px-4 py-2 rounded"
+        >
+          {uploading ? "Uploading..." : "Upload Images"}
+        </button>
       </div>
-    );
-  }
+
+      {/* ✅ CONDITIONAL CAROUSEL */}
+      {slides.length === 0 ? (
+        <div className="w-full h-48 flex items-center justify-center text-gray-500">
+          No slides yet — upload above 👆
+        </div>
+      ) : (
+        <div className="relative w-full overflow-hidden rounded-xl h-64 md:h-[400px]">
+          <img
+            src={slides[current]?.src}
+            alt="slide"
+            className="w-full h-full object-cover"
+          />
+
+          <button
+            onClick={() => deleteSlide(slides[current]._id)}
+            className="absolute top-2 right-2 bg-red-600 text-white px-3 py-1 text-xs rounded"
+          >
+            🗑 Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   const activeSlide = slides[current];
 
