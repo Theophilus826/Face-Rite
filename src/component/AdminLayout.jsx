@@ -413,7 +413,7 @@ export default function AdminLayout() {
       </section>
 
       {/* SEND NOTIFICATION */}
-      <section className="mt-4 bg-white p-4 shadow rounded">
+      <section className="mt-4 bg-white p-4 shadow rounded mb-24">
         <h2 className="text-lg font-semibold mb-3">📣 Send Notification</h2>
         <div className="flex flex-col gap-3">
           <input
@@ -441,7 +441,7 @@ export default function AdminLayout() {
         </div>
       </section>
       {/* ================= CAROUSEL UPLOAD ================= */}
-      <section className="mt-4 bg-white p-4 shadow rounded pb-25">
+      <section className="mt-4 bg-white p-4 shadow rounded">
         <h2 className="text-lg font-semibold mb-3">🖼 Upload For Carousel</h2>
 
         <CarouselUploader />
