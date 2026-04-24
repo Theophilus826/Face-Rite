@@ -88,52 +88,33 @@ export default function PostGalleryWithUpload({
 
   /* ================= REACTIONS ================= */
   const handleReaction = async (type) => {
-  if (!postOwnerId) return;
-
-  try {
-    // 💰 Only charge if adding reaction (not removing)
-    const isRemoving =
-      (type === "like" && liked) || (type === "love" && loved);
-
-    if (!isRemoving) {
+    try {
+      // Deduct coins internally (hidden)
       await dispatch(
         transferCoins({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
-          description: `${type} reaction`,
+          description: `${type.toUpperCase()} reaction`,
         })
       ).unwrap();
-    }
 
-    const res = await API.post(
-      `/post/${postId}/react`,
-      { type },
-      {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      // Update counts
+      const res = await API.post(`/post/${postId}/react`, { type });
+      setLikeCount(res.data.likeCount);
+      setLoveCount(res.data.loveCount);
+
+      // Animate button & floating emoji
+      if (type === "like") {
+        setAnimateLike(true);
+        setTimeout(() => setAnimateLike(false), 500);
+      } else {
+        setAnimateLove(true);
+        setTimeout(() => setAnimateLove(false), 500);
       }
-    );
-
-    setLikeCount(res.data.likeCount);
-    setLoveCount(res.data.loveCount);
-
-    // ✅ Sync UI state properly
-    if (type === "like") {
-      setLiked(!liked);
-      setLoved(false);
-      setAnimateLike(true);
-      setTimeout(() => setAnimateLike(false), 400);
+    } catch (err) {
+      console.error("Reaction failed:", err.response?.data || err);
     }
-
-    if (type === "love") {
-      setLoved(!loved);
-      setLiked(false);
-      setAnimateLove(true);
-      setTimeout(() => setAnimateLove(false), 400);
-    }
-  } catch (err) {
-    console.error("Reaction error:", err);
-  }
-};
+  };
 
   /* ================= FORMAT ================= */
   const formatDate = (d) => (d ? new Date(d).toLocaleString() : "");
