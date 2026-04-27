@@ -36,6 +36,7 @@ import Withdraw from "./pages/Withdraw";
 import Gemes from "./pages/Gemes";
 import ChatPage from "./pages/ChatPage";
 import PostComments, { type CommentType } from "./pages/PostComments";
+import AdminDeposit from "./pages/AdminDeposit";
 
 // Components
 import Navbar from "./component/Navbar";
@@ -299,6 +300,7 @@ function AppContent() {
               <Route path="monitor" element={<AdminMonitor />} />
               <Route path="credit-coins" element={<AdminCreditCoins />} />
               <Route path="carousel-upload" element={<CarouselUploader />} />
+              <Route path="admin-deposit" element={<AdminDeposit/>} />
 
               {/* ⚡ Lazy works safely here now */}
               <Route path="host-game" element={<HostGame />} />

@@ -5,108 +5,145 @@ const amounts = [2000, 3000, 5000, 10000, 20000, 50000, 100000, 200000];
 
 export default function DepositPanel() {
   const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState("ngn");
+
   const [loading, setLoading] = useState(false);
   const [account, setAccount] = useState(null);
   const [waiting, setWaiting] = useState(false);
   const [wallet, setWallet] = useState(null);
 
+  // ⏱ TIMER STATES
+  const [timeLeft, setTimeLeft] = useState(900); // 15 mins
+  const [expired, setExpired] = useState(false);
+
   // ===============================
-  // Handle Deposit
+  // HANDLE DEPOSIT
   // ===============================
- const handleDeposit = async () => {
-  if (!amount || amount < 100) {
-    alert("Minimum deposit is ₦100");
-    return;
-  }
+  const handleDeposit = async () => {
+    if (!amount || amount < 100) {
+      alert("Minimum deposit is ₦100");
+      return;
+    }
 
-  try {
-    setLoading(true);
-
-    const res = await fetch("/api/deposit/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount }),
-    });
-
-    // ✅ SAFE RESPONSE HANDLING (fixes your error)
-    const text = await res.text();
-
-    let data;
     try {
-      data = text ? JSON.parse(text) : {};
+      setLoading(true);
+
+      const res = await fetch("/api/deposit/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, method }),
+      });
+
+      const text = await res.text();
+
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (err) {
+        throw new Error("Server returned invalid response");
+      }
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to generate account");
+      }
+
+      setAccount(data);
+      setWaiting(true);
+      setTimeLeft(900);
+      setExpired(false);
+
     } catch (err) {
-      console.error("❌ Invalid JSON from server:", text);
-      throw new Error("Server returned invalid response");
+      alert(err.message);
+    } finally {
+      setLoading(false);
     }
-
-    if (!res.ok) {
-      throw new Error(data.message || data.error || "Failed to generate account");
-    }
-
-    console.log("✅ Deposit account:", data);
-
-    setAccount(data);
-    setWaiting(true);
-
-  } catch (err) {
-    console.error("❌ Deposit error:", err.message);
-    alert(err.message || "Something went wrong");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // ===============================
-  // Auto Wallet Refresh (Polling)
+  // TIMER LOGIC
+  // ===============================
+  useEffect(() => {
+    let timer;
+
+    if (waiting && account && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    }
+
+    if (timeLeft === 0) {
+      setExpired(true);
+      setWaiting(false);
+    }
+
+    return () => clearInterval(timer);
+  }, [waiting, account, timeLeft]);
+
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // ===============================
+  // WALLET POLLING
   // ===============================
   useEffect(() => {
     let interval;
 
-    if (account && waiting) {
+    if (waiting && account) {
       interval = setInterval(async () => {
         try {
-          const updatedWallet = await getWalletBalance();
-          setWallet(updatedWallet);
+          const res = await getWalletBalance();
+          setWallet(res);
 
-          console.log("Updated wallet:", updatedWallet);
-
-          // ✅ Stop polling when payment is received
-          if (updatedWallet?.coins > 0) {
+          // ⚠️ FIXED LOGIC (was wrong before)
+          if (res?.balance > (wallet?.balance || 0)) {
             setWaiting(false);
-            clearInterval(interval);
           }
         } catch (err) {
-          console.error("Wallet refresh error:", err);
+          console.error(err);
         }
       }, 5000);
     }
 
-    return () => {
-      if (interval) clearInterval(interval); // cleanup
-    };
-  }, [account, waiting]);
+    return () => clearInterval(interval);
+  }, [waiting, account, wallet]);
 
   // ===============================
-  // Copy Account Number
+  // COPY ACCOUNT
   // ===============================
   const copyAccount = () => {
-    if (account?.accountNumber) {
-      navigator.clipboard.writeText(account.accountNumber);
-      alert("Account number copied");
-    }
+    navigator.clipboard.writeText(account?.accountNumber);
+    alert("Copied!");
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
       <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/30 shadow-lg">
 
-        <h2 className="text-2xl font-extrabold mb-6 text-center text-gray-900">
-          Deposit (Bank Transfer)
+        <h2 className="text-2xl font-bold text-center mb-4">
+          Deposit
         </h2>
 
         {/* ===============================
-            AMOUNT SELECTION
+            METHOD SELECTOR
         =============================== */}
+        {!account && (
+          <div className="mb-4">
+            <select
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+              className="w-full p-3 rounded-lg border"
+            >
+              <option value="ngn">Bank Transfer (Monnify)</option>
+              <option value="opay">OPay</option>
+              <option value="palmpay">PalmPay</option>
+            </select>
+          </div>
+        )}
+
+        {/* AMOUNT */}
         {!account && (
           <>
             <div className="grid grid-cols-2 gap-3 mb-5">
@@ -114,11 +151,8 @@ export default function DepositPanel() {
                 <button
                   key={amt}
                   onClick={() => setAmount(amt)}
-                  className={`p-3 rounded-lg text-sm font-semibold transition
-                  ${
-                    amount === amt
-                      ? "bg-blue-500 text-white shadow-md"
-                      : "bg-white/40 backdrop-blur-sm border border-white/40 hover:bg-white/60"
+                  className={`p-3 rounded-lg ${
+                    amount === amt ? "bg-blue-500 text-white" : "bg-white"
                   }`}
                 >
                   ₦{amt.toLocaleString()}
@@ -128,18 +162,18 @@ export default function DepositPanel() {
 
             <input
               type="number"
-              placeholder="Enter custom amount"
+              placeholder="Custom amount"
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
-              className="w-full p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 mb-5"
+              className="w-full p-3 border rounded mb-3"
             />
 
             <button
               onClick={handleDeposit}
               disabled={loading}
-              className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md transition disabled:bg-gray-400"
+              className="w-full bg-blue-500 text-white py-3 rounded"
             >
-              {loading ? "Generating account..." : "Generate Account"}
+              {loading ? "Generating..." : "Generate Account"}
             </button>
           </>
         )}
@@ -148,52 +182,58 @@ export default function DepositPanel() {
             ACCOUNT DETAILS
         =============================== */}
         {account && (
-          <div className="mt-6 p-5 rounded-xl bg-white/40 backdrop-blur-sm border border-white/40">
+          <div className="mt-5">
 
-            <p className="text-sm text-gray-600 mb-3">
-              Transfer the exact amount below to complete your deposit
+            <p className="text-center text-red-500 font-bold">
+              ⏱ Time Left: {formatTime(timeLeft)}
             </p>
 
-            <p className="text-sm">
-              <b>Bank:</b> {account.bankName}
-            </p>
+            <p><b>Bank:</b> {account.bankName}</p>
+            <p><b>Name:</b> {account.accountName}</p>
 
-            <p className="text-sm">
-              <b>Account Name:</b> {account.accountName}
-            </p>
-
-            <p className="text-xl font-bold mt-2 text-gray-900">
+            <h2 className="text-xl font-bold mt-2">
               {account.accountNumber}
-            </p>
+            </h2>
 
             <button
               onClick={copyAccount}
-              className="mt-3 text-sm text-blue-500 hover:underline"
+              className="text-blue-500 mt-2"
             >
-              Copy Account Number
+              Copy Account
             </button>
 
-            {/* ===============================
-                WAITING STATE
-            =============================== */}
-            {waiting && (
-              <p className="mt-4 text-xs text-orange-600 text-center animate-pulse">
-                ⏳ Waiting for payment confirmation...
+            {/* WAITING */}
+            {waiting && !expired && (
+              <p className="text-orange-500 mt-3 animate-pulse">
+                Waiting for payment...
               </p>
             )}
 
-            {/* ===============================
-                SUCCESS STATE
-            =============================== */}
+            {/* SUCCESS */}
             {!waiting && wallet && (
-              <p className="mt-4 text-sm text-green-600 text-center font-semibold">
-                ✅ Payment received! Wallet updated.
+              <p className="text-green-600 mt-3">
+                Payment received 🎉
               </p>
+            )}
+
+            {/* EXPIRED → RECEIPT */}
+            {expired && (
+              <div className="mt-4">
+                <p className="text-red-500 font-semibold">
+                  Time expired. Upload receipt.
+                </p>
+
+                <input type="file" className="mt-2" />
+
+                <button className="w-full mt-2 bg-green-500 text-white py-2 rounded">
+                  Submit Receipt
+                </button>
+              </div>
             )}
           </div>
         )}
 
-        <p className="text-xs text-gray-500 mt-4 text-center">
+        <p className="text-xs text-center mt-4">
           Minimum deposit ₦100
         </p>
       </div>

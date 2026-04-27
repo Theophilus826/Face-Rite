@@ -3,7 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/AuthSlice";
 import { io } from "socket.io-client";
-// import CarouselUploader from "../component/CarouselUploader";
+import AdminDeposit from "../pages/AdminDeposit";
 import Carousel from "../component/CarouselUploader";
 export default function AdminLayout() {
   const dispatch = useDispatch();
@@ -19,6 +19,8 @@ export default function AdminLayout() {
   const [notificationMessage, setNotificationMessage] = useState("");
   const [notifLoading, setNotifLoading] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [receiptInbox, setReceiptInbox] = useState([]);
+  const [unreadIds, setUnreadIds] = useState([]);
 
   const linkClass = ({ isActive }) =>
     `block px-4 py-2 rounded ${
@@ -235,7 +237,39 @@ export default function AdminLayout() {
         return `⚡ ${event.type}`;
     }
   };
+  /* useEffect */
+  useEffect(() => {
+    const loadReceipts = async () => {
+      try {
+        const res = await fetch("/api/admin/deposits/pending");
+        const data = await res.json();
 
+        setReceiptInbox(data);
+
+        // detect unread receipts
+        const newOnes = data
+          .filter((d) => d.receipt && !d.isRead)
+          .map((d) => d._id);
+
+        setUnreadIds(newOnes);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadReceipts();
+
+    const interval = setInterval(loadReceipts, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+  const markAsRead = (id) => {
+    setUnreadIds((prev) => prev.filter((x) => x !== id));
+
+    setReceiptInbox((prev) =>
+      prev.map((d) => (d._id === id ? { ...d, isRead: true } : d)),
+    );
+  };
   /* =========================
      UI
   ========================= */
@@ -440,11 +474,100 @@ export default function AdminLayout() {
           </p>
         </div>
       </section>
+      {/* Deposit Receipt */}
+      {/* ================= RECEIPT INBOX ================= */}
+      <section className="mt-6 bg-white p-4 shadow rounded">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            📩 Deposit Receipt Inbox
+          </h2>
+
+          {unreadIds.length > 0 && (
+            <span className="bg-red-500 text-white text-xs px-3 py-1 rounded-full animate-pulse flex items-center gap-1">
+              🔴 {unreadIds.length} New
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-3 max-h-[420px] overflow-y-auto">
+          {receiptInbox
+            .filter((d) => d.receipt)
+            .map((d) => {
+              const isUnread = unreadIds.includes(d._id);
+
+              return (
+                <div
+                  key={d._id}
+                  onClick={() => markAsRead(d._id)}
+                  className={`p-4 border rounded-lg flex justify-between items-center cursor-pointer transition-all duration-200
+              ${
+                isUnread
+                  ? "bg-yellow-100 border-yellow-400 shadow-md"
+                  : "bg-gray-50"
+              }
+            `}
+                >
+                  {/* LEFT SIDE */}
+                  <div className="flex items-center gap-3">
+                    {/* 🔔 ICON INDICATOR */}
+                    <div className="relative">
+                      <span className="text-xl">💰</span>
+
+                      {isUnread && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="font-semibold flex items-center gap-2">
+                        {d.user?.name || "Unknown User"}
+
+                        {isUnread && (
+                          <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                        )}
+                      </p>
+
+                      <p className="text-xs text-gray-500">
+                        ₦{d.expectedAmount?.toLocaleString()} • {d.method}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* RIGHT SIDE */}
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={d.receipt}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-blue-600 text-sm underline hover:text-blue-800"
+                    >
+                      View Receipt
+                    </a>
+
+                    <span
+                      className={`text-xs px-2 py-1 rounded font-medium ${
+                        d.status === "COMPLETED"
+                          ? "bg-green-200 text-green-700"
+                          : d.status === "FAILED"
+                            ? "bg-red-200 text-red-700"
+                            : "bg-orange-200 text-orange-700"
+                      }`}
+                    >
+                      {d.status}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+      </section>
+
       {/* ================= CAROUSEL UPLOAD ================= */}
       <section className="mt-4 bg-white p-4 shadow rounded">
         <h2 className="text-lg font-semibold mb-3">🖼 Upload For Carousel</h2>
 
-        <Carousel/>
+        <Carousel />
       </section>
     </>
   );
