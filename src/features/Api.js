@@ -111,12 +111,8 @@ export const fetchPosts = async () => {
 // ===============================
 
 // Generate Virtual Deposit Account
-export const generateDepositAccount = async ({ amount, method }) => {
-  const res = await API.post("/wallet/deposit-account", {
-    amount,
-    method,
-  });
-
+export const generateDepositAccount = async (data) => {
+  const res = await API.post("/wallet/deposit-account", data);
   return res.data;
 };
 
