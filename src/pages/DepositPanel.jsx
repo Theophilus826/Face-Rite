@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { generateDepositAccount, getWalletBalance } from "../features/Api";
+import { generateDepositAccount } from "../features/Api";
 
 const amounts = [2000, 3000, 5000, 10000, 20000, 50000, 100000, 200000];
 
@@ -9,11 +9,12 @@ export default function DepositPanel() {
 
   const [loading, setLoading] = useState(false);
   const [account, setAccount] = useState(null);
-  const [waiting, setWaiting] = useState(false);
-  const [wallet, setWallet] = useState(null);
+
+  const [status, setStatus] = useState("idle"); 
+  // idle | waiting | success | expired
 
   const [timeLeft, setTimeLeft] = useState(180);
-  const [expired, setExpired] = useState(false);
+  const [file, setFile] = useState(null);
 
   // ===============================
   // HANDLE DEPOSIT
@@ -27,13 +28,11 @@ export default function DepositPanel() {
     try {
       setLoading(true);
 
-      // ✅ USE YOUR API FUNCTION
       const data = await generateDepositAccount({ amount, method });
 
       setAccount(data);
-      setWaiting(true);
+      setStatus("waiting");
       setTimeLeft(180);
-      setExpired(false);
     } catch (err) {
       alert(err.message || "Failed to generate account");
     } finally {
@@ -45,21 +44,20 @@ export default function DepositPanel() {
   // TIMER
   // ===============================
   useEffect(() => {
-    let timer;
+    if (status !== "waiting") return;
 
-    if (waiting && account && timeLeft > 0) {
-      timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    }
-
-    if (timeLeft === 0) {
-      setExpired(true);
-      setWaiting(false);
-    }
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setStatus("expired");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     return () => clearInterval(timer);
-  }, [waiting, account, timeLeft]);
+  }, [status]);
 
   const formatTime = (sec) => {
     const m = Math.floor(sec / 60);
@@ -68,37 +66,28 @@ export default function DepositPanel() {
   };
 
   // ===============================
-  // WALLET POLLING (FIXED)
+  // UPLOAD RECEIPT
   // ===============================
-  useEffect(() => {
-    let interval;
+  const uploadReceipt = async () => {
+    if (!file) return alert("Select receipt");
 
-    if (waiting && account) {
-      interval = setInterval(async () => {
-        try {
-          const res = await getWalletBalance();
+    const formData = new FormData();
+    formData.append("receipt", file);
+    formData.append("depositId", account._id);
 
-          // ✅ backend returns { coins }
-          const newCoins = res?.coins || 0;
+    try {
+      const res = await fetch("/api/wallet/upload-receipt", {
+        method: "POST",
+        body: formData,
+      });
 
-          setWallet((prev) => {
-            const oldCoins = prev?.coins || 0;
+      if (!res.ok) throw new Error();
 
-            // ✅ detect increase properly
-            if (newCoins > oldCoins) {
-              setWaiting(false);
-            }
-
-            return res;
-          });
-        } catch (err) {
-          console.error(err);
-        }
-      }, 5000);
+      setStatus("success"); // ✅ ONLY here success happens
+    } catch {
+      alert("Upload failed");
     }
-
-    return () => clearInterval(interval);
-  }, [waiting, account]);
+  };
 
   // ===============================
   // COPY ACCOUNT
@@ -124,7 +113,6 @@ export default function DepositPanel() {
               onChange={(e) => setMethod(e.target.value)}
               className="w-full p-3 rounded-lg border"
             >
-              <option value="ngn">Bank Transfer (Monnify)</option>
               <option value="opay">OPay</option>
               <option value="palmpay">PalmPay</option>
             </select>
@@ -186,33 +174,56 @@ export default function DepositPanel() {
             </button>
 
             {/* WAITING */}
-            {waiting && !expired && (
-              <p className="text-orange-500 mt-3 animate-pulse">
-                Waiting for payment...
-              </p>
+            {status === "waiting" && (
+              <>
+                <p className="text-orange-500 mt-3 animate-pulse">
+                  Make payment and upload receipt
+                </p>
+
+                <input
+                  type="file"
+                  className="mt-3"
+                  onChange={(e) => setFile(e.target.files[0])}
+                />
+
+                <button
+                  onClick={uploadReceipt}
+                  className="w-full mt-2 bg-green-500 text-white py-2 rounded"
+                >
+                  Submit Receipt
+                </button>
+              </>
+            )}
+
+            {/* EXPIRED */}
+            {status === "expired" && (
+              <>
+                <p className="text-red-500 mt-3">
+                  Time expired. Upload receipt anyway.
+                </p>
+
+                <input
+                  type="file"
+                  className="mt-3"
+                  onChange={(e) => setFile(e.target.files[0])}
+                />
+
+                <button
+                  onClick={uploadReceipt}
+                  className="w-full mt-2 bg-green-500 text-white py-2 rounded"
+                >
+                  Submit Receipt
+                </button>
+              </>
             )}
 
             {/* SUCCESS */}
-            {!waiting && wallet && (
+            {status === "success" && (
               <p className="text-green-600 mt-3">
                 Payment received 🎉
               </p>
             )}
 
-            {/* EXPIRED */}
-            {expired && (
-              <div className="mt-4">
-                <p className="text-red-500 font-semibold">
-                  Time expired. Upload receipt.
-                </p>
-
-                <input type="file" className="mt-2" />
-
-                <button className="w-full mt-2 bg-green-500 text-white py-2 rounded">
-                  Submit Receipt
-                </button>
-              </div>
-            )}
           </div>
         )}
 
