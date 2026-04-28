@@ -5,7 +5,7 @@ const amounts = [2000, 3000, 5000, 10000, 20000, 50000, 100000, 200000];
 
 export default function DepositPanel() {
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("ngn");
+  const [method, setMethod] = useState("opay");
 
   const [loading, setLoading] = useState(false);
   const [account, setAccount] = useState(null);
