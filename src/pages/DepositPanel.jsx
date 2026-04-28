@@ -12,7 +12,7 @@ export default function DepositPanel() {
   const [waiting, setWaiting] = useState(false);
   const [wallet, setWallet] = useState(null);
 
-  const [timeLeft, setTimeLeft] = useState(300);
+  const [timeLeft, setTimeLeft] = useState(180);
   const [expired, setExpired] = useState(false);
 
   // ===============================
@@ -32,7 +32,7 @@ export default function DepositPanel() {
 
       setAccount(data);
       setWaiting(true);
-      setTimeLeft(900);
+      setTimeLeft(180);
       setExpired(false);
     } catch (err) {
       alert(err.message || "Failed to generate account");
