@@ -12,55 +12,37 @@ export default function DepositPanel() {
   const [waiting, setWaiting] = useState(false);
   const [wallet, setWallet] = useState(null);
 
-  // ⏱ TIMER STATES
-  const [timeLeft, setTimeLeft] = useState(900); // 15 mins
+  const [timeLeft, setTimeLeft] = useState(300);
   const [expired, setExpired] = useState(false);
 
   // ===============================
   // HANDLE DEPOSIT
   // ===============================
   const handleDeposit = async () => {
-    if (!amount || amount < 100) {
-      alert("Minimum deposit is ₦100");
+    if (!amount || amount < 500) {
+      alert("Minimum deposit is ₦500");
       return;
     }
 
     try {
       setLoading(true);
 
-      const res = await fetch("/api/deposit/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, method }),
-      });
-
-      const text = await res.text();
-
-      let data;
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch (err) {
-        throw new Error("Server returned invalid response");
-      }
-
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to generate account");
-      }
+      // ✅ USE YOUR API FUNCTION
+      const data = await generateDepositAccount({ amount, method });
 
       setAccount(data);
       setWaiting(true);
       setTimeLeft(900);
       setExpired(false);
-
     } catch (err) {
-      alert(err.message);
+      alert(err.message || "Failed to generate account");
     } finally {
       setLoading(false);
     }
   };
 
   // ===============================
-  // TIMER LOGIC
+  // TIMER
   // ===============================
   useEffect(() => {
     let timer;
@@ -86,7 +68,7 @@ export default function DepositPanel() {
   };
 
   // ===============================
-  // WALLET POLLING
+  // WALLET POLLING (FIXED)
   // ===============================
   useEffect(() => {
     let interval;
@@ -95,12 +77,20 @@ export default function DepositPanel() {
       interval = setInterval(async () => {
         try {
           const res = await getWalletBalance();
-          setWallet(res);
 
-          // ⚠️ FIXED LOGIC (was wrong before)
-          if (res?.balance > (wallet?.balance || 0)) {
-            setWaiting(false);
-          }
+          // ✅ backend returns { coins }
+          const newCoins = res?.coins || 0;
+
+          setWallet((prev) => {
+            const oldCoins = prev?.coins || 0;
+
+            // ✅ detect increase properly
+            if (newCoins > oldCoins) {
+              setWaiting(false);
+            }
+
+            return res;
+          });
         } catch (err) {
           console.error(err);
         }
@@ -108,7 +98,7 @@ export default function DepositPanel() {
     }
 
     return () => clearInterval(interval);
-  }, [waiting, account, wallet]);
+  }, [waiting, account]);
 
   // ===============================
   // COPY ACCOUNT
@@ -120,15 +110,13 @@ export default function DepositPanel() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
-      <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/30 shadow-lg">
+      <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border shadow-lg">
 
         <h2 className="text-2xl font-bold text-center mb-4">
           Deposit
         </h2>
 
-        {/* ===============================
-            METHOD SELECTOR
-        =============================== */}
+        {/* METHOD */}
         {!account && (
           <div className="mb-4">
             <select
@@ -178,9 +166,7 @@ export default function DepositPanel() {
           </>
         )}
 
-        {/* ===============================
-            ACCOUNT DETAILS
-        =============================== */}
+        {/* ACCOUNT */}
         {account && (
           <div className="mt-5">
 
@@ -195,10 +181,7 @@ export default function DepositPanel() {
               {account.accountNumber}
             </h2>
 
-            <button
-              onClick={copyAccount}
-              className="text-blue-500 mt-2"
-            >
+            <button onClick={copyAccount} className="text-blue-500 mt-2">
               Copy Account
             </button>
 
@@ -216,7 +199,7 @@ export default function DepositPanel() {
               </p>
             )}
 
-            {/* EXPIRED → RECEIPT */}
+            {/* EXPIRED */}
             {expired && (
               <div className="mt-4">
                 <p className="text-red-500 font-semibold">
@@ -234,7 +217,7 @@ export default function DepositPanel() {
         )}
 
         <p className="text-xs text-center mt-4">
-          Minimum deposit ₦100
+          Minimum deposit ₦500
         </p>
       </div>
     </div>
