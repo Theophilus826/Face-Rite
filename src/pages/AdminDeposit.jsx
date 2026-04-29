@@ -21,7 +21,7 @@ export default function AdminDeposit() {
       const currentIds = data.map((d) => d._id);
 
       const newIdsDetected = currentIds.filter(
-        (id) => !prevIdsRef.current.includes(id)
+        (id) => !prevIdsRef.current.includes(id),
       );
 
       if (newIdsDetected.length > 0) {
@@ -72,8 +72,8 @@ export default function AdminDeposit() {
       p.map((d) =>
         d._id === id
           ? { ...d, status: "COMPLETED", reviewStatus: "APPROVED" }
-          : d
-      )
+          : d,
+      ),
     );
 
     try {
@@ -101,10 +101,8 @@ export default function AdminDeposit() {
     // optimistic UI
     setDeposits((p) =>
       p.map((d) =>
-        d._id === id
-          ? { ...d, status: "FAILED", reviewStatus: "REJECTED" }
-          : d
-      )
+        d._id === id ? { ...d, status: "FAILED", reviewStatus: "REJECTED" } : d,
+      ),
     );
 
     try {
@@ -122,19 +120,12 @@ export default function AdminDeposit() {
   // UI
   // ===============================
   if (loading) {
-    return (
-      <div className="p-6 text-center">
-        Loading dashboard...
-      </div>
-    );
+    return <div className="p-6 text-center">Loading dashboard...</div>;
   }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-
-      <h1 className="text-2xl font-bold mb-6">
-        🔴 Live Admin Dashboard
-      </h1>
+      <h1 className="text-2xl font-bold mb-6">🔴 Live Admin Dashboard</h1>
 
       <div className="space-y-4">
         {deposits.map((d) => {
@@ -147,16 +138,13 @@ export default function AdminDeposit() {
                 ${isNew ? "bg-green-100 border-green-400" : "bg-white"}
               `}
             >
-
               {/* USER INFO */}
               <div className="flex justify-between">
                 <div>
                   <p className="font-semibold">
                     {d.user?.name || "Unknown User"}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    {d.user?.email}
-                  </p>
+                  <p className="text-sm text-gray-500">{d.user?.email}</p>
                 </div>
 
                 <span
@@ -164,8 +152,8 @@ export default function AdminDeposit() {
                     d.status === "COMPLETED"
                       ? "bg-green-200 text-green-700"
                       : d.status === "FAILED"
-                      ? "bg-red-200 text-red-700"
-                      : "bg-orange-200 text-orange-700"
+                        ? "bg-red-200 text-red-700"
+                        : "bg-orange-200 text-orange-700"
                   }`}
                 >
                   {d.status}
@@ -174,15 +162,21 @@ export default function AdminDeposit() {
 
               {/* DETAILS */}
               <div className="mt-2 text-sm">
-                <p><b>Amount:</b> ₦{d.expectedAmount}</p>
-                <p><b>Bank:</b> {d.bankName || "N/A"}</p>
-                <p><b>Method:</b> {d.method}</p>
+                <p>
+                  <b>Amount:</b> ₦{d.expectedAmount}
+                </p>
+                <p>
+                  <b>Bank:</b> {d.bankName || "N/A"}
+                </p>
+                <p>
+                  <b>Method:</b> {d.method}
+                </p>
               </div>
 
               {/* RECEIPT */}
-              {d.receipt && (
+              {(d.receipt || d.paymentData?.receiptUrl) && (
                 <a
-                  href={d.receipt}
+                  href={d.receipt || d.paymentData?.receiptUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="text-blue-500 text-sm underline mt-2 inline-block"
@@ -209,7 +203,6 @@ export default function AdminDeposit() {
                   {actionLoading === d._id ? "..." : "Reject"}
                 </button>
               </div>
-
             </div>
           );
         })}
