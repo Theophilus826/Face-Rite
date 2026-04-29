@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import API from "../features/Api";
 
 export default function AdminDeposit() {
   const [deposits, setDeposits] = useState([]);
@@ -14,8 +15,8 @@ export default function AdminDeposit() {
   // ===============================
   const fetchDeposits = async () => {
     try {
-      const res = await fetch("/api/admin/deposits/pending"); // ✅ FIXED ROUTE
-      const data = await res.json();
+      const res = await API.get("/admin/deposits/pending");
+      const data = res.data;
 
       const currentIds = data.map((d) => d._id);
 
@@ -26,7 +27,6 @@ export default function AdminDeposit() {
       if (newIdsDetected.length > 0) {
         setNewIds(newIdsDetected);
 
-        // clear previous timer
         if (highlightTimerRef.current) {
           clearTimeout(highlightTimerRef.current);
         }
@@ -38,9 +38,8 @@ export default function AdminDeposit() {
 
       prevIdsRef.current = currentIds;
       setDeposits(data);
-
     } catch (err) {
-      console.error("Fetch deposits error:", err);
+      console.error("❌ Fetch deposits error:", err);
     } finally {
       setLoading(false);
     }
@@ -52,9 +51,7 @@ export default function AdminDeposit() {
   useEffect(() => {
     fetchDeposits();
 
-    const interval = setInterval(() => {
-      fetchDeposits();
-    }, 5000);
+    const interval = setInterval(fetchDeposits, 5000);
 
     return () => {
       clearInterval(interval);
@@ -63,13 +60,14 @@ export default function AdminDeposit() {
   }, []);
 
   // ===============================
-  // APPROVE (SAFE + OPTIMISTIC)
+  // APPROVE
   // ===============================
   const approve = async (id) => {
     setActionLoading(id);
 
     const prev = deposits;
 
+    // optimistic UI
     setDeposits((p) =>
       p.map((d) =>
         d._id === id
@@ -79,24 +77,18 @@ export default function AdminDeposit() {
     );
 
     try {
-      const res = await fetch(
-        `/api/admin/deposits/approve/${id}`, // ✅ FIXED ROUTE
-        { method: "PUT" } // ✅ FIXED METHOD
-      );
-
-      if (!res.ok) throw new Error("Approve failed");
-
+      await API.put(`/admin/deposits/approve/${id}`);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Approve failed:", err);
       alert("Approve failed");
-      setDeposits(prev); // rollback
+      setDeposits(prev);
     } finally {
       setActionLoading(null);
     }
   };
 
   // ===============================
-  // REJECT (SAFE + OPTIMISTIC)
+  // REJECT
   // ===============================
   const reject = async (id) => {
     const reason = prompt("Reason for rejection?");
@@ -106,6 +98,7 @@ export default function AdminDeposit() {
 
     const prev = deposits;
 
+    // optimistic UI
     setDeposits((p) =>
       p.map((d) =>
         d._id === id
@@ -115,21 +108,11 @@ export default function AdminDeposit() {
     );
 
     try {
-      const res = await fetch(
-        `/api/admin/deposits/reject/${id}`, // ✅ FIXED ROUTE
-        {
-          method: "PUT", // ✅ FIXED METHOD
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason }),
-        }
-      );
-
-      if (!res.ok) throw new Error("Reject failed");
-
+      await API.put(`/admin/deposits/reject/${id}`, { reason });
     } catch (err) {
-      console.error(err);
+      console.error("❌ Reject failed:", err);
       alert("Reject failed");
-      setDeposits(prev); // rollback
+      setDeposits(prev);
     } finally {
       setActionLoading(null);
     }
@@ -154,7 +137,6 @@ export default function AdminDeposit() {
       </h1>
 
       <div className="space-y-4">
-
         {deposits.map((d) => {
           const isNew = newIds.includes(d._id);
 
@@ -202,6 +184,7 @@ export default function AdminDeposit() {
                 <a
                   href={d.receipt}
                   target="_blank"
+                  rel="noreferrer"
                   className="text-blue-500 text-sm underline mt-2 inline-block"
                 >
                   View Receipt
@@ -210,7 +193,6 @@ export default function AdminDeposit() {
 
               {/* ACTIONS */}
               <div className="flex gap-3 mt-3">
-
                 <button
                   disabled={actionLoading === d._id}
                   onClick={() => approve(d._id)}
@@ -226,13 +208,11 @@ export default function AdminDeposit() {
                 >
                   {actionLoading === d._id ? "..." : "Reject"}
                 </button>
-
               </div>
 
             </div>
           );
         })}
-
       </div>
     </div>
   );

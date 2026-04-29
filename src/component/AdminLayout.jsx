@@ -241,23 +241,47 @@ export default function AdminLayout() {
   useEffect(() => {
     const loadReceipts = async () => {
       try {
+        const token = localStorage.getItem("token");
+
         const res = await fetch(`${API_BASE}/api/admin/deposits/pending`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         });
-        const data = await res.json();
+
+        // ✅ check if response is OK
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("❌ API Error:", text);
+          return;
+        }
+
+        // ✅ safely parse JSON
+        let data;
+        try {
+          data = await res.json();
+        } catch (err) {
+          const text = await res.text();
+          console.error("❌ Not JSON:", text);
+          return;
+        }
+
+        // ✅ ensure array (avoid crash)
+        if (!Array.isArray(data)) {
+          console.error("❌ Unexpected response:", data);
+          return;
+        }
 
         setReceiptInbox(data);
 
-        // detect unread receipts
+        // ✅ detect unread receipts
         const newOnes = data
           .filter((d) => d.receipt && !d.isRead)
           .map((d) => d._id);
 
         setUnreadIds(newOnes);
       } catch (err) {
-        console.error(err);
+        console.error("❌ Fetch failed:", err);
       }
     };
 
@@ -267,7 +291,10 @@ export default function AdminLayout() {
 
     return () => clearInterval(interval);
   }, []);
+
   const markAsRead = (id) => {
+    if (!id) return;
+
     setUnreadIds((prev) => prev.filter((x) => x !== id));
 
     setReceiptInbox((prev) =>
