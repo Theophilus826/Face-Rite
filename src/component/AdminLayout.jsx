@@ -241,7 +241,11 @@ export default function AdminLayout() {
   useEffect(() => {
     const loadReceipts = async () => {
       try {
-        const res = await fetch("/api/admin/deposits/pending");
+        const res = await fetch(`${API_BASE}/api/admin/deposits/pending`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
         const data = await res.json();
 
         setReceiptInbox(data);
