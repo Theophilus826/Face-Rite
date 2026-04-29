@@ -189,7 +189,7 @@ export default function AdminDeposit() {
               )}
 
               {/* ACTIONS */}
-              <div className="flex gap-3 mt-3">
+              <div className="flex gap-3 mt-3 items-center">
                 <button
                   disabled={actionLoading === d._id}
                   onClick={() => approve(d._id)}
@@ -205,6 +205,22 @@ export default function AdminDeposit() {
                 >
                   {actionLoading === d._id ? "..." : "Reject"}
                 </button>
+
+                {/* 👇 VIEW RECEIPT BUTTON (ONLY AFTER REJECT) */}
+                {d.status === "FAILED" &&
+                  (d.receipt || d.paymentData?.receiptUrl) && (
+                    <button
+                      onClick={() =>
+                        window.open(
+                          d.receipt || d.paymentData?.receiptUrl,
+                          "_blank",
+                        )
+                      }
+                      className="px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
+                    >
+                      👁 Receipt
+                    </button>
+                  )}
               </div>
             </div>
           );
