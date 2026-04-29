@@ -175,14 +175,17 @@ export default function AdminDeposit() {
 
               {/* RECEIPT */}
               {(d.receipt || d.paymentData?.receiptUrl) && (
-                <a
-                  href={d.receipt || d.paymentData?.receiptUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-blue-500 text-sm underline mt-2 inline-block"
+                <button
+                  onClick={() =>
+                    window.open(
+                      d.receipt || d.paymentData?.receiptUrl,
+                      "_blank",
+                    )
+                  }
+                  className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-indigo-600 text-white text-sm rounded-md shadow hover:bg-indigo-700 active:scale-95 transition"
                 >
-                  View Receipt
-                </a>
+                  👁 View Receipt
+                </button>
               )}
 
               {/* ACTIONS */}
