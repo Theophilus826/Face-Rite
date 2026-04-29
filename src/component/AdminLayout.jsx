@@ -457,6 +457,9 @@ export default function AdminLayout() {
               <NavLink to="/admin/credit-coins" className={linkClass}>
                 💰 Credit/Debit Coins
               </NavLink>
+              <NavLink to="/admin/deposits" className={linkClass}>
+                💰 Deposits (NEW)
+              </NavLink>
               <NavLink to="/admin/host-game" className={linkClass}>
                 🎲 Host 1v1 Game
               </NavLink>

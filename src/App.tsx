@@ -300,7 +300,7 @@ function AppContent() {
               <Route path="monitor" element={<AdminMonitor />} />
               <Route path="credit-coins" element={<AdminCreditCoins />} />
               <Route path="carousel-upload" element={<CarouselUploader />} />
-              <Route path="admin-deposit" element={<AdminDeposit/>} />
+              <Route path="deposits" element={<AdminDeposit/>} />
 
               {/* ⚡ Lazy works safely here now */}
               <Route path="host-game" element={<HostGame />} />
