@@ -10,7 +10,7 @@ export default function DepositPanel() {
   const [loading, setLoading] = useState(false);
   const [account, setAccount] = useState(null);
 
-  const [status, setStatus] = useState("idle"); 
+  const [status, setStatus] = useState("idle");
   // idle | waiting | success | expired
 
   const [timeLeft, setTimeLeft] = useState(180);
@@ -76,15 +76,11 @@ export default function DepositPanel() {
     formData.append("depositId", account._id);
 
     try {
-      const res = await fetch("/api/wallet/upload-receipt", {
-        method: "POST",
-        body: formData,
-      });
+      await API.put("/wallet/upload-receipt", formData);
 
-      if (!res.ok) throw new Error();
-
-      setStatus("success"); // ✅ ONLY here success happens
-    } catch {
+      setStatus("success");
+    } catch (err) {
+      console.error(err);
       alert("Upload failed");
     }
   };
@@ -100,10 +96,7 @@ export default function DepositPanel() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
       <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border shadow-lg">
-
-        <h2 className="text-2xl font-bold text-center mb-4">
-          Deposit
-        </h2>
+        <h2 className="text-2xl font-bold text-center mb-4">Deposit</h2>
 
         {/* METHOD */}
         {!account && (
@@ -157,17 +150,18 @@ export default function DepositPanel() {
         {/* ACCOUNT */}
         {account && (
           <div className="mt-5">
-
             <p className="text-center text-red-500 font-bold">
               ⏱ Time Left: {formatTime(timeLeft)}
             </p>
 
-            <p><b>Bank:</b> {account.bankName}</p>
-            <p><b>Name:</b> {account.accountName}</p>
+            <p>
+              <b>Bank:</b> {account.bankName}
+            </p>
+            <p>
+              <b>Name:</b> {account.accountName}
+            </p>
 
-            <h2 className="text-xl font-bold mt-2">
-              {account.accountNumber}
-            </h2>
+            <h2 className="text-xl font-bold mt-2">{account.accountNumber}</h2>
 
             <button onClick={copyAccount} className="text-blue-500 mt-2">
               Copy Account
@@ -219,17 +213,12 @@ export default function DepositPanel() {
 
             {/* SUCCESS */}
             {status === "success" && (
-              <p className="text-green-600 mt-3">
-                Payment received 🎉
-              </p>
+              <p className="text-green-600 mt-3">Payment received 🎉</p>
             )}
-
           </div>
         )}
 
-        <p className="text-xs text-center mt-4">
-          Minimum deposit ₦500
-        </p>
+        <p className="text-xs text-center mt-4">Minimum deposit ₦500</p>
       </div>
     </div>
   );
