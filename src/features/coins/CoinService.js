@@ -60,6 +60,17 @@ const transferCoins = async (toUserId, coins, token, description) => {
     return res.data;
 };
 
+/* ================= WITHDRAW ================= */
+const withdrawCoins = async ({ amount, bankName, accountNumber }) => {
+  const res = await API.post("/withdrawals/request", {
+    amount,
+    bankName,
+    accountNumber,
+  });
+
+  return res.data;
+};
+
 export default {
     creditCoinsAdmin,
     creditCoins,
@@ -68,4 +79,5 @@ export default {
     getHistory,
     purchaseItem,
     transferCoins, // ✅ new function
+    withdrawCoins,
 };
