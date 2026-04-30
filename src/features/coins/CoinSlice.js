@@ -140,13 +140,12 @@ export const withdrawCoins = createAsyncThunk(
   async ({ amount, bankName, accountNumber }, thunkAPI) => {
     try {
       const res = await API.post(
-        "/coins/withdraw",
+        "/withdrawals/request", // ✅ FIXED ENDPOINT
         { amount, bankName, accountNumber },
         getAuthHeader(thunkAPI),
       );
 
-      return res.data;
-      // expected: { coins, transaction }
+      return res.data; // { message, withdrawal, balance }
     } catch (err) {
       return thunkAPI.rejectWithValue(
         err.response?.data?.message || err.message,
@@ -240,11 +239,18 @@ const coinsSlice = createSlice({
       /* ================= Withdraw Coins ================= */
       .addCase(withdrawCoins.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.balance = action.payload.coins;
 
-        if (action.payload?.transaction) {
+        // ✅ correct field
+        state.balance = action.payload.balance ?? state.balance;
+
+        if (action.payload?.withdrawal) {
           state.history = state.history || [];
-          state.history.unshift(action.payload.transaction);
+          state.history.unshift({
+            type: "WITHDRAWAL_REQUEST",
+            amount: action.payload.withdrawal.amount,
+            status: action.payload.withdrawal.status,
+            createdAt: action.payload.withdrawal.createdAt,
+          });
         }
       })
 
