@@ -5,6 +5,9 @@ import { logout } from "../features/AuthSlice";
 import { io } from "socket.io-client";
 import AdminDeposit from "../pages/AdminDeposit";
 import Carousel from "../component/CarouselUploader";
+import AdminWithdrawals from "../pages/AdminWithdrawals";
+
+
 export default function AdminLayout() {
   const dispatch = useDispatch();
   const socketRef = useRef(null);
@@ -459,6 +462,9 @@ export default function AdminLayout() {
               </NavLink>
               <NavLink to="/admin/deposits" className={linkClass}>
                 💰 Deposits (NEW)
+              </NavLink>
+              <NavLink to="/admin/withdraw" className={linkClass}>
+                💰 Withdraw (NEW)
               </NavLink>
               <NavLink to="/admin/host-game" className={linkClass}>
                 🎲 Host 1v1 Game
