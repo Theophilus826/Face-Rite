@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { generateDepositAccount } from "../features/Api";
+import API, { generateDepositAccount } from "../features/Api";
 
 const amounts = [2000, 3000, 5000, 10000, 20000, 50000, 100000, 200000];
 
