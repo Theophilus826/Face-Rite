@@ -7,8 +7,14 @@ import { API } from "../Api";
 const initialState = {
   balance: 0,
   history: [],
-  status: "idle", // idle | loading | succeeded | failed
+
+  // separate statuses (IMPORTANT FIX)
+  fetchStatus: "idle",
   historyStatus: "idle",
+  withdrawStatus: "idle",
+  transferStatus: "idle",
+  actionStatus: "idle",
+
   error: null,
 };
 
@@ -140,15 +146,15 @@ export const withdrawCoins = createAsyncThunk(
   async ({ amount, bankName, accountNumber }, thunkAPI) => {
     try {
       const res = await API.post(
-        "/withdrawals/request", // ✅ FIXED ENDPOINT
+        "/withdrawals/request",
         { amount, bankName, accountNumber },
         getAuthHeader(thunkAPI),
       );
 
-      return res.data; // { message, withdrawal, balance }
+      return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data?.message || err.message,
+        err.response?.data?.message || err.message || "Withdrawal failed",
       );
     }
   },
@@ -166,54 +172,55 @@ const coinsSlice = createSlice({
   extraReducers: (builder) => {
     builder
 
-      /* ================= Fetch Coins ================= */
+      /* ================= FETCH COINS ================= */
+      .addCase(fetchCoins.pending, (state) => {
+        state.fetchStatus = "loading";
+      })
       .addCase(fetchCoins.fulfilled, (state, action) => {
-        state.status = "succeeded";
+        state.fetchStatus = "succeeded";
         state.balance = action.payload;
       })
+      .addCase(fetchCoins.rejected, (state, action) => {
+        state.fetchStatus = "failed";
+        state.error =
+          action.payload || action.error?.message || "Failed to fetch coins";
+      })
 
-      /* ================= Daily Login ================= */
+      /* ================= DAILY LOGIN ================= */
       .addCase(claimDailyLogin.fulfilled, (state, action) => {
-        state.status = "succeeded";
         state.balance = action.payload;
       })
 
-      /* ================= Credit Coins ================= */
+      /* ================= CREDIT COINS ================= */
       .addCase(creditCoins.fulfilled, (state, action) => {
-        state.status = "succeeded";
         state.balance = action.payload.coins;
 
         if (action.payload?.transaction) {
-          state.history = state.history || [];
           state.history.unshift(action.payload.transaction);
         }
       })
 
-      /* ================= Game Win Coins ================= */
+      /* ================= GAME WIN ================= */
       .addCase(creditGameWin.fulfilled, (state, action) => {
-        state.status = "succeeded";
         state.balance = action.payload.coins;
 
         if (action.payload?.transaction) {
-          state.history = state.history || [];
           state.history.unshift(action.payload.transaction);
         }
       })
 
-      /* ================= Buy Item ================= */
+      /* ================= BUY ITEM ================= */
       .addCase(buyItem.fulfilled, (state, action) => {
-        state.status = "succeeded";
         state.balance = action.payload.coins;
 
         if (Array.isArray(action.payload.history)) {
           state.history = action.payload.history;
         } else if (action.payload.history) {
-          state.history = state.history || [];
           state.history.unshift(action.payload.history);
         }
       })
 
-      /* ================= History ================= */
+      /* ================= HISTORY ================= */
       .addCase(fetchCoinHistory.pending, (state) => {
         state.historyStatus = "loading";
       })
@@ -223,28 +230,30 @@ const coinsSlice = createSlice({
       })
       .addCase(fetchCoinHistory.rejected, (state, action) => {
         state.historyStatus = "failed";
-        state.error = action.payload;
+        state.error =
+          action.payload || action.error?.message || "History fetch failed";
       })
 
-      /* ================= Transfer Coins ================= */
+      /* ================= TRANSFER ================= */
       .addCase(transferCoins.fulfilled, (state, action) => {
-        state.status = "succeeded";
         state.balance = action.payload.coins;
 
         if (action.payload?.transaction) {
-          state.history = state.history || [];
           state.history.unshift(action.payload.transaction);
         }
       })
-      /* ================= Withdraw Coins ================= */
-      .addCase(withdrawCoins.fulfilled, (state, action) => {
-        state.status = "succeeded";
 
-        // ✅ correct field
+      /* ================= WITHDRAW ================= */
+      .addCase(withdrawCoins.pending, (state) => {
+        state.withdrawStatus = "loading";
+        state.error = null;
+      })
+      .addCase(withdrawCoins.fulfilled, (state, action) => {
+        state.withdrawStatus = "succeeded";
+
         state.balance = action.payload.balance ?? state.balance;
 
         if (action.payload?.withdrawal) {
-          state.history = state.history || [];
           state.history.unshift({
             type: "WITHDRAWAL_REQUEST",
             amount: action.payload.withdrawal.amount,
@@ -253,14 +262,19 @@ const coinsSlice = createSlice({
           });
         }
       })
+      .addCase(withdrawCoins.rejected, (state, action) => {
+        state.withdrawStatus = "failed";
+        state.error =
+          action.payload || action.error?.message || "Withdrawal failed";
+      })
 
-      /* ================= Global Matchers ================= */
+      /* ================= GLOBAL SAFETY ================= */
       .addMatcher(
         (action) =>
           action.type.startsWith("coins/") && action.type.endsWith("/rejected"),
         (state, action) => {
-          state.status = "failed";
-          state.error = action.payload || action.error.message;
+          state.error =
+            action.payload || action.error?.message || "Something went wrong";
         },
       );
   },
