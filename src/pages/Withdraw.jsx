@@ -50,17 +50,17 @@ export default function Withdraw() {
   // Reset form on success
   // ===============================
   useEffect(() => {
-  if (status === "succeeded") {
-    setAmount("");
-    setBankName("");
-    setAccountNumber("");
-    setMessage("✅ Withdrawal request sent successfully");
-  }
+    if (status === "succeeded") {
+      setAmount("");
+      setBankName("");
+      setAccountNumber("");
+      setMessage("✅ Withdrawal request sent successfully");
+    }
 
-  if (status === "failed") {
-    setMessage(`❌ ${error || "Withdrawal failed"}`);
-  }
-}, [status, error]);
+    if (status === "failed") {
+      setMessage("❌ Withdrawal failed. Try again.");
+    }
+  }, [status]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
