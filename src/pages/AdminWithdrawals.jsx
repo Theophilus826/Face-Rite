@@ -42,16 +42,10 @@ export default function AdminWithdrawals() {
     }
   }, [statusFilter, search]);
 
-  // ===============================
-  // INITIAL + FILTER CHANGE
-  // ===============================
   useEffect(() => {
     fetchWithdrawals();
   }, [fetchWithdrawals]);
 
-  // ===============================
-  // SEARCH (DEBOUNCED)
-  // ===============================
   useEffect(() => {
     const delay = setTimeout(() => {
       fetchWithdrawals();
@@ -167,13 +161,13 @@ export default function AdminWithdrawals() {
               </tr>
             ) : (
               withdrawals.map((w) => (
-                <tr key={w.id} className="text-center">
+                <tr key={w._id} className="text-center">
                   <td className="border p-2">
                     {w.userName || "Unknown"}
                   </td>
 
                   <td className="border p-2">
-                    ₦{Number(w.amount).toLocaleString()}
+                    ₦{Number(w.amount || 0).toLocaleString()}
                   </td>
 
                   <td className="border p-2">{w.bankName}</td>
@@ -202,14 +196,14 @@ export default function AdminWithdrawals() {
                     {w.status === "PENDING" && (
                       <>
                         <button
-                          onClick={() => approve(w.id)}
+                          onClick={() => approve(w._id)}
                           className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
                         >
                           Approve
                         </button>
 
                         <button
-                          onClick={() => reject(w.id)}
+                          onClick={() => reject(w._id)}
                           className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
                         >
                           Reject

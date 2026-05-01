@@ -4,27 +4,28 @@ import { useState, useEffect } from "react";
 
 export default function Withdraw() {
   const dispatch = useDispatch();
-  const { balance, status, error } = useSelector((state) => state.coins);
+  const { balance, status } = useSelector((state) => state.coins);
 
   const [amount, setAmount] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [message, setMessage] = useState("");
 
+  // ===============================
+  // Handle Withdraw
+  // ===============================
   const handleWithdraw = () => {
     setMessage("");
 
-    const amt = Number(amount);
-
-    if (!amt || amt <= 0) {
+    if (!amount || amount <= 0) {
       return setMessage("Enter a valid amount");
     }
 
-    if (amt < 1000) {
+    if (amount < 1000) {
       return setMessage("Minimum withdrawal is ₦1,000");
     }
 
-    if (amt > balance) {
+    if (amount > balance) {
       return setMessage("Insufficient balance");
     }
 
@@ -32,20 +33,22 @@ export default function Withdraw() {
       return setMessage("Enter a valid account number");
     }
 
-    if (!bankName.trim()) {
+    if (!bankName) {
       return setMessage("Enter bank name");
     }
 
     dispatch(
       withdrawCoins({
-        amount: amt,
-        bankName: bankName.trim(),
-        accountNumber: accountNumber.trim(),
+        amount: Number(amount),
+        accountNumber,
+        bankName,
       })
     );
   };
 
-  // ✅ safer state handling
+  // ===============================
+  // Reset form on success
+  // ===============================
   useEffect(() => {
     if (status === "succeeded") {
       setAmount("");
@@ -55,9 +58,9 @@ export default function Withdraw() {
     }
 
     if (status === "failed") {
-      setMessage(error || "❌ Withdrawal failed. Try again.");
+      setMessage("❌ Withdrawal failed. Try again.");
     }
-  }, [status, error]);
+  }, [status]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
@@ -84,14 +87,16 @@ export default function Withdraw() {
         {/* Form */}
         <div className="flex flex-col gap-4">
 
+          {/* Amount */}
           <input
             type="number"
             placeholder="Amount (₦)"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="p-4 rounded-lg bg-white/50 border"
+            className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 focus:outline-none focus:ring-2 focus:ring-red-400"
           />
 
+          {/* Account Number */}
           <input
             type="text"
             placeholder="Account Number"
@@ -100,26 +105,29 @@ export default function Withdraw() {
               setAccountNumber(e.target.value.replace(/\D/g, ""))
             }
             maxLength={10}
-            className="p-4 rounded-lg bg-white/50 border"
+            className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 focus:outline-none focus:ring-2 focus:ring-red-400"
           />
 
+          {/* Bank Name */}
           <input
             type="text"
-            placeholder="Bank Name"
+            placeholder="Bank Name (e.g. Access Bank)"
             value={bankName}
             onChange={(e) => setBankName(e.target.value)}
-            className="p-4 rounded-lg bg-white/50 border"
+            className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 focus:outline-none focus:ring-2 focus:ring-red-400"
           />
 
+          {/* Button */}
           <button
             onClick={handleWithdraw}
             disabled={status === "loading"}
-            className="mt-2 py-3 bg-red-500 text-white font-semibold rounded-lg disabled:bg-gray-400"
+            className="mt-2 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg shadow-md transition disabled:bg-gray-400"
           >
             {status === "loading" ? "Processing..." : "Withdraw"}
           </button>
         </div>
 
+        {/* Footer */}
         <p className="text-xs text-gray-500 mt-4 text-center">
           Minimum withdrawal ₦1,000
         </p>
