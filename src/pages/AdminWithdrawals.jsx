@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
 export default function AdminWithdrawals() {
@@ -6,67 +6,95 @@ export default function AdminWithdrawals() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
 
   // ===============================
-  // FETCH FROM BACKEND (UPDATED)
+  // AUTH CONFIG
   // ===============================
-  const fetchWithdrawals = async () => {
+  const getAuthConfig = () => {
+    const token = localStorage.getItem("token");
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+  };
+
+  // ===============================
+  // FETCH WITHDRAWALS
+  // ===============================
+  const fetchWithdrawals = useCallback(async () => {
     try {
       setLoading(true);
+      setError("");
 
       const res = await axios.get(
-        `/api/admin/withdrawals?status=${statusFilter}&search=${search}`
+        `/api/admin/withdrawals?status=${statusFilter}&search=${search}`,
+        getAuthConfig()
       );
 
       setWithdrawals(res.data.withdrawals || []);
     } catch (err) {
       console.error("Fetch withdrawals error:", err);
+      setError(err.response?.data?.message || "Failed to fetch withdrawals");
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, search]);
 
+  // ===============================
+  // INITIAL + FILTER CHANGE
+  // ===============================
   useEffect(() => {
     fetchWithdrawals();
-  }, [statusFilter]); // auto reload when filter changes
+  }, [fetchWithdrawals]);
 
   // ===============================
-  // ACTIONS
+  // SEARCH (DEBOUNCED)
   // ===============================
-  const approve = async (id) => {
-    try {
-      await axios.put(`/api/admin/withdrawals/approve/${id}`);
-      fetchWithdrawals();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const reject = async (id) => {
-    try {
-      const reason = prompt("Enter rejection reason");
-      await axios.put(`/api/admin/withdrawals/reject/${id}`, { reason });
-      fetchWithdrawals();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // ===============================
-  // SEARCH TRIGGER
-  // ===============================
-  const handleSearch = (e) => {
-    setSearch(e.target.value);
-  };
-
-  // debounce search (simple)
   useEffect(() => {
     const delay = setTimeout(() => {
       fetchWithdrawals();
     }, 400);
 
     return () => clearTimeout(delay);
-  }, [search]);
+  }, [search, fetchWithdrawals]);
+
+  // ===============================
+  // ACTIONS
+  // ===============================
+  const approve = async (id) => {
+    try {
+      await axios.put(
+        `/api/admin/withdrawals/approve/${id}`,
+        {},
+        getAuthConfig()
+      );
+
+      fetchWithdrawals();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Approval failed");
+    }
+  };
+
+  const reject = async (id) => {
+    const reason = prompt("Enter rejection reason");
+    if (!reason) return;
+
+    try {
+      await axios.put(
+        `/api/admin/withdrawals/reject/${id}`,
+        { reason },
+        getAuthConfig()
+      );
+
+      fetchWithdrawals();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Rejection failed");
+    }
+  };
 
   // ===============================
   // UI
@@ -76,13 +104,13 @@ export default function AdminWithdrawals() {
       <h1 className="text-2xl font-bold mb-4">Withdrawal Dashboard</h1>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4">
         <input
           type="text"
           placeholder="Search user, bank, account"
           value={search}
-          onChange={handleSearch}
-          className="border p-2 rounded w-1/3"
+          onChange={(e) => setSearch(e.target.value)}
+          className="border p-2 rounded w-full md:w-1/3"
         />
 
         <select
@@ -103,6 +131,11 @@ export default function AdminWithdrawals() {
           Refresh
         </button>
       </div>
+
+      {/* Error */}
+      {error && (
+        <p className="text-red-500 mb-3 text-sm text-center">{error}</p>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -139,8 +172,12 @@ export default function AdminWithdrawals() {
                     {w.userName || "Unknown"}
                   </td>
 
-                  <td className="border p-2">₦{w.amount}</td>
+                  <td className="border p-2">
+                    ₦{Number(w.amount).toLocaleString()}
+                  </td>
+
                   <td className="border p-2">{w.bankName}</td>
+
                   <td className="border p-2">{w.accountNumber}</td>
 
                   <td className="border p-2">
@@ -166,14 +203,14 @@ export default function AdminWithdrawals() {
                       <>
                         <button
                           onClick={() => approve(w.id)}
-                          className="bg-green-500 text-white px-2 py-1 rounded"
+                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
                         >
                           Approve
                         </button>
 
                         <button
                           onClick={() => reject(w.id)}
-                          className="bg-red-500 text-white px-2 py-1 rounded"
+                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
                         >
                           Reject
                         </button>

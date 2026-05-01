@@ -204,6 +204,46 @@ function Home() {
           </div>
         </section>
       )}
+      {/* SUPPORT */}
+      <div className="mt-12 max-w-5xl mx-auto space-y-6">
+        {/* Carousel */}
+        <div className="rounded-2xl overflow-hidden">
+          <Carousel />
+        </div>
+
+        {/* Action Cards */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          {/* New Feedback */}
+          <h1>Create Feedback for Games You can Play</h1>
+          <Link
+            to="/NewFeedback"
+            className="flex items-center justify-between p-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition border border-gray-100 hover:scale-[1.02]"
+          >
+            <div className="flex items-center gap-3 text-blue-600">
+              <FaQuestionCircle className="text-xl" />
+              <span className="font-semibold">New Feedback</span>
+            </div>
+            <span className="text-gray-400">→</span>
+          </Link>
+
+          {/* My Feedbacks */}
+          <Link
+            to="/Feedbacks"
+            className="flex items-center justify-between p-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition border border-gray-100 hover:scale-[1.02]"
+          >
+            <div className="flex items-center gap-3 text-purple-600">
+              <FaTicketAlt className="text-xl" />
+              <span className="font-semibold">My Feedbacks</span>
+            </div>
+            <span className="text-gray-400">→</span>
+          </Link>
+        </div>
+
+        {/* Card Grid */}
+        <div className="mt-4">
+          <CardGrid />
+        </div>
+      </div>
 
       {/* POSTS */}
       <section className="max-w-5xl mx-auto space-y-6">
@@ -261,46 +301,7 @@ function Home() {
         })}
       </section>
 
-      {/* SUPPORT */}
-      <div className="mt-12 max-w-5xl mx-auto space-y-6">
-        {/* Carousel */}
-        <div className="rounded-2xl overflow-hidden">
-          <Carousel />
-        </div>
-
-        {/* Action Cards */}
-        <div className="grid sm:grid-cols-2 gap-4">
-          {/* New Feedback */}
-          <h1>Create Feedback for Games You can Play</h1>
-          <Link
-            to="/NewFeedback"
-            className="flex items-center justify-between p-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition border border-gray-100 hover:scale-[1.02]"
-          >
-            <div className="flex items-center gap-3 text-blue-600">
-              <FaQuestionCircle className="text-xl" />
-              <span className="font-semibold">New Feedback</span>
-            </div>
-            <span className="text-gray-400">→</span>
-          </Link>
-
-          {/* My Feedbacks */}
-          <Link
-            to="/Feedbacks"
-            className="flex items-center justify-between p-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition border border-gray-100 hover:scale-[1.02]"
-          >
-            <div className="flex items-center gap-3 text-purple-600">
-              <FaTicketAlt className="text-xl" />
-              <span className="font-semibold">My Feedbacks</span>
-            </div>
-            <span className="text-gray-400">→</span>
-          </Link>
-        </div>
-
-        {/* Card Grid */}
-        <div className="mt-4">
-          <CardGrid />
-        </div>
-      </div>
+      
     </div>
   );
 }

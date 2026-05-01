@@ -50,17 +50,17 @@ export default function Withdraw() {
   // Reset form on success
   // ===============================
   useEffect(() => {
-    if (status === "succeeded") {
-      setAmount("");
-      setBankName("");
-      setAccountNumber("");
-      setMessage("✅ Withdrawal request sent successfully");
-    }
+  if (status === "succeeded") {
+    setAmount("");
+    setBankName("");
+    setAccountNumber("");
+    setMessage("✅ Withdrawal request sent successfully");
+  }
 
-    if (status === "failed") {
-      setMessage("❌ Withdrawal failed. Try again.");
-    }
-  }, [status]);
+  if (status === "failed") {
+    setMessage(`❌ ${error || "Withdrawal failed"}`);
+  }
+}, [status, error]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
@@ -92,7 +92,7 @@ export default function Withdraw() {
             type="number"
             placeholder="Amount (₦)"
             value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
+            onChange={(e) => setAmount(e.target.value)}
             className="p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-white/40 focus:outline-none focus:ring-2 focus:ring-red-400"
           />
 
