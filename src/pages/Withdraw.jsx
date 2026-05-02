@@ -10,11 +10,12 @@ export default function Withdraw() {
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false); // ✅ NEW
 
   // ===============================
   // Handle Withdraw
   // ===============================
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     setMessage("");
 
     if (!amount || amount <= 0) {
@@ -37,13 +38,21 @@ export default function Withdraw() {
       return setMessage("Enter bank name");
     }
 
-    dispatch(
-      withdrawCoins({
-        amount: Number(amount),
-        accountNumber,
-        bankName,
-      })
-    );
+    setIsSubmitting(true); // 🔥 START loading
+
+    try {
+      await dispatch(
+        withdrawCoins({
+          amount: Number(amount),
+          accountNumber,
+          bankName,
+        })
+      ).unwrap(); // ✅ ensures proper success/failure handling
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false); // 🔥 STOP loading
+    }
   };
 
   // ===============================
@@ -61,6 +70,9 @@ export default function Withdraw() {
       setMessage("❌ Withdrawal failed. Try again.");
     }
   }, [status]);
+
+  // combine redux + local loading (best UX)
+  const isLoading = status === "loading" || isSubmitting;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-6">
@@ -120,10 +132,10 @@ export default function Withdraw() {
           {/* Button */}
           <button
             onClick={handleWithdraw}
-            disabled={status === "loading"}
+            disabled={isLoading}
             className="mt-2 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg shadow-md transition disabled:bg-gray-400"
           >
-            {status === "loading" ? "Processing..." : "Withdraw"}
+            {isLoading ? "Processing..." : "Withdraw"}
           </button>
         </div>
 
