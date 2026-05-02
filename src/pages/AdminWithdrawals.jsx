@@ -1,13 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
-// ===============================
-// AXIOS INSTANCE (CRITICAL FIX)
-// ===============================
-const API = axios.create({
-  baseURL: "https://face-rite.onrender.com", // ✅ FORCE BACKEND
-});
-
 export default function AdminWithdrawals() {
   const [withdrawals, setWithdrawals] = useState([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -20,7 +13,6 @@ export default function AdminWithdrawals() {
   // ===============================
   const getAuthConfig = () => {
     const token = localStorage.getItem("token");
-
     return {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -36,37 +28,24 @@ export default function AdminWithdrawals() {
       setLoading(true);
       setError("");
 
-      const res = await API.get(
+      const res = await axios.get(
         `/api/admin/withdrawals?status=${statusFilter}&search=${search}`,
         getAuthConfig()
       );
 
-      console.log("✅ API RESPONSE:", res.data);
-
       setWithdrawals(res.data.withdrawals || []);
     } catch (err) {
-      console.error("❌ FETCH ERROR:", err);
-      console.log("❌ RESPONSE:", err.response);
-
-      setError(
-        err.response?.data?.message ||
-          "Failed to fetch withdrawals (check API URL)"
-      );
+      console.error("Fetch withdrawals error:", err);
+      setError(err.response?.data?.message || "Failed to fetch withdrawals");
     } finally {
       setLoading(false);
     }
   }, [statusFilter, search]);
 
-  // ===============================
-  // LOAD ON MOUNT
-  // ===============================
   useEffect(() => {
     fetchWithdrawals();
   }, [fetchWithdrawals]);
 
-  // ===============================
-  // SEARCH DEBOUNCE
-  // ===============================
   useEffect(() => {
     const delay = setTimeout(() => {
       fetchWithdrawals();
@@ -80,7 +59,7 @@ export default function AdminWithdrawals() {
   // ===============================
   const approve = async (id) => {
     try {
-      await API.put(
+      await axios.put(
         `/api/admin/withdrawals/approve/${id}`,
         {},
         getAuthConfig()
@@ -88,7 +67,7 @@ export default function AdminWithdrawals() {
 
       fetchWithdrawals();
     } catch (err) {
-      console.error("❌ APPROVE ERROR:", err);
+      console.error(err);
       alert(err.response?.data?.message || "Approval failed");
     }
   };
@@ -98,7 +77,7 @@ export default function AdminWithdrawals() {
     if (!reason) return;
 
     try {
-      await API.put(
+      await axios.put(
         `/api/admin/withdrawals/reject/${id}`,
         { reason },
         getAuthConfig()
@@ -106,7 +85,7 @@ export default function AdminWithdrawals() {
 
       fetchWithdrawals();
     } catch (err) {
-      console.error("❌ REJECT ERROR:", err);
+      console.error(err);
       alert(err.response?.data?.message || "Rejection failed");
     }
   };
