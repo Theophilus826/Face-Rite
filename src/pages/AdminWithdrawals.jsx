@@ -1,6 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
+// ===============================
+// AXIOS INSTANCE (✅ FIXED BACKEND)
+// ===============================
+const API = axios.create({
+  baseURL: "https://swordgame-5.onrender.com", // ✅ CORRECT BACKEND
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
 export default function AdminWithdrawals() {
   const [withdrawals, setWithdrawals] = useState([]);
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -13,6 +23,7 @@ export default function AdminWithdrawals() {
   // ===============================
   const getAuthConfig = () => {
     const token = localStorage.getItem("token");
+
     return {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -28,24 +39,43 @@ export default function AdminWithdrawals() {
       setLoading(true);
       setError("");
 
-      const res = await axios.get(
+      const res = await API.get(
         `/api/admin/withdrawals?status=${statusFilter}&search=${search}`,
         getAuthConfig()
       );
 
+      // 🔥 SAFETY: detect wrong server (HTML instead of JSON)
+      if (typeof res.data === "string") {
+        throw new Error("Wrong API URL (returned HTML instead of JSON)");
+      }
+
+      console.log("✅ API RESPONSE:", res.data);
+
       setWithdrawals(res.data.withdrawals || []);
     } catch (err) {
-      console.error("Fetch withdrawals error:", err);
-      setError(err.response?.data?.message || "Failed to fetch withdrawals");
+      console.error("❌ FETCH ERROR:", err);
+      console.log("❌ RESPONSE:", err.response);
+
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to fetch withdrawals"
+      );
     } finally {
       setLoading(false);
     }
   }, [statusFilter, search]);
 
+  // ===============================
+  // LOAD ON MOUNT
+  // ===============================
   useEffect(() => {
     fetchWithdrawals();
   }, [fetchWithdrawals]);
 
+  // ===============================
+  // SEARCH DEBOUNCE
+  // ===============================
   useEffect(() => {
     const delay = setTimeout(() => {
       fetchWithdrawals();
@@ -59,7 +89,7 @@ export default function AdminWithdrawals() {
   // ===============================
   const approve = async (id) => {
     try {
-      await axios.put(
+      await API.put(
         `/api/admin/withdrawals/approve/${id}`,
         {},
         getAuthConfig()
@@ -67,7 +97,7 @@ export default function AdminWithdrawals() {
 
       fetchWithdrawals();
     } catch (err) {
-      console.error(err);
+      console.error("❌ APPROVE ERROR:", err);
       alert(err.response?.data?.message || "Approval failed");
     }
   };
@@ -77,7 +107,7 @@ export default function AdminWithdrawals() {
     if (!reason) return;
 
     try {
-      await axios.put(
+      await API.put(
         `/api/admin/withdrawals/reject/${id}`,
         { reason },
         getAuthConfig()
@@ -85,7 +115,7 @@ export default function AdminWithdrawals() {
 
       fetchWithdrawals();
     } catch (err) {
-      console.error(err);
+      console.error("❌ REJECT ERROR:", err);
       alert(err.response?.data?.message || "Rejection failed");
     }
   };
