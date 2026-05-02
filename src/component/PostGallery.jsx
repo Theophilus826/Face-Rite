@@ -7,10 +7,12 @@ import { API } from "../features/Api";
 export default function PostGalleryWithUpload({
   postId,
   postOwnerId,
+  token,
   user,
   text = "",
   createdAt,
   mediaFiles = [],
+  comments = [],
 }) {
   const dispatch = useDispatch();
 
