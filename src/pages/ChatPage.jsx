@@ -261,15 +261,15 @@ export default function ChatPage() {
   if (!user) return <div className="text-center mt-10">Login required</div>;
 
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto bg-white">
+    <div className="flex flex-col h-screen max-w-4xl mx-auto bg-transparent">
       {/* USERS */}
-      <div className="flex gap-3 overflow-x-auto p-2 border-b bg-gray-50">
+      <div className="flex gap-3 overflow-x-auto p-2 border-b bg-transparent">
         {users.map((u) => (
           <div
             key={u._id}
             onClick={() => navigate(`/chat/${u._id}`)}
             className={`cursor-pointer p-2 rounded-xl ${
-              u._id === chatUserId ? "bg-blue-100" : ""
+              u._id === chatUserId ? "bg-blue-100/50" : ""
             }`}
           >
             <div className="relative">
@@ -286,7 +286,7 @@ export default function ChatPage() {
                 }`}
               />
             </div>
-            {/* ✅ ADD THIS */}
+
             <p className="text-xs mt-1 text-center truncate w-full">
               {u.name || "User"}
             </p>
@@ -295,7 +295,7 @@ export default function ChatPage() {
       </div>
 
       {/* HEADER */}
-      <div className="px-4 py-2 border-b flex gap-2">
+      <div className="px-4 py-2 border-b flex gap-2 bg-transparent">
         <p className="font-semibold">{selectedUser?.name}</p>
         <span className="text-xs text-gray-500">
           {isTyping ? "typing..." : onlineStatus}
@@ -303,14 +303,11 @@ export default function ChatPage() {
       </div>
 
       {/* MESSAGES */}
-      <div className="flex-1 overflow-y-auto pb-24 flex flex-col gap-2 bg-gray-50">
+      <div className="flex-1 overflow-y-auto pb-24 flex flex-col gap-2 bg-transparent">
         {messages.map((msg) => (
           <div key={msg._id} className="mb-2">
             {msg.type === "voice" && msg.audio?.startsWith("http") ? (
-              <audio controls preload="metadata" className="w-full max-w-xs">
-                <source src={msg.audio} type="audio/webm" />
-                Your browser does not support audio playback.
-              </audio>
+              <audio controls className="w-full max-w-xs" />
             ) : msg.type === "image" && msg.image?.startsWith("http") ? (
               <img
                 src={msg.image}
@@ -319,7 +316,7 @@ export default function ChatPage() {
                 loading="lazy"
               />
             ) : msg.type === "text" ? (
-              <p className="px-3 py-2 rounded bg-gray-100 inline-block">
+              <p className="px-3 py-2 rounded bg-white/20 inline-block text-black">
                 {msg.text}
               </p>
             ) : (
@@ -331,13 +328,13 @@ export default function ChatPage() {
       </div>
 
       {/* INPUT */}
-      <div className="p-2 border-t flex items-center gap-2 pb-24">
+      <div className="p-2 border-t flex items-center gap-2 pb-24 bg-transparent">
         {!recording ? (
           <>
             <input
               value={chatText}
               onChange={(e) => setChatText(e.target.value)}
-              className="flex-1 border p-2 rounded"
+              className="flex-1 border p-2 rounded bg-transparent"
             />
             <button onClick={sendMessage}>Send</button>
             <button onClick={startRecording}>🎤</button>
