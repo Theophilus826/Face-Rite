@@ -14,6 +14,8 @@ export default function PostGalleryWithUpload({
   mediaFiles = [],
   initialLikes = 0,
   initialLoves = 0,
+  initialLiked = false,
+  initialLoved = false,
   comments = [],
 }) {
   const dispatch = useDispatch();
@@ -27,8 +29,8 @@ export default function PostGalleryWithUpload({
   const [liked, setLiked] = useState(false);
   const [loved, setLoved] = useState(false);
 
-  const [animateLike, setAnimateLike] = useState(false);
-  const [animateLove, setAnimateLove] = useState(false);
+  const [liked, setLiked] = useState(initialLiked);
+  const [loved, setLoved] = useState(initialLoved);
 
   const [muted, setMuted] = useState(true);
 
@@ -95,13 +97,15 @@ export default function PostGalleryWithUpload({
           toUserId: postOwnerId,
           coins: type === "like" ? LIKE_COST : LOVE_COST,
           description: `${type.toUpperCase()} reaction`,
-        })
+        }),
       ).unwrap();
 
       // Update counts
       const res = await API.post(`/post/${postId}/react`, { type });
       setLikeCount(res.data.likeCount);
       setLoveCount(res.data.loveCount);
+      setLiked(res.data.liked);
+      setLoved(res.data.loved);
 
       // Animate button & floating emoji
       if (type === "like") {
@@ -359,7 +363,12 @@ export default function PostGalleryWithUpload({
             liked ? "bg-blue-700" : "bg-blue-500"
           } ${animateLike ? "scale-110" : ""}`}
         >
-          👍 {likeCount}
+          👍{" "}
+          {liked
+            ? likeCount > 1
+              ? `Liked by you and ${likeCount - 1} others`
+              : "Liked by you"
+            : `${likeCount} like${likeCount !== 1 ? "s" : ""}`}
         </button>
 
         <button
@@ -368,7 +377,12 @@ export default function PostGalleryWithUpload({
             loved ? "bg-pink-700" : "bg-pink-500"
           } ${animateLove ? "scale-110" : ""}`}
         >
-          ❤️ {loveCount}
+          ❤️{" "}
+          {loved
+            ? loveCount > 1
+              ? `Loved by you and ${loveCount - 1} others`
+              : "Loved by you"
+            : `${loveCount} love${loveCount !== 1 ? "s" : ""}`}
         </button>
       </div>
     </div>
