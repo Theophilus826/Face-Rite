@@ -26,11 +26,11 @@ export default function PostGalleryWithUpload({
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [loveCount, setLoveCount] = useState(initialLoves);
 
-  const [liked, setLiked] = useState(false);
-  const [loved, setLoved] = useState(false);
-
   const [liked, setLiked] = useState(initialLiked);
   const [loved, setLoved] = useState(initialLoved);
+
+  const [animateLike, setAnimateLike] = useState(false);
+  const [animateLove, setAnimateLove] = useState(false);
 
   const [muted, setMuted] = useState(true);
 
