@@ -25,10 +25,10 @@ export const API = axios.create({
 // ===============================
 API.interceptors.request.use(
   (config) => {
-    const user = getStoredUser();
+    const token = localStorage.getItem("token");
 
-    if (user?.token) {
-      config.headers.Authorization = `Bearer ${user.token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
 
     if (import.meta.env.DEV) {
@@ -51,12 +51,11 @@ API.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      console.warn("⛔ Unauthorized – logging out");
-      localStorage.removeItem("user");
+      console.warn("Unauthorized request");
 
-      if (!window.location.pathname.includes("/login")) {
-        window.location.replace("/login");
-      }
+      // only clear, DO NOT reload immediately
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
     }
 
     return Promise.reject(error);
@@ -75,8 +74,8 @@ export const uploadMedia = async (postId, file) => {
   const fileType = file.type.startsWith("image")
     ? "image"
     : file.type.startsWith("video")
-    ? "video"
-    : null;
+      ? "video"
+      : null;
 
   if (!fileType) throw new Error("Unsupported file type");
 
