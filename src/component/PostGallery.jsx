@@ -356,33 +356,41 @@ export default function PostGalleryWithUpload({
 
       {/* ================= REACTIONS ================= */}
 
-      <div className="flex gap-4 mt-4 flex-wrap">
+      <div className="flex gap-3 mt-3 flex-wrap">
+        {/* 👍 LIKE */}
         <button
           onClick={() => handleReaction("like")}
-          className={`px-4 py-2 rounded-xl text-white ${
-            liked ? "bg-blue-700" : "bg-blue-500"
-          } ${animateLike ? "scale-110" : ""}`}
+          className={`flex items-center gap-1 px-3 py-1 text-xs rounded-full font-medium transition-all duration-200 shadow-sm
+      ${
+        liked
+          ? "bg-gradient-to-r from-blue-500 to-blue-700 text-white scale-105"
+          : "bg-blue-100 text-blue-600 hover:bg-blue-200"
+      }
+      ${animateLike ? "scale-125" : ""}
+    `}
         >
-          👍{" "}
-          {liked
-            ? likeCount > 1
-              ? `Liked by you and ${likeCount - 1} others`
-              : "Liked by you"
-            : `${likeCount} like${likeCount !== 1 ? "s" : ""}`}
+          👍
+          <span>
+            {liked ? (likeCount > 1 ? `${likeCount}` : "You") : likeCount}
+          </span>
         </button>
 
+        {/* ❤️ LOVE */}
         <button
           onClick={() => handleReaction("love")}
-          className={`px-4 py-2 rounded-xl text-white ${
-            loved ? "bg-pink-700" : "bg-pink-500"
-          } ${animateLove ? "scale-110" : ""}`}
+          className={`flex items-center gap-1 px-3 py-1 text-xs rounded-full font-medium transition-all duration-200 shadow-sm
+      ${
+        loved
+          ? "bg-gradient-to-r from-pink-500 to-red-500 text-white scale-105"
+          : "bg-pink-100 text-pink-600 hover:bg-pink-200"
+      }
+      ${animateLove ? "scale-125" : ""}
+    `}
         >
-          ❤️{" "}
-          {loved
-            ? loveCount > 1
-              ? `Loved by you and ${loveCount - 1} others`
-              : "Loved by you"
-            : `${loveCount} love${loveCount !== 1 ? "s" : ""}`}
+          ❤️
+          <span>
+            {loved ? (loveCount > 1 ? `${loveCount}` : "You") : loveCount}
+          </span>
         </button>
       </div>
     </div>
