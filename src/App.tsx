@@ -39,6 +39,8 @@ import GroupChatPage from "./pages/GroupChatPage";
 import PostComments, { type CommentType } from "./pages/PostComments";
 import AdminDeposit from "./pages/AdminDeposit";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
+import CreateGroup from "./pages/CreateGroup";
+
 // Components
 import Navbar from "./component/Navbar";
 import CardGrid from "./component/CardGrid";
@@ -281,7 +283,6 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          
 
           <Route
             path="/chat/:chatUserId"
@@ -291,10 +292,22 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/group/:groupId"
-            element={<ProtectedRoute><GroupChatPage /></ProtectedRoute>}
+            element={
+              <ProtectedRoute>
+                <GroupChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/groups/create"
+            element={
+              <ProtectedRoute>
+                <CreateGroup />
+              </ProtectedRoute>
+            }
           />
 
           {/* ================= ADMIN ================= */}
