@@ -281,16 +281,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          {/* ================= GROUP CHAT ================= */}
-
-          <Route
-            path="/group/:groupId"
-            element={
-              <ProtectedRoute>
-                <GroupChatPage />
-              </ProtectedRoute>
-            }
-          />
+          
 
           <Route
             path="/chat/:chatUserId"
@@ -299,6 +290,11 @@ function AppContent() {
                 <ChatPage />
               </ProtectedRoute>
             }
+          />
+          
+          <Route
+            path="/group/:groupId"
+            element={<ProtectedRoute><GroupChatPage /></ProtectedRoute>}
           />
 
           {/* ================= ADMIN ================= */}
