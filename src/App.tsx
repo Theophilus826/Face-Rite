@@ -35,6 +35,7 @@ import DepositPanel from "./pages/DepositPanel";
 import Withdraw from "./pages/Withdraw";
 import Gemes from "./pages/Gemes";
 import ChatPage from "./pages/ChatPage";
+import GroupChatPage from "./pages/GroupChatPage";
 import PostComments, { type CommentType } from "./pages/PostComments";
 import AdminDeposit from "./pages/AdminDeposit";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
@@ -136,15 +137,13 @@ function AppContent() {
 
           <Route
             path="/login"
-            element={
-              user?.token ? <Navigate to="/home" replace /> : <Login />
-            }
+            element={user?.token ? <Navigate to="/home" replace /> : <Login />}
           />
 
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
-          <Route path="/host-game" element={<HostGame/>} />
+          <Route path="/host-game" element={<HostGame />} />
 
           {/* ================= PROTECTED ================= */}
 
@@ -282,6 +281,16 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          {/* ================= GROUP CHAT ================= */}
+
+          <Route
+            path="/group/:groupId"
+            element={
+              <ProtectedRoute>
+                <GroupChatPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/chat/:chatUserId"
@@ -300,8 +309,8 @@ function AppContent() {
               <Route path="monitor" element={<AdminMonitor />} />
               <Route path="credit-coins" element={<AdminCreditCoins />} />
               <Route path="carousel-upload" element={<CarouselUploader />} />
-              <Route path="deposits" element={<AdminDeposit/>} />
-              <Route path="withdraw" element={<AdminWithdrawals/>} />
+              <Route path="deposits" element={<AdminDeposit />} />
+              <Route path="withdraw" element={<AdminWithdrawals />} />
 
               {/* ⚡ Lazy works safely here now */}
               <Route path="host-game" element={<HostGame />} />
