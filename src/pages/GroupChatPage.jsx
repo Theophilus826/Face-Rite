@@ -15,6 +15,11 @@ export default function GroupChatPage() {
   const [typingUser, setTypingUser] = useState(null);
   const [onlineMembers, setOnlineMembers] = useState([]);
 
+  /* USERS (FOR ADD MEMBERS) */
+  const [users, setUsers] = useState([]);
+  const [showAddMembers, setShowAddMembers] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+
   const esRef = useRef(null);
   const bottomRef = useRef(null);
 
@@ -26,6 +31,15 @@ export default function GroupChatPage() {
       .then((res) => setGroup(res.data.group))
       .catch(() => toast.error("Failed to load group"));
   }, [groupId]);
+
+  /* ================= LOAD USERS ================= */
+  useEffect(() => {
+    if (!showAddMembers) return;
+
+    API.get("/users")
+      .then((res) => setUsers(res.data.users || []))
+      .catch(() => toast.error("Failed to load users"));
+  }, [showAddMembers]);
 
   /* ================= SSE ================= */
   useEffect(() => {
@@ -63,49 +77,13 @@ export default function GroupChatPage() {
           setOnlineMembers(data.members || []);
           break;
 
-        case "group_event":
-          handleGroupEvent(data);
-          break;
-
         default:
           break;
       }
     };
 
-    es.onerror = () => toast.error("Connection lost");
-
     return () => es.close();
   }, [user, groupId]);
-
-  /* ================= GROUP EVENTS ================= */
-  const handleGroupEvent = (data) => {
-    switch (data.event) {
-      case "member_added":
-        setGroup((prev) => ({
-          ...prev,
-          members: [...prev.members, { user: data.memberId }],
-        }));
-        break;
-
-      case "member_removed":
-      case "member_left":
-        setGroup((prev) => ({
-          ...prev,
-          members: prev.members.filter(
-            (m) => (m.user._id || m.user) !== (data.memberId || data.userId)
-          ),
-        }));
-        break;
-
-      case "group_deleted":
-        toast.error("Group deleted");
-        navigate("/groups");
-        break;
-
-      default:
-        break;
-    }
-  };
 
   /* ================= AUTO SCROLL ================= */
   useEffect(() => {
@@ -120,7 +98,6 @@ export default function GroupChatPage() {
       _id: Date.now(),
       fromUser: { _id: user._id, name: user.name },
       text,
-      type: "text",
     };
 
     setMessages((prev) => [...prev, temp]);
@@ -133,19 +110,54 @@ export default function GroupChatPage() {
     }
   };
 
+  /* ================= ADD MEMBERS ================= */
+  const toggleUser = (u) => {
+    setSelectedUsers((prev) =>
+      prev.find((x) => x._id === u._id)
+        ? prev.filter((x) => x._id !== u._id)
+        : [...prev, u]
+    );
+  };
+
+  const addMembers = async () => {
+    if (!selectedUsers.length) {
+      return toast.error("Select users first");
+    }
+
+    try {
+      await API.post(`/group/${groupId}/members`, {
+        members: selectedUsers.map((u) => u._id),
+      });
+
+      toast.success("Members added");
+
+      setShowAddMembers(false);
+      setSelectedUsers([]);
+    } catch {
+      toast.error("Failed to add members");
+    }
+  };
+
   if (!group) return <div className="p-4">Loading group...</div>;
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
 
       {/* HEADER */}
-      <div className="p-3 bg-white border-b flex justify-between">
+      <div className="p-3 bg-white border-b flex justify-between items-center">
         <div>
           <h2 className="font-semibold">{group.name}</h2>
           <p className="text-xs text-gray-500">
             {group.members?.length} members • {onlineMembers.length} online
           </p>
         </div>
+
+        <button
+          onClick={() => setShowAddMembers(true)}
+          className="bg-green-500 text-white px-3 py-1 rounded text-sm"
+        >
+          + Add Members
+        </button>
       </div>
 
       {/* MESSAGES */}
@@ -190,6 +202,50 @@ export default function GroupChatPage() {
           Send
         </button>
       </div>
+
+      {/* ADD MEMBERS MODAL */}
+      {showAddMembers && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="bg-white w-96 p-4 rounded space-y-3">
+
+            <h3 className="font-semibold">Add Members</h3>
+
+            <div className="max-h-60 overflow-y-auto border rounded">
+              {users.map((u) => (
+                <div
+                  key={u._id}
+                  onClick={() => toggleUser(u)}
+                  className="flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-100"
+                >
+                  <input
+                    type="checkbox"
+                    readOnly
+                    checked={selectedUsers.some((s) => s._id === u._id)}
+                  />
+                  <span>{u.name}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowAddMembers(false)}
+                className="px-3 py-1 border rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={addMembers}
+                className="bg-blue-500 text-white px-3 py-1 rounded"
+              >
+                Add
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

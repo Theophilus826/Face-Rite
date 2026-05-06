@@ -79,17 +79,17 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen">
+    <div className="flex flex-col md:flex-row h-screen bg-transparent text-white">
 
       {/* SIDEBAR */}
-      <div className="w-full md:w-1/3 border-r bg-white">
+      <div className="w-full md:w-1/3 backdrop-blur-xl bg-white/10 border-r border-white/10">
 
-        <div className="p-3 flex justify-between items-center border-b">
-          <h2 className="font-bold">Chats</h2>
+        <div className="p-3 flex justify-between items-center border-b border-white/10">
+          <h2 className="font-bold text-white">Chats</h2>
 
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-green-500 text-white px-3 py-1 rounded text-sm"
+            className="bg-green-500/80 hover:bg-green-500 text-white px-3 py-1 rounded text-sm"
           >
             + Group
           </button>
@@ -100,7 +100,7 @@ export default function ChatPage() {
             <div
               key={u._id}
               onClick={() => navigate(`/chat/${u._id}`)}
-              className="p-3 hover:bg-gray-100 cursor-pointer border-b"
+              className="p-3 cursor-pointer border-b border-white/10 hover:bg-white/10 transition"
             >
               {u.name}
             </div>
@@ -109,15 +109,15 @@ export default function ChatPage() {
       </div>
 
       {/* CHAT AREA */}
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-gray-300">
         Select a chat
       </div>
 
       {/* MODAL */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-3">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-3">
 
-          <div className="bg-white w-full max-w-sm md:max-w-md rounded-lg p-4 space-y-3">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 text-white w-full max-w-sm md:max-w-md rounded-xl p-4 space-y-3">
 
             <h3 className="font-semibold text-lg">Create Group</h3>
 
@@ -125,23 +125,23 @@ export default function ChatPage() {
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Group name"
-              className="w-full border p-2 rounded"
+              className="w-full border border-white/20 bg-transparent p-2 rounded outline-none"
             />
 
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search users"
-              className="w-full border p-2 rounded"
+              className="w-full border border-white/20 bg-transparent p-2 rounded outline-none"
             />
 
             {/* RESULTS */}
-            <div className="max-h-40 overflow-y-auto border rounded">
+            <div className="max-h-40 overflow-y-auto border border-white/20 rounded">
               {results.map((u) => (
                 <div
                   key={u._id}
                   onClick={() => toggleUser(u)}
-                  className="flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-100"
+                  className="flex items-center gap-2 p-2 cursor-pointer hover:bg-white/10"
                 >
                   <input
                     type="checkbox"
@@ -158,7 +158,7 @@ export default function ChatPage() {
               {selectedUsers.map((u) => (
                 <span
                   key={u._id}
-                  className="text-xs bg-blue-100 px-2 py-1 rounded"
+                  className="text-xs bg-blue-500/30 px-2 py-1 rounded"
                 >
                   {u.name}
                 </span>
@@ -169,14 +169,14 @@ export default function ChatPage() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowCreate(false)}
-                className="px-3 py-1 border rounded"
+                className="px-3 py-1 border border-white/20 rounded"
               >
                 Cancel
               </button>
 
               <button
                 onClick={createGroup}
-                className="bg-blue-500 text-white px-3 py-1 rounded"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
               >
                 Create
               </button>
