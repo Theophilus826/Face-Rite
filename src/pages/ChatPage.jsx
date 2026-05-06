@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { API } from "../features/Api";
@@ -15,7 +15,6 @@ export default function ChatPage() {
 
   const [users, setUsers] = useState([]);
 
-  /* GROUP MODAL */
   const [showCreate, setShowCreate] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [search, setSearch] = useState("");
@@ -36,14 +35,17 @@ export default function ChatPage() {
     if (!search.trim()) return setResults([]);
 
     const t = setTimeout(async () => {
-      const res = await API.get(`/users/search?q=${search}`);
-      setResults(res.data);
+      try {
+        const res = await API.get(`/users/search?q=${search}`);
+        setResults(res.data);
+      } catch {
+        toast.error("Search failed");
+      }
     }, 300);
 
     return () => clearTimeout(t);
   }, [search]);
 
-  /* ================= TOGGLE ================= */
   const toggleUser = (u) => {
     setSelectedUsers((prev) =>
       prev.find((x) => x._id === u._id)
@@ -52,13 +54,12 @@ export default function ChatPage() {
     );
   };
 
-  /* ================= CREATE GROUP ================= */
   const createGroup = async () => {
     if (!groupName.trim()) return toast.error("Group name required");
     if (!selectedUsers.length) return toast.error("Select members");
 
     try {
-      const res = await API.post("/group/create", {
+      const res = await API.post("/group", {
         name: groupName,
         members: selectedUsers.map((u) => u._id),
       });
@@ -77,77 +78,106 @@ export default function ChatPage() {
     }
   };
 
-  /* ================= UI ================= */
   return (
-    <div className="flex h-screen">
+    <div className="flex flex-col md:flex-row h-screen">
 
-      {/* USERS */}
-      <div className="w-1/3 border-r">
-        <div className="p-3 flex justify-between">
+      {/* SIDEBAR */}
+      <div className="w-full md:w-1/3 border-r bg-white">
+
+        <div className="p-3 flex justify-between items-center border-b">
           <h2 className="font-bold">Chats</h2>
 
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-green-500 text-white px-3 py-1 rounded"
+            className="bg-green-500 text-white px-3 py-1 rounded text-sm"
           >
             + Group
           </button>
         </div>
 
-        {users.map((u) => (
-          <div
-            key={u._id}
-            onClick={() => navigate(`/chat/${u._id}`)}
-            className="p-3 hover:bg-gray-100 cursor-pointer"
-          >
-            {u.name}
-          </div>
-        ))}
+        <div className="overflow-y-auto h-[calc(100vh-60px)]">
+          {users.map((u) => (
+            <div
+              key={u._id}
+              onClick={() => navigate(`/chat/${u._id}`)}
+              className="p-3 hover:bg-gray-100 cursor-pointer border-b"
+            >
+              {u.name}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* CHAT AREA */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center text-gray-500">
         Select a chat
       </div>
 
       {/* MODAL */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-          <div className="bg-white p-4 w-96 rounded space-y-3">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-3">
 
-            <h3>Create Group</h3>
+          <div className="bg-white w-full max-w-sm md:max-w-md rounded-lg p-4 space-y-3">
+
+            <h3 className="font-semibold text-lg">Create Group</h3>
 
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Group name"
-              className="w-full border p-2"
+              className="w-full border p-2 rounded"
             />
 
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search users"
-              className="w-full border p-2"
+              className="w-full border p-2 rounded"
             />
 
-            <div className="max-h-40 overflow-y-auto">
+            {/* RESULTS */}
+            <div className="max-h-40 overflow-y-auto border rounded">
               {results.map((u) => (
                 <div
                   key={u._id}
                   onClick={() => toggleUser(u)}
-                  className="p-2 cursor-pointer hover:bg-gray-100"
+                  className="flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-100"
                 >
-                  <input type="checkbox" readOnly
+                  <input
+                    type="checkbox"
+                    readOnly
                     checked={selectedUsers.some((s) => s._id === u._id)}
-                  /> {u.name}
+                  />
+                  <span className="text-sm">{u.name}</span>
                 </div>
               ))}
             </div>
 
+            {/* SELECTED */}
+            <div className="flex flex-wrap gap-1">
+              {selectedUsers.map((u) => (
+                <span
+                  key={u._id}
+                  className="text-xs bg-blue-100 px-2 py-1 rounded"
+                >
+                  {u.name}
+                </span>
+              ))}
+            </div>
+
+            {/* ACTIONS */}
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowCreate(false)}>Cancel</button>
-              <button onClick={createGroup} className="bg-blue-500 text-white px-3">
+              <button
+                onClick={() => setShowCreate(false)}
+                className="px-3 py-1 border rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={createGroup}
+                className="bg-blue-500 text-white px-3 py-1 rounded"
+              >
                 Create
               </button>
             </div>
