@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { useSelector } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { API } from "../features/Api";
 import { toast } from "react-toastify";
 
 export default function GroupChatPage() {
   const { groupId } = useParams();
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
   const [group, setGroup] = useState(null);
@@ -26,7 +27,7 @@ export default function GroupChatPage() {
       .catch(() => toast.error("Failed to load group"));
   }, [groupId]);
 
-  /* ================= SSE STREAM ================= */
+  /* ================= SSE ================= */
   useEffect(() => {
     if (!user || !groupId) return;
 
@@ -42,49 +43,28 @@ export default function GroupChatPage() {
       const data = JSON.parse(e.data);
 
       switch (data.type) {
-
-        /* ================= INIT ================= */
         case "init":
           setMessages(data.messages || []);
           break;
 
-        /* ================= NEW MESSAGE ================= */
         case "new_message":
           setMessages((prev) => [...prev, data.message]);
           break;
 
-        /* ================= TYPING ================= */
         case "typing":
-          setTypingUser(data.fromUser);
+          setTypingUser(data.fromUser?.name || "Someone");
           break;
 
         case "stop_typing":
           setTypingUser(null);
           break;
 
-        /* ================= ONLINE MEMBERS ================= */
         case "online_members":
           setOnlineMembers(data.members || []);
           break;
 
-        /* ================= GROUP EVENTS ================= */
         case "group_event":
-          if (data.event === "member_added") {
-            setGroup((prev) => ({
-              ...prev,
-              members: [...prev.members, { user: data.memberId }],
-            }));
-          }
-
-          if (data.event === "member_removed") {
-            setGroup((prev) => ({
-              ...prev,
-              members: prev.members.filter(
-                (m) => m.user._id !== data.memberId
-              ),
-            }));
-          }
-
+          handleGroupEvent(data);
           break;
 
         default:
@@ -92,19 +72,47 @@ export default function GroupChatPage() {
       }
     };
 
-    es.onerror = () => {
-      toast.error("Connection lost");
-    };
+    es.onerror = () => toast.error("Connection lost");
 
     return () => es.close();
   }, [user, groupId]);
+
+  /* ================= GROUP EVENTS ================= */
+  const handleGroupEvent = (data) => {
+    switch (data.event) {
+      case "member_added":
+        setGroup((prev) => ({
+          ...prev,
+          members: [...prev.members, { user: data.memberId }],
+        }));
+        break;
+
+      case "member_removed":
+      case "member_left":
+        setGroup((prev) => ({
+          ...prev,
+          members: prev.members.filter(
+            (m) => (m.user._id || m.user) !== (data.memberId || data.userId)
+          ),
+        }));
+        break;
+
+      case "group_deleted":
+        toast.error("Group deleted");
+        navigate("/groups");
+        break;
+
+      default:
+        break;
+    }
+  };
 
   /* ================= AUTO SCROLL ================= */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* ================= SEND TEXT ================= */
+  /* ================= SEND MESSAGE ================= */
   const sendMessage = async () => {
     if (!text.trim()) return;
 
@@ -113,65 +121,18 @@ export default function GroupChatPage() {
       fromUser: { _id: user._id, name: user.name },
       text,
       type: "text",
-      createdAt: new Date(),
     };
 
     setMessages((prev) => [...prev, temp]);
     setText("");
 
     try {
-      await API.post("/group/send-message", {
-        groupId,
-        text,
-      });
+      await API.post("/group/send-message", { groupId, text });
     } catch {
       toast.error("Failed to send");
     }
   };
 
-  /* ================= SEND IMAGE ================= */
-  const sendImage = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const form = new FormData();
-    form.append("image", file);
-    form.append("groupId", groupId);
-
-    try {
-      await API.post("/group/send-image", form);
-    } catch {
-      toast.error("Image failed");
-    }
-  };
-
-  /* ================= SEND VOICE ================= */
-  const sendVoice = async (blob) => {
-    const form = new FormData();
-    form.append("audio", blob);
-    form.append("groupId", groupId);
-
-    try {
-      await API.post("/group/send-voice", form);
-    } catch {
-      toast.error("Voice failed");
-    }
-  };
-
-  /* ================= TYPING ================= */
-  const handleTyping = async (value) => {
-    setText(value);
-
-    try {
-      await API.post("/group/typing", { groupId });
-
-      setTimeout(async () => {
-        await API.post("/group/stop-typing", { groupId });
-      }, 800);
-    } catch {}
-  };
-
-  /* ================= UI ================= */
   if (!group) return <div className="p-4">Loading group...</div>;
 
   return (
@@ -182,7 +143,7 @@ export default function GroupChatPage() {
         <div>
           <h2 className="font-semibold">{group.name}</h2>
           <p className="text-xs text-gray-500">
-            {group.members?.length} members • {onlineMembers.length} online 🟢
+            {group.members?.length} members • {onlineMembers.length} online
           </p>
         </div>
       </div>
@@ -193,72 +154,33 @@ export default function GroupChatPage() {
           const isMe = msg.fromUser?._id === user._id;
 
           return (
-            <div
-              key={msg._id}
-              className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`px-3 py-2 rounded-lg max-w-xs text-sm ${
-                  isMe ? "bg-blue-500 text-white" : "bg-white border"
-                }`}
-              >
-
-                {/* NAME */}
+            <div key={msg._id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+              <div className={`px-3 py-2 rounded max-w-xs text-sm ${
+                isMe ? "bg-blue-500 text-white" : "bg-white border"
+              }`}>
                 {!isMe && (
-                  <p className="text-xs font-semibold mb-1">
-                    {msg.fromUser?.name}
-                  </p>
+                  <p className="text-xs font-semibold">{msg.fromUser?.name}</p>
                 )}
-
-                {/* TEXT */}
-                {msg.type === "text" && msg.text}
-
-                {/* IMAGE */}
-                {msg.type === "image" && (
-                  <img
-                    src={msg.image}
-                    className="rounded max-w-xs"
-                    alt="img"
-                  />
-                )}
-
-                {/* VOICE */}
-                {msg.type === "voice" && (
-                  <audio controls src={msg.audio} />
-                )}
-
-                {/* TICKS */}
-                {isMe && (
-                  <div className="text-[10px] mt-1 opacity-70">
-                    {msg.seenBy?.length > 0 ? "✔✔" : "✔"}
-                  </div>
-                )}
+                {msg.text}
               </div>
             </div>
           );
         })}
 
-        {/* TYPING */}
         {typingUser && (
-          <p className="text-xs text-gray-500">
-            Someone is typing...
-          </p>
+          <p className="text-xs text-gray-500">{typingUser} is typing...</p>
         )}
 
         <div ref={bottomRef} />
       </div>
 
       {/* INPUT */}
-      <div className="p-3 bg-white border-t flex gap-2 items-center">
-
-        {/* IMAGE UPLOAD */}
-        <input type="file" onChange={sendImage} />
-
+      <div className="p-3 border-t flex gap-2 bg-white">
         <input
           value={text}
-          onChange={(e) => handleTyping(e.target.value)}
-          placeholder="Type message..."
+          onChange={(e) => setText(e.target.value)}
           className="flex-1 border rounded px-3 py-2"
+          placeholder="Type message..."
         />
 
         <button
@@ -268,6 +190,7 @@ export default function GroupChatPage() {
           Send
         </button>
       </div>
+
     </div>
   );
 }

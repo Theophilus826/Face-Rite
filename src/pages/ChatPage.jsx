@@ -11,26 +11,18 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
-  const isGroupChat = Boolean(groupId);
+  if (groupId) return <GroupChatPage />;
 
-  /* ================= GROUP CHAT MODE ================= */
-  if (isGroupChat) {
-    return <GroupChatPage />;
-  }
-
-  /* ================= DM STATE ================= */
   const [users, setUsers] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [chatText, setChatText] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [onlineStatus, setOnlineStatus] = useState("offline");
 
-  const eventSourceRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  /* GROUP MODAL */
+  const [showCreate, setShowCreate] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
 
-  const selectedUser = users.find((u) => u._id === chatUserId);
-
-  /* ================= FETCH USERS ================= */
+  /* ================= USERS ================= */
   useEffect(() => {
     if (!user) return;
 
@@ -39,180 +31,131 @@ export default function ChatPage() {
       .catch(() => toast.error("Failed to load users"));
   }, [user]);
 
-  /* ================= CHAT STREAM ================= */
+  /* ================= SEARCH ================= */
   useEffect(() => {
-    if (!user || !chatUserId) return;
+    if (!search.trim()) return setResults([]);
 
-    eventSourceRef.current?.close();
+    const t = setTimeout(async () => {
+      const res = await API.get(`/users/search?q=${search}`);
+      setResults(res.data);
+    }, 300);
 
-    const es = new EventSource(
-      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`
+    return () => clearTimeout(t);
+  }, [search]);
+
+  /* ================= TOGGLE ================= */
+  const toggleUser = (u) => {
+    setSelectedUsers((prev) =>
+      prev.find((x) => x._id === u._id)
+        ? prev.filter((x) => x._id !== u._id)
+        : [...prev, u]
     );
+  };
 
-    eventSourceRef.current = es;
-
-    es.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-
-      switch (data.type) {
-        case "init":
-          setMessages(data.messages || []);
-          break;
-
-        case "new_message":
-          setMessages((prev) => [...prev, data.message]);
-          break;
-
-        case "typing":
-          setIsTyping(true);
-          break;
-
-        case "stop_typing":
-          setIsTyping(false);
-          break;
-
-        case "status":
-          if (data.userId === chatUserId) {
-            setOnlineStatus(data.status);
-          }
-          break;
-
-        default:
-          break;
-      }
-    };
-
-    return () => es.close();
-  }, [user, chatUserId]);
-
-  /* ================= AUTO SCROLL ================= */
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  /* ================= SEND MESSAGE ================= */
-  const sendMessage = async () => {
-    if (!chatText.trim()) return;
-
-    const text = chatText.trim();
-    setChatText("");
-
-    const temp = {
-      _id: Date.now(),
-      fromUser: user._id,
-      text,
-      type: "text",
-    };
-
-    setMessages((prev) => [...prev, temp]);
+  /* ================= CREATE GROUP ================= */
+  const createGroup = async () => {
+    if (!groupName.trim()) return toast.error("Group name required");
+    if (!selectedUsers.length) return toast.error("Select members");
 
     try {
-      await API.post("/chat/messages", {
-        toUserId: chatUserId,
-        text,
+      const res = await API.post("/group/create", {
+        name: groupName,
+        members: selectedUsers.map((u) => u._id),
       });
+
+      toast.success("Group created");
+
+      setShowCreate(false);
+      setGroupName("");
+      setSelectedUsers([]);
+      setSearch("");
+      setResults([]);
+
+      navigate(`/group/${res.data.group._id}`);
     } catch {
-      toast.error("Send failed");
+      toast.error("Failed to create group");
     }
   };
 
-  if (!user) return <div className="p-4">Login required</div>;
-
   /* ================= UI ================= */
   return (
-    <div className="flex flex-col h-screen bg-transparent">
+    <div className="flex h-screen">
 
-      {/* HEADER ACTIONS */}
-      <div className="flex justify-between items-center p-3 border-b">
-        <h2 className="font-bold">Chats</h2>
+      {/* USERS */}
+      <div className="w-1/3 border-r">
+        <div className="p-3 flex justify-between">
+          <h2 className="font-bold">Chats</h2>
 
-        <button
-          onClick={() => navigate("/groups/create")}
-          className="px-3 py-1 bg-green-500 text-white rounded"
-        >
-          + Create Group
-        </button>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* USERS LIST */}
-        <div className="w-1/3 border-r overflow-y-auto">
-          <ul className="divide-y">
-
-            {users.map((u) => (
-              <li
-                key={u._id}
-                onClick={() => navigate(`/chat/${u._id}`)}
-                className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-100 ${
-                  chatUserId === u._id ? "bg-gray-200" : ""
-                }`}
-              >
-                <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center">
-                  {u.name?.charAt(0)}
-                </div>
-
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{u.name}</p>
-                  <p className="text-xs text-gray-500">{u.email}</p>
-                </div>
-
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    u.status === "online" ? "bg-green-500" : "bg-gray-400"
-                  }`}
-                />
-              </li>
-            ))}
-
-          </ul>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="bg-green-500 text-white px-3 py-1 rounded"
+          >
+            + Group
+          </button>
         </div>
 
-        {/* CHAT AREA */}
-        <div className="flex-1 flex flex-col">
-
-          {/* CHAT HEADER */}
-          <div className="p-3 border-b">
-            <p className="font-semibold">
-              {selectedUser?.name || "Select a user"}
-            </p>
-            <span className="text-xs text-gray-500">
-              {isTyping ? "typing..." : onlineStatus}
-            </span>
+        {users.map((u) => (
+          <div
+            key={u._id}
+            onClick={() => navigate(`/chat/${u._id}`)}
+            className="p-3 hover:bg-gray-100 cursor-pointer"
+          >
+            {u.name}
           </div>
+        ))}
+      </div>
 
-          {/* MESSAGES */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {messages.map((msg) => (
-              <div key={msg._id} className="text-sm">
-                <p className="inline-block px-3 py-2 rounded bg-white/20">
-                  {msg.text}
-                </p>
-              </div>
-            ))}
+      {/* CHAT AREA */}
+      <div className="flex-1 flex items-center justify-center">
+        Select a chat
+      </div>
 
-            <div ref={messagesEndRef} />
-          </div>
+      {/* MODAL */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="bg-white p-4 w-96 rounded space-y-3">
 
-          {/* INPUT */}
-          <div className="p-3 border-t flex gap-2">
+            <h3>Create Group</h3>
+
             <input
-              value={chatText}
-              onChange={(e) => setChatText(e.target.value)}
-              className="flex-1 border p-2 rounded"
-              placeholder="Type message..."
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder="Group name"
+              className="w-full border p-2"
             />
 
-            <button
-              onClick={sendMessage}
-              className="px-4 bg-blue-500 text-white rounded"
-            >
-              Send
-            </button>
-          </div>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search users"
+              className="w-full border p-2"
+            />
 
+            <div className="max-h-40 overflow-y-auto">
+              {results.map((u) => (
+                <div
+                  key={u._id}
+                  onClick={() => toggleUser(u)}
+                  className="p-2 cursor-pointer hover:bg-gray-100"
+                >
+                  <input type="checkbox" readOnly
+                    checked={selectedUsers.some((s) => s._id === u._id)}
+                  /> {u.name}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowCreate(false)}>Cancel</button>
+              <button onClick={createGroup} className="bg-blue-500 text-white px-3">
+                Create
+              </button>
+            </div>
+
+          </div>
         </div>
-      </div>
+      )}
+
     </div>
   );
 }
