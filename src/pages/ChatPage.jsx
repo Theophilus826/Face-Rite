@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { API } from "../features/Api";
@@ -15,11 +15,9 @@ export default function ChatPage() {
 
   const [users, setUsers] = useState([]);
 
-  // group modal
   const [showCreate, setShowCreate] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
 
   /* ================= LOAD USERS ================= */
@@ -27,30 +25,17 @@ export default function ChatPage() {
     if (!user) return;
 
     API.get("/users")
-      .then(({ data }) => {
-        setUsers(data.users || []);
-        setResults(data.users || []); // default list
-      })
+      .then(({ data }) => setUsers(data.users || []))
       .catch(() => toast.error("Failed to load users"));
   }, [user]);
 
-  /* ================= SEARCH USERS ================= */
-  useEffect(() => {
-    if (!search.trim()) {
-      setResults(users);
-      return;
-    }
+  /* ================= LOCAL SEARCH (NO BACKEND CALL) ================= */
+  const filteredUsers = useMemo(() => {
+    if (!search.trim()) return users;
 
-    const timer = setTimeout(async () => {
-      try {
-        const res = await API.get(`/users/search?q=${search}`);
-        setResults(res.data.users || []);
-      } catch {
-        toast.error("Search failed");
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
+    return users.filter((u) =>
+      u.name?.toLowerCase().includes(search.toLowerCase())
+    );
   }, [search, users]);
 
   /* ================= TOGGLE USER ================= */
@@ -81,12 +66,11 @@ export default function ChatPage() {
       setSearch("");
 
       navigate(`/group/${res.data.group._id}`);
-    } catch {
+    } catch (err) {
       toast.error("Failed to create group");
     }
   };
 
-  /* ================= UI ================= */
   return (
     <div className="flex flex-col md:flex-row h-screen bg-transparent text-white">
 
@@ -98,15 +82,25 @@ export default function ChatPage() {
 
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-green-500/80 hover:bg-green-500 text-white px-3 py-1 rounded text-sm"
+            className="bg-green-500/80 hover:bg-green-500 px-3 py-1 rounded text-sm"
           >
             + Group
           </button>
         </div>
 
-        {/* USERS */}
-        <div className="overflow-y-auto h-[calc(100vh-60px)]">
-          {users.map((u) => (
+        {/* SEARCH INPUT */}
+        <div className="p-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search users..."
+            className="w-full p-2 rounded bg-white/10 border border-white/10 outline-none"
+          />
+        </div>
+
+        {/* USERS LIST */}
+        <div className="overflow-y-auto h-[calc(100vh-120px)]">
+          {filteredUsers.map((u) => (
             <div
               key={u._id}
               onClick={() => navigate(`/chat/${u._id}`)}
@@ -131,25 +125,16 @@ export default function ChatPage() {
 
             <h3 className="font-semibold text-lg">Create Group</h3>
 
-            {/* GROUP NAME */}
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Group name"
-              className="w-full border border-white/20 bg-transparent p-2 rounded"
+              className="w-full p-2 rounded bg-transparent border border-white/20 outline-none"
             />
 
-            {/* SEARCH */}
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search users"
-              className="w-full border border-white/20 bg-transparent p-2 rounded"
-            />
-
-            {/* RESULTS */}
-            <div className="max-h-40 overflow-y-auto border border-white/20 rounded">
-              {results.map((u) => (
+            {/* USER PICKER */}
+            <div className="max-h-48 overflow-y-auto border border-white/20 rounded">
+              {users.map((u) => (
                 <div
                   key={u._id}
                   onClick={() => toggleUser(u)}
@@ -165,7 +150,7 @@ export default function ChatPage() {
               ))}
             </div>
 
-            {/* SELECTED */}
+            {/* SELECTED USERS */}
             <div className="flex flex-wrap gap-1">
               {selectedUsers.map((u) => (
                 <span
@@ -188,7 +173,7 @@ export default function ChatPage() {
 
               <button
                 onClick={createGroup}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
+                className="bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded"
               >
                 Create
               </button>
