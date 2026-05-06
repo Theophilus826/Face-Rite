@@ -7,7 +7,7 @@ import { toast } from "react-toastify";
 import GroupChatPage from "./GroupChatPage";
 
 export default function ChatPage() {
-  const { chatUserId, groupId } = useParams();
+  const { groupId } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
@@ -15,37 +15,45 @@ export default function ChatPage() {
 
   const [users, setUsers] = useState([]);
 
+  // group modal
   const [showCreate, setShowCreate] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
 
-  /* ================= USERS ================= */
+  /* ================= LOAD USERS ================= */
   useEffect(() => {
     if (!user) return;
 
     API.get("/users")
-      .then(({ data }) => setUsers(data.users || []))
+      .then(({ data }) => {
+        setUsers(data.users || []);
+        setResults(data.users || []); // default list
+      })
       .catch(() => toast.error("Failed to load users"));
   }, [user]);
 
-  /* ================= SEARCH ================= */
+  /* ================= SEARCH USERS ================= */
   useEffect(() => {
-    if (!search.trim()) return setResults([]);
+    if (!search.trim()) {
+      setResults(users);
+      return;
+    }
 
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await API.get(`/users/search?q=${search}`);
-        setResults(res.data);
+        setResults(res.data.users || []);
       } catch {
         toast.error("Search failed");
       }
     }, 300);
 
-    return () => clearTimeout(t);
-  }, [search]);
+    return () => clearTimeout(timer);
+  }, [search, users]);
 
+  /* ================= TOGGLE USER ================= */
   const toggleUser = (u) => {
     setSelectedUsers((prev) =>
       prev.find((x) => x._id === u._id)
@@ -54,6 +62,7 @@ export default function ChatPage() {
     );
   };
 
+  /* ================= CREATE GROUP ================= */
   const createGroup = async () => {
     if (!groupName.trim()) return toast.error("Group name required");
     if (!selectedUsers.length) return toast.error("Select members");
@@ -70,7 +79,6 @@ export default function ChatPage() {
       setGroupName("");
       setSelectedUsers([]);
       setSearch("");
-      setResults([]);
 
       navigate(`/group/${res.data.group._id}`);
     } catch {
@@ -78,6 +86,7 @@ export default function ChatPage() {
     }
   };
 
+  /* ================= UI ================= */
   return (
     <div className="flex flex-col md:flex-row h-screen bg-transparent text-white">
 
@@ -85,7 +94,7 @@ export default function ChatPage() {
       <div className="w-full md:w-1/3 backdrop-blur-xl bg-white/10 border-r border-white/10">
 
         <div className="p-3 flex justify-between items-center border-b border-white/10">
-          <h2 className="font-bold text-white">Chats</h2>
+          <h2 className="font-bold">Chats</h2>
 
           <button
             onClick={() => setShowCreate(true)}
@@ -95,12 +104,13 @@ export default function ChatPage() {
           </button>
         </div>
 
+        {/* USERS */}
         <div className="overflow-y-auto h-[calc(100vh-60px)]">
           {users.map((u) => (
             <div
               key={u._id}
               onClick={() => navigate(`/chat/${u._id}`)}
-              className="p-3 cursor-pointer border-b border-white/10 hover:bg-white/10 transition"
+              className="p-3 cursor-pointer border-b border-white/10 hover:bg-white/10"
             >
               {u.name}
             </div>
@@ -117,22 +127,24 @@ export default function ChatPage() {
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-3">
 
-          <div className="bg-white/10 backdrop-blur-xl border border-white/20 text-white w-full max-w-sm md:max-w-md rounded-xl p-4 space-y-3">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 text-white w-full max-w-md rounded-xl p-4 space-y-3">
 
             <h3 className="font-semibold text-lg">Create Group</h3>
 
+            {/* GROUP NAME */}
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               placeholder="Group name"
-              className="w-full border border-white/20 bg-transparent p-2 rounded outline-none"
+              className="w-full border border-white/20 bg-transparent p-2 rounded"
             />
 
+            {/* SEARCH */}
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search users"
-              className="w-full border border-white/20 bg-transparent p-2 rounded outline-none"
+              className="w-full border border-white/20 bg-transparent p-2 rounded"
             />
 
             {/* RESULTS */}
@@ -148,7 +160,7 @@ export default function ChatPage() {
                     readOnly
                     checked={selectedUsers.some((s) => s._id === u._id)}
                   />
-                  <span className="text-sm">{u.name}</span>
+                  <span>{u.name}</span>
                 </div>
               ))}
             </div>
