@@ -482,41 +482,50 @@ export default function ChatPage() {
             />
 
             {/* USERS */}
-            <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
-              {users.map((u) => (
+            <div className="p-2 overflow-y-auto">
+              {filteredUsers.map((u) => (
                 <div
                   key={u._id}
-                  onClick={() => toggleUser(u)}
-                  className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all
-                ${
-                  selectedUsers.some((s) => s._id === u._id)
-                    ? "bg-blue-500/20 border border-blue-500/20"
-                    : "bg-white/5 hover:bg-white/10"
-                }`}
+                  onClick={() => navigate(`/chat/${u._id}`)}
+                  className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl cursor-pointer"
                 >
+                  {/* AVATAR */}
                   {u.avatar ? (
                     <img
                       src={u.avatar}
-                      alt=""
-                      className="w-12 h-12 rounded-full object-cover"
+                      alt={u.name}
+                      className="w-10 h-10 rounded-full object-cover border border-white/10"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-sm">
                       {u.name?.charAt(0)}
                     </div>
                   )}
 
-                  <div className="flex-1">
-                    <p>{u.name}</p>
-                  </div>
-
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.some((s) => s._id === u._id)}
-                    readOnly
-                  />
+                  {/* NAME */}
+                  <span className="truncate">{u.name}</span>
                 </div>
               ))}
+
+              {/* GROUPS */}
+              <div className="mt-4 border-t border-white/10 pt-2">
+                <p className="text-xs text-gray-400 px-2 mb-2">Groups</p>
+
+                {groups.map((g) => (
+                  <div
+                    key={g._id}
+                    onClick={() => navigate(`/group/${g._id}`)}
+                    className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl cursor-pointer"
+                  >
+                    {/* GROUP AVATAR (fallback icon/initial) */}
+                    <div className="w-10 h-10 rounded-full bg-purple-500/30 flex items-center justify-center text-sm font-semibold">
+                      {g.name?.charAt(0)}
+                    </div>
+
+                    <span className="truncate">{g.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* SELECTED */}
