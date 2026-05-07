@@ -49,9 +49,9 @@ export default function ChatPage() {
             avatar: u.avatar?.startsWith("http")
               ? u.avatar
               : u.avatar
-              ? `${BASE_URL}/${u.avatar}`
-              : null,
-          }))
+                ? `${BASE_URL}/${u.avatar}`
+                : null,
+          })),
         );
       })
       .catch(() => toast.error("Failed to load users"));
@@ -62,7 +62,7 @@ export default function ChatPage() {
     if (!search.trim()) return users;
 
     return users.filter((u) =>
-      u.name?.toLowerCase().includes(search.toLowerCase())
+      u.name?.toLowerCase().includes(search.toLowerCase()),
     );
   }, [search, users]);
 
@@ -75,7 +75,7 @@ export default function ChatPage() {
     eventSourceRef.current?.close();
 
     const es = new EventSource(
-      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`
+      `${API.defaults.baseURL}/chat/stream/${user._id}/${chatUserId}`,
     );
 
     eventSourceRef.current = es;
@@ -202,7 +202,7 @@ export default function ChatPage() {
     setSelectedUsers((prev) =>
       prev.find((x) => x._id === u._id)
         ? prev.filter((x) => x._id !== u._id)
-        : [...prev, u]
+        : [...prev, u],
     );
   };
 
@@ -210,8 +210,7 @@ export default function ChatPage() {
   const createGroup = async () => {
     if (!groupName.trim()) return toast.error("Group name required");
 
-    if (!selectedUsers.length)
-      return toast.error("Select members");
+    if (!selectedUsers.length) return toast.error("Select members");
 
     try {
       const res = await API.post("/group", {
@@ -233,131 +232,171 @@ export default function ChatPage() {
   };
 
   if (!user) {
-    return (
-      <div className="text-center mt-10">
-        Login required
-      </div>
-    );
+    return <div className="text-center mt-10">Login required</div>;
   }
 
   return (
-    <div className="flex h-screen bg-black text-white">
-
+    <div className="h-screen w-full overflow-hidden bg-transparent text-white flex backdrop-blur-2xl">
       {/* ================= SIDEBAR ================= */}
-      <div className="w-full md:w-80 border-r border-white/10 bg-white/5 backdrop-blur-xl flex flex-col">
+      <aside className="w-full md:w-[340px] border-r border-white/10 bg-white/5 backdrop-blur-3xl flex flex-col">
+        {/* TOP */}
+        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-wide">Messages</h1>
 
-        {/* HEADER */}
-        <div className="p-3 flex justify-between items-center border-b border-white/10">
-          <h2 className="font-bold text-lg">Chats</h2>
+            <p className="text-xs text-gray-400">Connect with friends</p>
+          </div>
 
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-sm"
+            className="bg-white/10 hover:bg-white/20 transition-all duration-300 px-4 py-2 rounded-2xl border border-white/10 text-sm"
           >
             + Group
           </button>
         </div>
 
         {/* SEARCH */}
-        <div className="p-2">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search users..."
-            className="w-full p-2 rounded bg-white/10 border border-white/10 outline-none"
-          />
+        <div className="p-4">
+          <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search users..."
+              className="bg-transparent outline-none w-full text-sm placeholder:text-gray-500"
+            />
+          </div>
         </div>
 
         {/* USERS */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-2 pb-4">
           {filteredUsers.map((u) => (
             <div
               key={u._id}
               onClick={() => navigate(`/chat/${u._id}`)}
-              className={`flex items-center gap-3 p-3 cursor-pointer border-b border-white/10 hover:bg-white/10 ${
-                u._id === chatUserId ? "bg-white/10" : ""
-              }`}
+              className={`group flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all duration-300 mb-1
+            ${
+              u._id === chatUserId
+                ? "bg-white/15 border border-white/10"
+                : "hover:bg-white/5"
+            }`}
             >
-              {u.avatar ? (
-                <img
-                  src={u.avatar}
-                  alt=""
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
-                  {u.name?.charAt(0)}
-                </div>
-              )}
+              {/* AVATAR */}
+              <div className="relative">
+                {u.avatar ? (
+                  <img
+                    src={u.avatar}
+                    alt=""
+                    className="w-14 h-14 rounded-full object-cover border border-white/10"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-lg">
+                    {u.name?.charAt(0)}
+                  </div>
+                )}
 
-              <div>
-                <p>{u.name}</p>
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-black" />
+              </div>
+
+              {/* USER INFO */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium truncate">{u.name}</h3>
+
+                  <span className="text-[10px] text-gray-500">now</span>
+                </div>
+
+                <p className="text-sm text-gray-400 truncate">Tap to chat</p>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </aside>
 
-      {/* ================= CHAT AREA ================= */}
-      <div className="flex-1 flex flex-col">
-
+      {/* ================= CHAT ================= */}
+      <main className="flex-1 flex flex-col bg-white/[0.03] backdrop-blur-3xl">
         {!chatUserId ? (
-          <div className="flex-1 flex items-center justify-center text-gray-400">
-            Select a user to start chatting
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+            <div className="w-28 h-28 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-5xl mb-6">
+              💬
+            </div>
+
+            <h2 className="text-2xl font-semibold mb-2">Your Messages</h2>
+
+            <p className="text-gray-400 max-w-sm">
+              Select a conversation and start chatting instantly.
+            </p>
           </div>
         ) : (
           <>
             {/* HEADER */}
-            <div className="p-3 border-b border-white/10 flex items-center gap-3 bg-white/5">
+            <div className="px-6 py-4 border-b border-white/10 bg-white/[0.03] backdrop-blur-3xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {selectedUser?.avatar ? (
+                  <img
+                    src={selectedUser.avatar}
+                    alt=""
+                    className="w-12 h-12 rounded-full object-cover border border-white/10"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                    {selectedUser?.name?.charAt(0)}
+                  </div>
+                )}
 
-              {selectedUser?.avatar ? (
-                <img
-                  src={selectedUser.avatar}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                  {selectedUser?.name?.charAt(0)}
+                <div>
+                  <h2 className="font-semibold text-lg">
+                    {selectedUser?.name}
+                  </h2>
+
+                  <p className="text-sm text-green-400">Online</p>
                 </div>
-              )}
-
-              <div>
-                <p className="font-semibold">
-                  {selectedUser?.name}
-                </p>
               </div>
+
+              <button className="bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-xl transition-all">
+                View Profile
+              </button>
             </div>
 
             {/* MESSAGES */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               {messages.map((msg) => {
                 const mine = msg.fromUser === user._id;
 
                 return (
                   <div
                     key={msg._id}
-                    className={`flex ${
-                      mine ? "justify-end" : "justify-start"
-                    }`}
+                    className={`flex ${mine ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-xs px-3 py-2 rounded-2xl ${
-                        mine
-                          ? "bg-blue-500"
-                          : "bg-white/10"
-                      }`}
+                      className={`max-w-[75%] px-4 py-3 rounded-3xl backdrop-blur-xl border
+                    ${
+                      mine
+                        ? "bg-blue-500/20 border-blue-400/20 rounded-br-md"
+                        : "bg-white/5 border-white/10 rounded-bl-md"
+                    }`}
                     >
                       {msg.type === "voice" && msg.audio ? (
-                        <audio controls src={msg.audio} />
+                        <audio
+                          controls
+                          src={msg.audio}
+                          className="max-w-full"
+                        />
                       ) : msg.type === "image" ? (
                         <img
                           src={msg.image}
-                          className="rounded-lg max-w-xs"
+                          alt=""
+                          className="rounded-2xl max-w-xs"
                         />
                       ) : (
-                        <p>{msg.text}</p>
+                        <p className="text-sm leading-relaxed">{msg.text}</p>
                       )}
+
+                      <div className="mt-1 text-[10px] text-gray-400 text-right">
+                        {new Date(msg.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
                     </div>
                   </div>
                 );
@@ -367,119 +406,153 @@ export default function ChatPage() {
             </div>
 
             {/* INPUT */}
-            <div className="p-3 border-t border-white/10 flex items-center gap-2">
-
+            <div className="p-4 border-t border-white/10 bg-white/[0.03] backdrop-blur-3xl">
               {!recording ? (
-                <>
-                  <input
-                    value={chatText}
-                    onChange={(e) =>
-                      setChatText(e.target.value)
-                    }
-                    placeholder="Type message..."
-                    className="flex-1 p-3 rounded-full bg-white/10 border border-white/10 outline-none"
-                  />
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-5 py-3">
+                    <input
+                      value={chatText}
+                      onChange={(e) => setChatText(e.target.value)}
+                      placeholder="Write a message..."
+                      className="flex-1 bg-transparent outline-none placeholder:text-gray-500"
+                    />
 
-                  <button
-                    onClick={sendMessage}
-                    className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full"
-                  >
-                    Send
-                  </button>
+                    <button className="text-gray-400 hover:text-white transition">
+                      😊
+                    </button>
+                  </div>
 
+                  {/* MIC */}
                   <button
                     onClick={startRecording}
-                    className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-full"
+                    className="w-12 h-12 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/20 flex items-center justify-center transition-all"
                   >
                     🎤
                   </button>
-                </>
+
+                  {/* SEND */}
+                  <button
+                    onClick={sendMessage}
+                    className="px-6 h-12 rounded-full bg-blue-500 hover:bg-blue-600 transition-all font-medium shadow-lg shadow-blue-500/20"
+                  >
+                    Send
+                  </button>
+                </div>
               ) : (
-                <>
-                  <span className="text-red-400">
-                    Recording {recordTime}s
-                  </span>
+                <div className="flex items-center justify-between bg-red-500/10 border border-red-500/20 rounded-2xl px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+
+                    <p className="text-red-300">Recording... {recordTime}s</p>
+                  </div>
 
                   <button
                     onClick={stopRecording}
-                    className="bg-red-600 px-4 py-2 rounded-full"
+                    className="bg-red-500 hover:bg-red-600 px-5 py-2 rounded-xl transition-all"
                   >
-                    🛑 Stop
+                    Stop
                   </button>
-                </>
+                </div>
               )}
             </div>
           </>
         )}
-      </div>
+      </main>
 
       {/* ================= CREATE GROUP MODAL ================= */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/10 backdrop-blur-3xl p-6 text-white shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-xl font-semibold">Create Group</h2>
 
-          <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-md p-4 space-y-4">
+                <p className="text-sm text-gray-400">
+                  Start a group conversation
+                </p>
+              </div>
 
-            <h3 className="text-lg font-semibold">
-              Create Group
-            </h3>
+              <button
+                onClick={() => setShowCreate(false)}
+                className="w-10 h-10 rounded-full hover:bg-white/10 transition-all"
+              >
+                ✕
+              </button>
+            </div>
 
+            {/* INPUT */}
             <input
               value={groupName}
-              onChange={(e) =>
-                setGroupName(e.target.value)
-              }
+              onChange={(e) => setGroupName(e.target.value)}
               placeholder="Group name"
-              className="w-full p-2 rounded bg-white/10 border border-white/10 outline-none"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none mb-4"
             />
 
-            <div className="max-h-52 overflow-y-auto border border-white/10 rounded-lg">
-
+            {/* USERS */}
+            <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
               {users.map((u) => (
                 <div
                   key={u._id}
                   onClick={() => toggleUser(u)}
-                  className="flex items-center gap-2 p-2 hover:bg-white/10 cursor-pointer"
+                  className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all
+                ${
+                  selectedUsers.some((s) => s._id === u._id)
+                    ? "bg-blue-500/20 border border-blue-500/20"
+                    : "bg-white/5 hover:bg-white/10"
+                }`}
                 >
+                  {u.avatar ? (
+                    <img
+                      src={u.avatar}
+                      alt=""
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                      {u.name?.charAt(0)}
+                    </div>
+                  )}
+
+                  <div className="flex-1">
+                    <p>{u.name}</p>
+                  </div>
+
                   <input
                     type="checkbox"
-                    checked={selectedUsers.some(
-                      (s) => s._id === u._id
-                    )}
+                    checked={selectedUsers.some((s) => s._id === u._id)}
                     readOnly
                   />
-
-                  <span>{u.name}</span>
                 </div>
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            {/* SELECTED */}
+            <div className="flex flex-wrap gap-2 mb-5">
               {selectedUsers.map((u) => (
                 <span
                   key={u._id}
-                  className="bg-blue-500/20 px-2 py-1 rounded text-xs"
+                  className="bg-blue-500/20 border border-blue-500/20 px-3 py-1 rounded-full text-xs"
                 >
                   {u.name}
                 </span>
               ))}
             </div>
 
-            <div className="flex justify-end gap-2">
-
+            {/* ACTIONS */}
+            <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowCreate(false)}
-                className="px-4 py-2 border border-white/10 rounded"
+                className="px-5 py-2 rounded-xl border border-white/10 hover:bg-white/10 transition-all"
               >
                 Cancel
               </button>
 
               <button
                 onClick={createGroup}
-                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded"
+                className="px-5 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 transition-all"
               >
-                Create
+                Create Group
               </button>
-
             </div>
           </div>
         </div>
