@@ -1,80 +1,297 @@
-import { useEffect, useState, useRef } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
+
 import { useSelector } from "react-redux";
-import { useParams, useNavigate } from "react-router-dom";
+
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
 import { API } from "../features/Api";
+
 import { toast } from "react-toastify";
+
+import {
+  Send,
+  Users,
+  UserPlus,
+} from "lucide-react";
 
 export default function GroupChatPage() {
   const { groupId } = useParams();
+
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
 
-  const [group, setGroup] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
-  const [typingUser, setTypingUser] = useState(null);
-  const [onlineMembers, setOnlineMembers] = useState([]);
+  const { user } = useSelector(
+    (state) => state.auth
+  );
 
-  /* USERS (FOR ADD MEMBERS) */
-  const [users, setUsers] = useState([]);
-  const [showAddMembers, setShowAddMembers] = useState(false);
-  const [selectedUsers, setSelectedUsers] = useState([]);
+  /* ================= STATE ================= */
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [sending, setSending] =
+    useState(false);
+
+  const [group, setGroup] =
+    useState(null);
+
+  const [messages, setMessages] =
+    useState([]);
+
+  const [text, setText] =
+    useState("");
+
+  const [typingUser, setTypingUser] =
+    useState(null);
+
+  const [onlineMembers, setOnlineMembers] =
+    useState([]);
+
+  const [users, setUsers] =
+    useState([]);
+
+  const [showAddMembers, setShowAddMembers] =
+    useState(false);
+
+  const [selectedUsers, setSelectedUsers] =
+    useState([]);
+
+  /* ================= REFS ================= */
 
   const esRef = useRef(null);
+
   const bottomRef = useRef(null);
 
+  /* ================= HELPERS ================= */
+
+  const scrollToBottom =
+    useCallback(() => {
+      bottomRef.current?.scrollIntoView({
+        behavior: "smooth",
+      });
+    }, []);
+
+  const isSelectedUser =
+    useCallback(
+      (id) =>
+        selectedUsers.some(
+          (u) => u._id === id
+        ),
+      [selectedUsers]
+    );
+
   /* ================= FETCH GROUP ================= */
+
+  const fetchGroup =
+    useCallback(async () => {
+      try {
+        setLoading(true);
+
+        const res = await API.get(
+          `/group/${groupId}`
+        );
+
+        setGroup(res.data.group);
+
+      } catch (err) {
+        console.error(err);
+
+        toast.error(
+          "Failed to load group"
+        );
+
+        navigate("/groups");
+
+      } finally {
+        setLoading(false);
+      }
+    }, [groupId, navigate]);
+
+  /* ================= FETCH MESSAGES ================= */
+
+  const fetchMessages =
+    useCallback(async () => {
+      try {
+        const res = await API.get(
+          `/group/${groupId}/messages`
+        );
+
+        setMessages(
+          res.data.messages || []
+        );
+
+      } catch (err) {
+        console.error(err);
+
+        toast.error(
+          "Failed to load messages"
+        );
+      }
+    }, [groupId]);
+
+  /* ================= LOAD USERS ================= */
+
+  const loadUsers =
+    useCallback(async () => {
+      try {
+        const res = await API.get(
+          "/users"
+        );
+
+        setUsers(
+          res.data.users || []
+        );
+
+      } catch (err) {
+        console.error(err);
+
+        toast.error(
+          "Failed to load users"
+        );
+      }
+    }, []);
+
+  /* ================= INITIAL LOAD ================= */
+
   useEffect(() => {
     if (!groupId) return;
 
-    API.get(`/group/${groupId}`)
-      .then((res) => setGroup(res.data.group))
-      .catch(() => toast.error("Failed to load group"));
-  }, [groupId]);
+    fetchGroup();
 
-  /* ================= LOAD USERS ================= */
+    fetchMessages();
+
+  }, [
+    groupId,
+    fetchGroup,
+    fetchMessages,
+  ]);
+
+  /* ================= LOAD USERS MODAL ================= */
+
   useEffect(() => {
-    if (!showAddMembers) return;
-
-    API.get("/users")
-      .then((res) => setUsers(res.data.users || []))
-      .catch(() => toast.error("Failed to load users"));
-  }, [showAddMembers]);
+    if (showAddMembers) {
+      loadUsers();
+    }
+  }, [
+    showAddMembers,
+    loadUsers,
+  ]);
 
   /* ================= SSE ================= */
+
   useEffect(() => {
-    if (!user || !groupId) return;
+    if (!user || !groupId)
+      return;
 
     esRef.current?.close();
 
-    const es = new EventSource(
-      `${API.defaults.baseURL}/group/stream/${groupId}/${user._id}`
-    );
+    const url = `${API.defaults.baseURL}/group/stream/${groupId}/${user._id}`;
+
+    const es =
+      new EventSource(url);
 
     esRef.current = es;
 
-    es.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(
+          event.data
+        );
 
-      switch (data.type) {
-        case "init":
-          setMessages(data.messages || []);
+        switch (data.type) {
+          case "new_message":
+            setMessages((prev) => [
+              ...prev,
+              data.message,
+            ]);
+            break;
+
+          case "typing":
+            setTypingUser(
+              data.fromUser?.name ||
+                "Someone"
+            );
+            break;
+
+          case "stop_typing":
+            setTypingUser(null);
+            break;
+
+          case "online_members":
+            setOnlineMembers(
+              data.members || []
+            );
+            break;
+
+          case "group_event":
+            handleGroupEvent(data);
+            break;
+
+          default:
+            break;
+        }
+
+      } catch (err) {
+        console.error(
+          "SSE ERROR:",
+          err
+        );
+      }
+    };
+
+    es.onerror = () => {
+      console.error(
+        "SSE connection lost"
+      );
+    };
+
+    return () => {
+      es.close();
+    };
+
+  }, [groupId, user]);
+
+  /* ================= AUTO SCROLL ================= */
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  /* ================= GROUP EVENTS ================= */
+
+  const handleGroupEvent =
+    (data) => {
+      switch (data.event) {
+        case "member_added":
+          toast.info(
+            "New member added"
+          );
+
+          fetchGroup();
           break;
 
-        case "new_message":
-          setMessages((prev) => [...prev, data.message]);
+        case "member_removed":
+          toast.info(
+            "Member removed"
+          );
+
+          fetchGroup();
           break;
 
-        case "typing":
-          setTypingUser(data.fromUser?.name || "Someone");
-          break;
+        case "group_deleted":
+          toast.info(
+            "Group deleted"
+          );
 
-        case "stop_typing":
-          setTypingUser(null);
-          break;
-
-        case "online_members":
-          setOnlineMembers(data.members || []);
+          navigate("/groups");
           break;
 
         default:
@@ -82,168 +299,406 @@ export default function GroupChatPage() {
       }
     };
 
-    return () => es.close();
-  }, [user, groupId]);
-
-  /* ================= AUTO SCROLL ================= */
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   /* ================= SEND MESSAGE ================= */
-  const sendMessage = async () => {
-    if (!text.trim()) return;
 
-    const temp = {
-      _id: Date.now(),
-      fromUser: { _id: user._id, name: user.name },
-      text,
+  const sendMessage =
+    async () => {
+      if (
+        !text.trim() ||
+        sending
+      )
+        return;
+
+      const tempId =
+        Date.now();
+
+      const tempMessage = {
+        _id: tempId,
+
+        text,
+
+        pending: true,
+
+        fromUser: {
+          _id: user._id,
+
+          name: user.name,
+        },
+
+        createdAt:
+          new Date(),
+      };
+
+      setMessages((prev) => [
+        ...prev,
+        tempMessage,
+      ]);
+
+      const currentText = text;
+
+      setText("");
+
+      try {
+        setSending(true);
+
+        const res =
+          await API.post(
+            "/group/send-message",
+            {
+              groupId,
+              text: currentText,
+            }
+          );
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === tempId
+              ? res.data.message
+              : m
+          )
+        );
+
+      } catch (err) {
+        console.error(err);
+
+        toast.error(
+          "Failed to send message"
+        );
+
+        setMessages((prev) =>
+          prev.filter(
+            (m) => m._id !== tempId
+          )
+        );
+
+      } finally {
+        setSending(false);
+      }
     };
 
-    setMessages((prev) => [...prev, temp]);
-    setText("");
+  /* ================= ENTER SEND ================= */
 
-    try {
-      await API.post("/group/send-message", { groupId, text });
-    } catch {
-      toast.error("Failed to send");
+  const handleKeyDown = (
+    e
+  ) => {
+    if (
+      e.key === "Enter" &&
+      !e.shiftKey
+    ) {
+      e.preventDefault();
+
+      sendMessage();
     }
   };
 
-  /* ================= ADD MEMBERS ================= */
+  /* ================= TOGGLE USER ================= */
+
   const toggleUser = (u) => {
     setSelectedUsers((prev) =>
-      prev.find((x) => x._id === u._id)
-        ? prev.filter((x) => x._id !== u._id)
+      prev.find(
+        (x) => x._id === u._id
+      )
+        ? prev.filter(
+            (x) =>
+              x._id !== u._id
+          )
         : [...prev, u]
     );
   };
 
-  const addMembers = async () => {
-    if (!selectedUsers.length) {
-      return toast.error("Select users first");
-    }
+  /* ================= ADD MEMBERS ================= */
 
-    try {
-      await API.post(`/group/${groupId}/members`, {
-        members: selectedUsers.map((u) => u._id),
-      });
+  const addMembers =
+    async () => {
+      if (
+        !selectedUsers.length
+      ) {
+        return toast.error(
+          "Select users first"
+        );
+      }
 
-      toast.success("Members added");
+      try {
+        await Promise.all(
+          selectedUsers.map((u) =>
+            API.post(
+              `/group/${groupId}/members`,
+              {
+                memberId: u._id,
+              }
+            )
+          )
+        );
 
-      setShowAddMembers(false);
-      setSelectedUsers([]);
-    } catch {
-      toast.error("Failed to add members");
-    }
-  };
+        toast.success(
+          "Members added"
+        );
 
-  if (!group) return <div className="p-4">Loading group...</div>;
+        setShowAddMembers(false);
+
+        setSelectedUsers([]);
+
+        fetchGroup();
+
+      } catch (err) {
+        console.error(err);
+
+        toast.error(
+          "Failed to add members"
+        );
+      }
+    };
+
+  /* ================= FILTER USERS ================= */
+
+  const availableUsers =
+    useMemo(() => {
+      if (!group) return [];
+
+      return users.filter(
+        (u) =>
+          !group.members?.some(
+            (m) =>
+              m.user._id ===
+              u._id
+          )
+      );
+    }, [users, group]);
+
+  /* ================= LOADING ================= */
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-gray-500">
+          Loading group...
+        </div>
+      </div>
+    );
+  }
+
+  if (!group) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div>
+          Group not found
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-100">
 
-      {/* HEADER */}
-      <div className="p-3 bg-white border-b flex justify-between items-center">
+      {/* ================= HEADER ================= */}
+
+      <header className="bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
+
         <div>
-          <h2 className="font-semibold">{group.name}</h2>
-          <p className="text-xs text-gray-500">
-            {group.members?.length} members • {onlineMembers.length} online
+          <h1 className="font-semibold text-lg">
+            {group.name}
+          </h1>
+
+          <p className="text-sm text-gray-500 flex items-center gap-1">
+            <Users size={14} />
+
+            {
+              group.members
+                ?.length
+            }{" "}
+            members •{" "}
+            {
+              onlineMembers.length
+            }{" "}
+            online
           </p>
         </div>
 
         <button
-          onClick={() => setShowAddMembers(true)}
-          className="bg-green-500 text-white px-3 py-1 rounded text-sm"
+          onClick={() =>
+            setShowAddMembers(
+              true
+            )
+          }
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition"
         >
-          + Add Members
+          <UserPlus size={16} />
+          Add Members
         </button>
-      </div>
+      </header>
 
-      {/* MESSAGES */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      {/* ================= MESSAGES ================= */}
+
+      <main className="flex-1 overflow-y-auto p-4 space-y-3">
+
         {messages.map((msg) => {
-          const isMe = msg.fromUser?._id === user._id;
+          const isMe =
+            msg.fromUser?._id ===
+            user._id;
 
           return (
-            <div key={msg._id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div className={`px-3 py-2 rounded max-w-xs text-sm ${
-                isMe ? "bg-blue-500 text-white" : "bg-white border"
-              }`}>
+            <div
+              key={msg._id}
+              className={`flex ${
+                isMe
+                  ? "justify-end"
+                  : "justify-start"
+              }`}
+            >
+              <div
+                className={`max-w-md rounded-2xl px-4 py-2 shadow-sm ${
+                  isMe
+                    ? "bg-blue-600 text-white"
+                    : "bg-white"
+                }`}
+              >
                 {!isMe && (
-                  <p className="text-xs font-semibold">{msg.fromUser?.name}</p>
+                  <p className="text-xs font-semibold mb-1 text-blue-600">
+                    {
+                      msg
+                        .fromUser
+                        ?.name
+                    }
+                  </p>
                 )}
-                {msg.text}
+
+                <p className="whitespace-pre-wrap break-words text-sm">
+                  {msg.text}
+                </p>
+
+                {msg.pending && (
+                  <p className="text-[10px] opacity-70 mt-1">
+                    Sending...
+                  </p>
+                )}
               </div>
             </div>
           );
         })}
 
         {typingUser && (
-          <p className="text-xs text-gray-500">{typingUser} is typing...</p>
+          <p className="text-xs text-gray-500 italic">
+            {typingUser} is
+            typing...
+          </p>
         )}
 
         <div ref={bottomRef} />
-      </div>
+      </main>
 
-      {/* INPUT */}
-      <div className="p-3 border-t flex gap-2 bg-white">
-        <input
+      {/* ================= INPUT ================= */}
+
+      <footer className="bg-white border-t p-4 flex items-end gap-3">
+
+        <textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          className="flex-1 border rounded px-3 py-2"
-          placeholder="Type message..."
+          onChange={(e) =>
+            setText(
+              e.target.value
+            )
+          }
+          onKeyDown={
+            handleKeyDown
+          }
+          rows={1}
+          placeholder="Type a message..."
+          className="flex-1 resize-none border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
         <button
           onClick={sendMessage}
-          className="bg-blue-500 text-white px-4 rounded"
+          disabled={
+            sending ||
+            !text.trim()
+          }
+          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white p-3 rounded-xl transition"
         >
-          Send
+          <Send size={18} />
         </button>
-      </div>
+      </footer>
 
-      {/* ADD MEMBERS MODAL */}
+      {/* ================= ADD MEMBERS MODAL ================= */}
+
       {showAddMembers && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-          <div className="bg-white w-96 p-4 rounded space-y-3">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
 
-            <h3 className="font-semibold">Add Members</h3>
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-5">
 
-            <div className="max-h-60 overflow-y-auto border rounded">
-              {users.map((u) => (
-                <div
-                  key={u._id}
-                  onClick={() => toggleUser(u)}
-                  className="flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-100"
-                >
-                  <input
-                    type="checkbox"
-                    readOnly
-                    checked={selectedUsers.some((s) => s._id === u._id)}
-                  />
-                  <span>{u.name}</span>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">
+                Add Members
+              </h2>
+
+              <button
+                onClick={() =>
+                  setShowAddMembers(
+                    false
+                  )
+                }
+                className="text-gray-500 hover:text-black"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="max-h-80 overflow-y-auto border rounded-xl divide-y">
+
+              {availableUsers.map(
+                (u) => (
+                  <div
+                    key={u._id}
+                    onClick={() =>
+                      toggleUser(
+                        u
+                      )
+                    }
+                    className="flex items-center justify-between p-3 hover:bg-gray-50 cursor-pointer"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {u.name}
+                      </p>
+                    </div>
+
+                    <input
+                      type="checkbox"
+                      checked={isSelectedUser(
+                        u._id
+                      )}
+                      readOnly
+                    />
+                  </div>
+                )
+              )}
+
+            </div>
+
+            <div className="flex justify-end gap-3 mt-5">
+
               <button
-                onClick={() => setShowAddMembers(false)}
-                className="px-3 py-1 border rounded"
+                onClick={() =>
+                  setShowAddMembers(
+                    false
+                  )
+                }
+                className="px-4 py-2 border rounded-lg"
               >
                 Cancel
               </button>
 
               <button
-                onClick={addMembers}
-                className="bg-blue-500 text-white px-3 py-1 rounded"
+                onClick={
+                  addMembers
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
               >
-                Add
+                Add Members
               </button>
+
             </div>
 
           </div>
+
         </div>
       )}
 
