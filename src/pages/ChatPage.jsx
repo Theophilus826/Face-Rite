@@ -13,7 +13,9 @@ export default function ChatPage() {
   const { user } = useSelector((state) => state.auth);
 
   /* ================= GROUP ================= */
-  if (groupId) return <GroupChatPage />;
+  if (groupId) {
+    return <GroupChatPage />;
+  }
 
   /* ================= STATE ================= */
   const [users, setUsers] = useState([]);
