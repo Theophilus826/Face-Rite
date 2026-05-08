@@ -17,7 +17,7 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const { user } = useSelector((s) => s.auth);
 
-  /* ================= LISTS ================= */
+  /* ================= DATA ================= */
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
 
@@ -27,6 +27,7 @@ export default function ChatPage() {
   const [search, setSearch] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
 
+  /* ================= LOAD USERS + GROUPS ================= */
   useEffect(() => {
     const load = async () => {
       const [uRes, gRes] = await Promise.all([
@@ -41,12 +42,12 @@ export default function ChatPage() {
     load();
   }, []);
 
-  /* ================= FILTER ================= */
+  /* ================= FILTER USERS ================= */
   const filteredUsers = users.filter((u) =>
     u.name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  /* ================= TOGGLE USER ================= */
+  /* ================= TOGGLE USERS FOR GROUP ================= */
   const toggleUser = (u) => {
     setSelectedUsers((prev) =>
       prev.find((x) => x._id === u._id)
@@ -98,7 +99,7 @@ export default function ChatPage() {
       {/* ================= SIDEBAR ================= */}
       <aside className="w-[320px] bg-white border-r overflow-y-auto">
 
-        {/* CREATE GROUP */}
+        {/* CREATE GROUP BUTTON */}
         <div className="p-3 border-b">
           <button
             onClick={() => setShowCreate(true)}
@@ -108,7 +109,7 @@ export default function ChatPage() {
           </button>
         </div>
 
-        {/* USERS */}
+        {/* USERS LIST */}
         <div className="p-3">
           <input
             value={search}
@@ -136,7 +137,7 @@ export default function ChatPage() {
           ))}
         </div>
 
-        {/* GROUPS */}
+        {/* GROUPS LIST */}
         <div className="p-3 border-t">
           {groups.map((g) => (
             <div
@@ -154,22 +155,36 @@ export default function ChatPage() {
         </div>
       </aside>
 
-      {/* ================= CHAT ================= */}
+      {/* ================= CHAT AREA ================= */}
       <main className="flex-1 flex flex-col">
 
+        {/* GROUP CHAT */}
         {isGroup ? (
           <>
-            <GroupHeader group={selectedGroup} onlineMembers={groupChat.onlineMembers} />
+            <GroupHeader
+              group={selectedGroup}
+              onlineMembers={groupChat.onlineMembers}
+              onAddMembers={() => setShowCreate(true)}
+            />
 
-            <MessageList messages={groupChat.messages} userId={user._id} />
+            <MessageList
+              messages={groupChat.messages}
+              userId={user._id}
+            />
 
-            <ChatInput onSend={groupChat.sendMessage} typingUser={groupChat.typingUser} />
+            <ChatInput
+              onSend={groupChat.sendMessage}
+              typingUser={groupChat.typingUser}
+            />
           </>
         ) : chatUserId ? (
           <>
             <ChatHeader chatUser={selectedUser} />
 
-            <MessageList messages={userChat.messages} userId={user._id} />
+            <MessageList
+              messages={userChat.messages}
+              userId={user._id}
+            />
 
             <ChatInput onSend={userChat.sendMessage} />
           </>
@@ -180,10 +195,11 @@ export default function ChatPage() {
         )}
       </main>
 
-      {/* ================= GROUP MODAL ================= */}
+      {/* ================= CREATE GROUP MODAL ================= */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
           <div className="bg-white p-4 rounded-xl w-[400px]">
+
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
@@ -217,7 +233,7 @@ export default function ChatPage() {
 
             <button
               onClick={createGroup}
-              className="w-full bg-blue-500 text-white p-2 mt-3"
+              className="w-full bg-blue-500 text-white p-2 mt-3 rounded"
             >
               Create Group
             </button>
