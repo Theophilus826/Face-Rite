@@ -488,25 +488,22 @@ export default function ChatPage() {
                   key={u._id}
                   onClick={() => navigate(`/chat/${u._id}`)}
                   className={`group flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all duration-300 mb-1
-      ${
-        u._id === chatUserId
-          ? "bg-white/15 border border-white/10"
-          : "hover:bg-white/5"
-      }`}
+            ${
+              u._id === chatUserId
+                ? "bg-white/15 border border-white/10"
+                : "hover:bg-white/5"
+            }`}
                 >
                   {/* AVATAR */}
                   <div className="relative">
                     {u.avatar ? (
                       <img
                         src={u.avatar}
-                        alt={u.name}
+                        alt=""
                         className="w-14 h-14 rounded-full object-cover border border-white/10"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
                       />
                     ) : (
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-lg text-white">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-lg">
                         {u.name?.charAt(0)}
                       </div>
                     )}
@@ -517,56 +514,17 @@ export default function ChatPage() {
                   {/* USER INFO */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-medium truncate text-gray-900">
-                        {u.name}
-                      </h3>
+                      <h3 className="font-medium truncate">{u.name}</h3>
 
                       <span className="text-[10px] text-gray-500">now</span>
                     </div>
 
-                    <p className="text-sm text-gray-600 truncate">
+                    <p className="text-sm text-gray-400 truncate">
                       Tap to chat
                     </p>
                   </div>
                 </div>
               ))}
-
-              {/* GROUPS */}
-              <div className="mt-4 border-t border-white/10 pt-4">
-                <p className="text-xs text-gray-500 px-2 mb-2 uppercase tracking-wide">
-                  Groups
-                </p>
-
-                {groups.map((g) => (
-                  <div
-                    key={g._id}
-                    onClick={() => navigate(`/group/${g._id}`)}
-                    className="group flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all duration-300 mb-1 hover:bg-white/5"
-                  >
-                    {/* GROUP AVATAR */}
-                    <div className="relative">
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center font-semibold text-lg text-white">
-                        {g.name?.charAt(0)}
-                      </div>
-                    </div>
-
-                    {/* GROUP INFO */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium truncate text-gray-900">
-                          {g.name}
-                        </h3>
-
-                        <span className="text-[10px] text-gray-500">group</span>
-                      </div>
-
-                      <p className="text-sm text-gray-600 truncate">
-                        Open group chat
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* SELECTED */}
