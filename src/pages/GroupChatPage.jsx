@@ -19,17 +19,24 @@ export default function GroupChatPage() {
 
   /* ================= LOAD GROUP ================= */
   useEffect(() => {
-    const loadGroup = async () => {
-      try {
-        const res = await API.get(`/group/${groupId}`);
-        setGroup(res.data.group);
-      } catch (err) {
-        console.error(err);
-      }
-    };
+  const loadGroup = async () => {
+    try {
+      const res = await API.get(`/group/${groupId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
-    if (groupId) loadGroup();
-  }, [groupId]);
+      setGroup(res.data.group);
+    } catch (err) {
+      console.error("Failed to load group:", err);
+    }
+  };
+
+  if (groupId) {
+    loadGroup();
+  }
+}, [groupId]);
 
   /* ================= SOCKET ================= */
   const {
