@@ -8,7 +8,6 @@ export default function useGroupSocket({ groupId, user, token }) {
   const [typingUser, setTypingUser] = useState(null);
   const [onlineMembers, setOnlineMembers] = useState([]);
 
-  /* ================= HANDLE EVENTS ================= */
   const handleEvent = useCallback((data, handlers = {}) => {
     switch (data.type) {
       case "new_message":
@@ -36,16 +35,13 @@ export default function useGroupSocket({ groupId, user, token }) {
     }
   }, []);
 
-  /* ================= CONNECT ================= */
   const connect = useCallback(
     (handlers = {}) => {
       if (!groupId || !user) return;
 
       esRef.current?.close();
 
-      const url = `${API.defaults.baseURL}/group/stream/${groupId}/${user._id}?token=${encodeURIComponent(
-        token,
-      )}`;
+      const url = `${API.defaults.baseURL}/group/stream/${groupId}/${user._id}?token=${encodeURIComponent(token)}`;
 
       const es = new EventSource(url);
 
@@ -64,25 +60,16 @@ export default function useGroupSocket({ groupId, user, token }) {
         console.error("Group SSE disconnected");
       };
     },
-    [groupId, user, token, handleEvent],
+    [groupId, user, token, handleEvent]
   );
 
-  /* ================= DISCONNECT ================= */
   const disconnect = useCallback(() => {
     esRef.current?.close();
     esRef.current = null;
   }, []);
 
-  /* ================= RESET MESSAGES ================= */
-  const resetMessages = useCallback((msgs = []) => {
-    setMessages(msgs);
-  }, []);
-
-  /* ================= AUTO CLEANUP ================= */
   useEffect(() => {
-    return () => {
-      disconnect();
-    };
+    return () => disconnect();
   }, [disconnect]);
 
   return {
@@ -92,6 +79,5 @@ export default function useGroupSocket({ groupId, user, token }) {
     onlineMembers,
     connect,
     disconnect,
-    resetMessages,
   };
 }
