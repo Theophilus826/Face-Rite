@@ -487,44 +487,53 @@ export default function ChatPage() {
                 <div
                   key={u._id}
                   onClick={() => navigate(`/chat/${u._id}`)}
-                  className={`group flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all duration-300 mb-1
-            ${
-              u._id === chatUserId
-                ? "bg-white/15 border border-white/10"
-                : "hover:bg-white/5"
-            }`}
+                  className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-white/5 transition"
                 >
                   {/* AVATAR */}
-                  <div className="relative">
-                    {u.avatar ? (
-                      <img
-                        src={u.avatar}
-                        alt=""
-                        className="w-14 h-14 rounded-full object-cover border border-white/10"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-lg">
-                        {u.name?.charAt(0)}
-                      </div>
-                    )}
-
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-black" />
-                  </div>
-
-                  {/* USER INFO */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium truncate">{u.name}</h3>
-
-                      <span className="text-[10px] text-gray-500">now</span>
+                  {u.avatar ? (
+                    <img
+                      src={u.avatar}
+                      alt={u.name}
+                      className="w-12 h-12 rounded-full object-cover border border-white/10"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-white">
+                      {u.name?.charAt(0)}
                     </div>
+                  )}
 
-                    <p className="text-sm text-gray-400 truncate">
-                      Tap to chat
-                    </p>
-                  </div>
+                  {/* NAME (DARK TEXT) */}
+                  <span className="text-gray-900 font-medium truncate">
+                    {u.name}
+                  </span>
                 </div>
               ))}
+
+              {/* GROUPS */}
+              <div className="mt-4 border-t border-white/10 pt-3">
+                <p className="text-xs text-gray-500 px-2 mb-2">Groups</p>
+
+                {groups.map((g) => (
+                  <div
+                    key={g._id}
+                    onClick={() => navigate(`/group/${g._id}`)}
+                    className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-white/5 transition"
+                  >
+                    {/* GROUP AVATAR */}
+                    <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center font-semibold text-white">
+                      {g.name?.charAt(0)}
+                    </div>
+
+                    {/* NAME (DARK TEXT) */}
+                    <span className="text-gray-900 font-medium truncate">
+                      {g.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* SELECTED */}
