@@ -482,47 +482,88 @@ export default function ChatPage() {
             />
 
             {/* USERS */}
-            <div className="p-2 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto px-2 pb-4">
               {filteredUsers.map((u) => (
                 <div
                   key={u._id}
                   onClick={() => navigate(`/chat/${u._id}`)}
-                  className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl cursor-pointer"
+                  className={`group flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all duration-300 mb-1
+      ${
+        u._id === chatUserId
+          ? "bg-white/15 border border-white/10"
+          : "hover:bg-white/5"
+      }`}
                 >
                   {/* AVATAR */}
-                  {u.avatar ? (
-                    <img
-                      src={u.avatar}
-                      alt={u.name}
-                      className="w-10 h-10 rounded-full object-cover border border-white/10"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-sm">
-                      {u.name?.charAt(0)}
-                    </div>
-                  )}
+                  <div className="relative">
+                    {u.avatar ? (
+                      <img
+                        src={u.avatar}
+                        alt={u.name}
+                        className="w-14 h-14 rounded-full object-cover border border-white/10"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center font-semibold text-lg text-white">
+                        {u.name?.charAt(0)}
+                      </div>
+                    )}
 
-                  {/* NAME */}
-                  <span className="truncate">{u.name}</span>
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-black" />
+                  </div>
+
+                  {/* USER INFO */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium truncate text-gray-900">
+                        {u.name}
+                      </h3>
+
+                      <span className="text-[10px] text-gray-500">now</span>
+                    </div>
+
+                    <p className="text-sm text-gray-600 truncate">
+                      Tap to chat
+                    </p>
+                  </div>
                 </div>
               ))}
 
               {/* GROUPS */}
-              <div className="mt-4 border-t border-white/10 pt-2">
-                <p className="text-xs text-gray-400 px-2 mb-2">Groups</p>
+              <div className="mt-4 border-t border-white/10 pt-4">
+                <p className="text-xs text-gray-500 px-2 mb-2 uppercase tracking-wide">
+                  Groups
+                </p>
 
                 {groups.map((g) => (
                   <div
                     key={g._id}
                     onClick={() => navigate(`/group/${g._id}`)}
-                    className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl cursor-pointer"
+                    className="group flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all duration-300 mb-1 hover:bg-white/5"
                   >
-                    {/* GROUP AVATAR (fallback icon/initial) */}
-                    <div className="w-10 h-10 rounded-full bg-purple-500/30 flex items-center justify-center text-sm font-semibold">
-                      {g.name?.charAt(0)}
+                    {/* GROUP AVATAR */}
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center font-semibold text-lg text-white">
+                        {g.name?.charAt(0)}
+                      </div>
                     </div>
 
-                    <span className="truncate">{g.name}</span>
+                    {/* GROUP INFO */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium truncate text-gray-900">
+                          {g.name}
+                        </h3>
+
+                        <span className="text-[10px] text-gray-500">group</span>
+                      </div>
+
+                      <p className="text-sm text-gray-600 truncate">
+                        Open group chat
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
