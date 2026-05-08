@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { useEffect, useState } from "react";
 
 import MessageList from "../hook/MessageList";
 import ChatInput from "../hook/ChatInput";
@@ -14,7 +15,23 @@ export default function GroupChatPage() {
   const { user } = useSelector((s) => s.auth);
   const token = localStorage.getItem("token");
 
-  /* ================= SOCKET (SOURCE OF TRUTH) ================= */
+  const [group, setGroup] = useState(null);
+
+  /* ================= LOAD GROUP ================= */
+  useEffect(() => {
+    const loadGroup = async () => {
+      try {
+        const res = await API.get(`/group/${groupId}`);
+        setGroup(res.data.group);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    if (groupId) loadGroup();
+  }, [groupId]);
+
+  /* ================= SOCKET ================= */
   const {
     messages,
     setMessages,
@@ -52,15 +69,16 @@ export default function GroupChatPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
+
       {/* HEADER */}
       <GroupHeader
-        group={null} // replace later with real group fetch
+        group={group}
         onlineMembers={onlineMembers}
         onAddMembers={() => {}}
         onOpenAdmin={() => {}}
       />
 
-      {/* ADMIN PANEL */}
+      {/* ADMIN */}
       <GroupAdminPanel groupId={groupId} />
 
       {/* MESSAGES */}
@@ -68,6 +86,7 @@ export default function GroupChatPage() {
 
       {/* INPUT */}
       <ChatInput onSend={sendMessage} typingUser={typingUser} />
+
     </div>
   );
 }
