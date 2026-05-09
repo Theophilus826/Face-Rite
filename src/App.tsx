@@ -39,7 +39,7 @@ import GroupChatPage from "./pages/GroupChatPage";
 import PostComments, { type CommentType } from "./pages/PostComments";
 import AdminDeposit from "./pages/AdminDeposit";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
-
+import ChatContant from "./pages/ChatContant";
 
 // Components
 import Navbar from "./component/Navbar";
@@ -274,12 +274,12 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-
+          {/* Chat route  */}
           <Route
             path="/chat"
             element={
               <ProtectedRoute>
-                <ChatPage />
+                <ChatContant />
               </ProtectedRoute>
             }
           />
@@ -292,7 +292,14 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-
+          <Route
+            path="/chat/:chatUserId"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/group/:groupId"
             element={
@@ -301,7 +308,6 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          
 
           {/* ================= ADMIN ================= */}
 
