@@ -12,31 +12,61 @@ import { API } from "../features/Api";
 
 export default function GroupChatPage() {
   const { groupId } = useParams();
+
   const { user } = useSelector((s) => s.auth);
+
   const token = localStorage.getItem("token");
 
+  /* ================= STATE ================= */
   const [group, setGroup] = useState(null);
+
+  const [loading, setLoading] = useState(true);
 
   /* ================= LOAD GROUP ================= */
   useEffect(() => {
-  const loadGroup = async () => {
-    try {
-      const res = await API.get(`/group/${groupId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+    const loadGroup = async () => {
+      try {
+        if (!groupId) return;
 
-      setGroup(res.data.group);
-    } catch (err) {
-      console.error("Failed to load group:", err);
-    }
-  };
+        if (!token) {
+          console.error("No token found");
+          return;
+        }
 
-  if (groupId) {
+        setLoading(true);
+
+        const res = await API.get(`/group/${groupId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        setGroup(res.data.group);
+      } catch (err) {
+        console.error(
+          "Failed to load group:",
+          err.response?.data || err.message
+        );
+
+        /*
+          403 = user not member
+          401 = invalid token
+        */
+
+        if (err.response?.status === 403) {
+          alert("You are not a member of this group");
+        }
+
+        if (err.response?.status === 401) {
+          alert("Session expired. Please login again.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadGroup();
-  }
-}, [groupId]);
+  }, [groupId, token]);
 
   /* ================= SOCKET ================= */
   const {
@@ -54,30 +84,82 @@ export default function GroupChatPage() {
   const sendMessage = async (text) => {
     if (!text?.trim()) return;
 
-    const temp = {
-      _id: Date.now(),
+    /* TEMP MESSAGE */
+    const tempMessage = {
+      _id: Date.now().toString(),
       text,
-      fromUser: user,
+      fromUser: {
+        _id: user._id,
+        name: user.name,
+      },
       pending: true,
       createdAt: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, temp]);
+    /* ADD TEMP */
+    setMessages((prev) => [...prev, tempMessage]);
 
     try {
-      await API.post("/group/send-message", {
-        groupId,
-        text,
-      });
+      const res = await API.post(
+        "/group/send-message",
+        {
+          groupId,
+          text,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      /* REPLACE TEMP */
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === tempMessage._id
+            ? res.data.message
+            : m
+        )
+      );
     } catch (err) {
-      console.error(err);
+      console.error(
+        "Send message failed:",
+        err.response?.data || err.message
+      );
+
+      /* REMOVE FAILED TEMP */
+      setMessages((prev) =>
+        prev.filter((m) => m._id !== tempMessage._id)
+      );
     }
   };
+
+  /* ================= LOADING ================= */
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-gray-500">
+          Loading group...
+        </p>
+      </div>
+    );
+  }
+
+  /* ================= NO GROUP ================= */
+  if (!group) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-red-500">
+          Group not found
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
 
-      {/* HEADER */}
+      {/* ================= HEADER ================= */}
       <GroupHeader
         group={group}
         onlineMembers={onlineMembers}
@@ -85,15 +167,22 @@ export default function GroupChatPage() {
         onOpenAdmin={() => {}}
       />
 
-      {/* ADMIN */}
+      {/* ================= ADMIN PANEL ================= */}
       <GroupAdminPanel groupId={groupId} />
 
-      {/* MESSAGES */}
-      <MessageList messages={messages} userId={user._id} />
+      {/* ================= MESSAGES ================= */}
+      <div className="flex-1 overflow-y-auto">
+        <MessageList
+          messages={messages}
+          userId={user._id}
+        />
+      </div>
 
-      {/* INPUT */}
-      <ChatInput onSend={sendMessage} typingUser={typingUser} />
-
+      {/* ================= INPUT ================= */}
+      <ChatInput
+        onSend={sendMessage}
+        typingUser={typingUser}
+      />
     </div>
   );
 }
