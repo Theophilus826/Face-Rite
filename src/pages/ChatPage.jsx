@@ -11,7 +11,11 @@ export default function ChatPage() {
   const { chatUserId } = useParams();
   const { user } = useSelector((s) => s.auth);
 
-  const { messages, setMessages, sendMessage } = useMessages(chatUserId);
+  const {
+    messages,
+    setMessages,
+    sendMessage,
+  } = useMessages(chatUserId);
 
   useChatSocket({
     userId: user?._id,
@@ -21,7 +25,7 @@ export default function ChatPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-      <ChatHeader users={users} chatUserId={chatUserId} />
+      <ChatHeader chatUserId={chatUserId} />
 
       <MessageList messages={messages} userId={user._id} />
 
