@@ -41,8 +41,7 @@ export default function useGroupSocket({ groupId, user, token }) {
 
       esRef.current?.close();
 
-      const url = `${API.defaults.baseURL}/group/stream/${groupId}/${user._id}?token=${encodeURIComponent(token)}`;
-
+      const url = `${API.defaults.baseURL}/group/stream/${groupId}?token=${encodeURIComponent(token)}`;
       const es = new EventSource(url);
 
       esRef.current = es;
@@ -60,7 +59,7 @@ export default function useGroupSocket({ groupId, user, token }) {
         console.error("Group SSE disconnected");
       };
     },
-    [groupId, user, token, handleEvent]
+    [groupId, user, token, handleEvent],
   );
 
   const disconnect = useCallback(() => {
