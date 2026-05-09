@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useEffect, useState, useCallback } from "react";
-
+import GroupAdminModal from "../hook/GroupAdminModal";
 import MessageList from "../hook/MessageList";
 import ChatInput from "../hook/ChatInput";
 import GroupHeader from "../hook/GroupHeader";
@@ -19,7 +19,7 @@ export default function GroupChatPage() {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
+  const [adminOpen, setAdminOpen] = useState(false);
   /* ================= LOAD GROUP ================= */
   const loadGroup = useCallback(async () => {
     try {
@@ -60,12 +60,11 @@ export default function GroupChatPage() {
   }, [groupId, token, loadGroup]);
 
   /* ================= SOCKET ================= */
-  const { messages, setMessages, typingUser, onlineMembers } =
-    useGroupSocket({
-      groupId,
-      user,
-      token,
-    });
+  const { messages, setMessages, typingUser, onlineMembers } = useGroupSocket({
+    groupId,
+    user,
+    token,
+  });
 
   /* ================= SEND MESSAGE ================= */
   const sendMessage = async (text) => {
@@ -94,21 +93,17 @@ export default function GroupChatPage() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       setMessages((prev) =>
-        prev.map((m) =>
-          m._id === tempId ? res.data.message : m
-        )
+        prev.map((m) => (m._id === tempId ? res.data.message : m)),
       );
     } catch (err) {
       console.error("Send failed:", err.response?.data || err.message);
 
       // remove failed temp message
-      setMessages((prev) =>
-        prev.filter((m) => m._id !== tempId)
-      );
+      setMessages((prev) => prev.filter((m) => m._id !== tempId));
     }
   };
 
@@ -149,7 +144,6 @@ export default function GroupChatPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-
       {/* HEADER */}
       <GroupHeader
         group={group}
@@ -160,20 +154,20 @@ export default function GroupChatPage() {
 
       {/* ADMIN */}
       <GroupAdminPanel groupId={groupId} />
-
+      <GroupAdminModal
+        open={adminOpen}
+        onClose={() => setAdminOpen(false)}
+        group={group}
+        token={token}
+        onUpdated={loadGroup}
+      />
       {/* MESSAGES */}
       <div className="flex-1 overflow-y-auto">
-        <MessageList
-          messages={messages}
-          userId={user?._id}
-        />
+        <MessageList messages={messages} userId={user?._id} />
       </div>
 
       {/* INPUT */}
-      <ChatInput
-        onSend={sendMessage}
-        typingUser={typingUser}
-      />
+      <ChatInput onSend={sendMessage} typingUser={typingUser} />
     </div>
   );
 }
