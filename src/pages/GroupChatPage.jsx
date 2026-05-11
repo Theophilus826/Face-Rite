@@ -60,11 +60,12 @@ export default function GroupChatPage() {
   }, [groupId, token, loadGroup]);
 
   /* ================= SOCKET ================= */
-  const { messages, setMessages, typingUser, onlineMembers } = useGroupSocket({
-    groupId,
-    user,
-    token,
-  });
+  const { messages, setMessages, addMessage, typingUser, onlineMembers } =
+    useGroupSocket({
+      groupId,
+      user,
+      token,
+    });
 
   /* ================= SEND MESSAGE ================= */
   const sendMessage = async (text) => {
@@ -83,6 +84,7 @@ export default function GroupChatPage() {
       createdAt: new Date().toISOString(),
     };
 
+    // optimistic UI
     setMessages((prev) => [...prev, tempMessage]);
 
     try {
@@ -96,9 +98,8 @@ export default function GroupChatPage() {
         },
       );
 
-      setMessages((prev) =>
-        prev.map((m) => (m._id === tempId ? res.data.message : m)),
-      );
+      // ✅ SAFE ADD
+      addMessage(res.data.message);
     } catch (err) {
       console.error("Send failed:", err.response?.data || err.message);
 
@@ -154,6 +155,7 @@ export default function GroupChatPage() {
 
       {/* ADMIN */}
       <GroupAdminPanel groupId={groupId} />
+
       <GroupAdminModal
         open={adminOpen}
         onClose={() => setAdminOpen(false)}

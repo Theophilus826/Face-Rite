@@ -1,9 +1,54 @@
+import { useEffect, useState, useMemo } from "react";
 import { API } from "../features/Api";
 
-export default function GroupAdminPanel({ groupId, onRefresh }) {
+export default function GroupAdminPanel({
+  groupId,
+  group,
+  onRefresh,
+}) {
   const token = localStorage.getItem("token");
 
-  /* ================= KICK USER ================= */
+  const [users, setUsers] = useState([]);
+
+  /* ================= LOAD USERS ================= */
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      const res = await API.get("/users", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setUsers(res.data.users || []);
+    } catch (err) {
+      console.error(
+        "Load users failed:",
+        err.response?.data || err.message
+      );
+    }
+  };
+
+  /* ================= FILTER USERS ================= */
+
+  const groupMembers = useMemo(() => {
+    return group?.members || [];
+  }, [group]);
+
+  const availableUsers = useMemo(() => {
+    return users.filter(
+      (u) =>
+        !groupMembers.some(
+          (m) => m.user?._id === u._id
+        )
+    );
+  }, [users, groupMembers]);
+
+  /* ================= ACTIONS ================= */
+
   const kickUser = async (memberId) => {
     try {
       await API.delete(
@@ -17,11 +62,13 @@ export default function GroupAdminPanel({ groupId, onRefresh }) {
 
       onRefresh?.();
     } catch (err) {
-      console.error("Kick failed:", err.response?.data || err.message);
+      console.error(
+        "Kick failed:",
+        err.response?.data || err.message
+      );
     }
   };
 
-  /* ================= ADD MEMBER ================= */
   const addMember = async (memberId) => {
     try {
       await API.post(
@@ -36,11 +83,13 @@ export default function GroupAdminPanel({ groupId, onRefresh }) {
 
       onRefresh?.();
     } catch (err) {
-      console.error("Add member failed:", err.response?.data || err.message);
+      console.error(
+        "Add member failed:",
+        err.response?.data || err.message
+      );
     }
   };
 
-  /* ================= PROMOTE ADMIN ================= */
   const promoteAdmin = async (memberId) => {
     try {
       await API.patch(
@@ -55,52 +104,95 @@ export default function GroupAdminPanel({ groupId, onRefresh }) {
 
       onRefresh?.();
     } catch (err) {
-      console.error("Promote failed:", err.response?.data || err.message);
+      console.error(
+        "Promote failed:",
+        err.response?.data || err.message
+      );
     }
   };
 
   /* ================= UI ================= */
+
   return (
-    <div className="bg-white border-b p-3 flex gap-3">
-      <button
-        onClick={() => {
-          const id = prompt("Enter user ID to kick:");
-          if (id) kickUser(id);
-        }}
-        className="px-3 py-1 bg-red-500 text-white rounded"
-      >
-        Kick User
-      </button>
+    <div className="bg-white border-b p-4 space-y-5">
+      {/* ================= MEMBERS ================= */}
 
-      <button
-        onClick={() => {
-          const id = prompt("Enter user ID to mute (not implemented yet):");
-          console.log("Mute user:", id);
-        }}
-        className="px-3 py-1 bg-yellow-500 text-white rounded"
-      >
-        Mute User
-      </button>
+      <div>
+        <h2 className="font-semibold mb-2">
+          Group Members
+        </h2>
 
-      <button
-        onClick={() => {
-          const id = prompt("Enter user ID to add:");
-          if (id) addMember(id);
-        }}
-        className="px-3 py-1 bg-blue-500 text-white rounded"
-      >
-        Add Member
-      </button>
+        <div className="space-y-2">
+          {groupMembers.map((member) => (
+            <div
+              key={member.user?._id}
+              className="flex items-center justify-between border rounded-lg p-2"
+            >
+              <div>
+                <p className="font-medium">
+                  {member.user?.name}
+                </p>
 
-      <button
-        onClick={() => {
-          const id = prompt("Enter user ID to promote:");
-          if (id) promoteAdmin(id);
-        }}
-        className="px-3 py-1 bg-purple-500 text-white rounded"
-      >
-        Promote Admin
-      </button>
+                <p className="text-xs text-gray-500">
+                  {member.role}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    promoteAdmin(member.user._id)
+                  }
+                  className="px-2 py-1 bg-purple-500 text-white rounded text-sm"
+                >
+                  Promote
+                </button>
+
+                <button
+                  onClick={() =>
+                    kickUser(member.user._id)
+                  }
+                  className="px-2 py-1 bg-red-500 text-white rounded text-sm"
+                >
+                  Kick
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ================= ADD USERS ================= */}
+
+      <div>
+        <h2 className="font-semibold mb-2">
+          Add Members
+        </h2>
+
+        <div className="space-y-2">
+          {availableUsers.map((u) => (
+            <div
+              key={u._id}
+              className="flex items-center justify-between border rounded-lg p-2"
+            >
+              <p>{u.name}</p>
+
+              <button
+                onClick={() => addMember(u._id)}
+                className="px-3 py-1 bg-blue-500 text-white rounded text-sm"
+              >
+                Add
+              </button>
+            </div>
+          ))}
+
+          {availableUsers.length === 0 && (
+            <p className="text-sm text-gray-500">
+              No users available
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

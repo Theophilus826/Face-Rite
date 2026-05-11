@@ -1,18 +1,68 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { API } from "../features/Api";
 
-export default function useGroupSocket({
-  groupId,
-  user,
-  token,
-  onGroupEvent,
-}) {
+export default function useGroupSocket({ groupId, user, token, onGroupEvent }) {
   const esRef = useRef(null);
 
   const [messages, setMessages] = useState([]);
   const [typingUser, setTypingUser] = useState(null);
   const [onlineMembers, setOnlineMembers] = useState([]);
   const [connected, setConnected] = useState(false);
+
+  /* ================= LOAD OLD MESSAGES ================= */
+
+  const loadMessages = useCallback(async () => {
+    if (!groupId || !token) return;
+
+    try {
+      const res = await API.get(`/group/messages/${groupId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setMessages(res.data.messages || []);
+    } catch (err) {
+      console.error(
+        "LOAD GROUP MESSAGES ERROR:",
+        err.response?.data || err.message,
+      );
+    }
+  }, [groupId, token]);
+
+  /* ================= SAFE ADD MESSAGE ================= */
+
+  const addMessage = useCallback((message) => {
+    if (!message?._id) return;
+
+    setMessages((prev) => {
+      // remove temp message from same sender
+      const cleaned = prev.filter((m) => {
+        if (!m.pending) return true;
+
+        const sameText = m.text === message.text;
+
+        const tempSender =
+          typeof m.fromUser === "object" ? m.fromUser?._id : m.fromUser;
+
+        const realSender =
+          typeof message.fromUser === "object"
+            ? message.fromUser?._id
+            : message.fromUser;
+
+        const sameSender = String(tempSender) === String(realSender);
+
+        return !(sameText && sameSender);
+      });
+
+      // avoid duplicates
+      const exists = cleaned.some((m) => String(m._id) === String(message._id));
+
+      if (exists) return cleaned;
+
+      return [...cleaned, message];
+    });
+  }, []);
 
   /* ================= HANDLE EVENTS ================= */
 
@@ -25,7 +75,7 @@ export default function useGroupSocket({
 
         case "new_message":
           if (data.message) {
-            setMessages((prev) => [...prev, data.message]);
+            addMessage(data.message);
           }
           break;
 
@@ -53,7 +103,7 @@ export default function useGroupSocket({
           break;
       }
     },
-    [onGroupEvent]
+    [onGroupEvent, addMessage],
   );
 
   /* ================= CONNECT ================= */
@@ -96,7 +146,7 @@ export default function useGroupSocket({
 
       // auto reconnect
       setTimeout(() => {
-        if (!esRef.current || esRef.current.readyState === 2) {
+        if (esRef.current?.readyState === EventSource.CLOSED) {
           connect();
         }
       }, 3000);
@@ -114,15 +164,18 @@ export default function useGroupSocket({
     setConnected(false);
   }, []);
 
-  /* ================= AUTO CONNECT ================= */
+  /* ================= INIT ================= */
 
   useEffect(() => {
+    if (!groupId || !token) return;
+
+    loadMessages();
     connect();
 
     return () => {
       disconnect();
     };
-  }, [connect, disconnect]);
+  }, [groupId, token, loadMessages, connect, disconnect]);
 
   /* ================= RETURN ================= */
 
@@ -131,6 +184,7 @@ export default function useGroupSocket({
 
     messages,
     setMessages,
+    addMessage,
 
     typingUser,
     onlineMembers,
