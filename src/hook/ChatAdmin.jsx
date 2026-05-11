@@ -1,21 +1,19 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { API } from "../features/Api";
 
 export default function GroupAdminPanel({
   groupId,
   group,
+  token,
   onRefresh,
 }) {
-  const token = localStorage.getItem("token");
-
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
   /* ================= LOAD USERS ================= */
-  useEffect(() => {
-    loadUsers();
-  }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const res = await API.get("/users", {
         headers: {
@@ -30,47 +28,52 @@ export default function GroupAdminPanel({
         err.response?.data || err.message
       );
     }
-  };
+  }, [token]);
 
-  /* ================= FILTER USERS ================= */
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  /* ================= MEMBERS ================= */
 
   const groupMembers = useMemo(() => {
     return group?.members || [];
   }, [group]);
 
+  /* ================= FILTER USERS ================= */
+
   const availableUsers = useMemo(() => {
     return users.filter(
       (u) =>
         !groupMembers.some(
-          (m) => m.user?._id === u._id
-        )
+          (m) => String(m.user?._id) === String(u._id)
+        ) &&
+        u.name?.toLowerCase().includes(search.toLowerCase())
     );
-  }, [users, groupMembers]);
+  }, [users, groupMembers, search]);
 
-  /* ================= ACTIONS ================= */
+  /* ================= ACTION WRAPPER ================= */
 
-  const kickUser = async (memberId) => {
+  const runAction = async (cb) => {
     try {
-      await API.delete(
-        `/group/${groupId}/members/${memberId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      setLoading(true);
 
-      onRefresh?.();
+      await cb();
+
+      await onRefresh?.();
     } catch (err) {
       console.error(
-        "Kick failed:",
         err.response?.data || err.message
       );
+    } finally {
+      setLoading(false);
     }
   };
 
+  /* ================= ACTIONS ================= */
+
   const addMember = async (memberId) => {
-    try {
+    runAction(async () => {
       await API.post(
         `/group/${groupId}/members`,
         { memberId },
@@ -80,18 +83,24 @@ export default function GroupAdminPanel({
           },
         }
       );
+    });
+  };
 
-      onRefresh?.();
-    } catch (err) {
-      console.error(
-        "Add member failed:",
-        err.response?.data || err.message
+  const kickUser = async (memberId) => {
+    runAction(async () => {
+      await API.delete(
+        `/group/${groupId}/members/${memberId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
-    }
+    });
   };
 
   const promoteAdmin = async (memberId) => {
-    try {
+    runAction(async () => {
       await API.patch(
         `/group/${groupId}/members/${memberId}/role`,
         { role: "admin" },
@@ -101,24 +110,17 @@ export default function GroupAdminPanel({
           },
         }
       );
-
-      onRefresh?.();
-    } catch (err) {
-      console.error(
-        "Promote failed:",
-        err.response?.data || err.message
-      );
-    }
+    });
   };
 
   /* ================= UI ================= */
 
   return (
-    <div className="bg-white border-b p-4 space-y-5">
-      {/* ================= MEMBERS ================= */}
+    <div className="p-4 space-y-6">
 
+      {/* MEMBERS */}
       <div>
-        <h2 className="font-semibold mb-2">
+        <h2 className="font-bold text-lg mb-3">
           Group Members
         </h2>
 
@@ -126,60 +128,74 @@ export default function GroupAdminPanel({
           {groupMembers.map((member) => (
             <div
               key={member.user?._id}
-              className="flex items-center justify-between border rounded-lg p-2"
+              className="flex items-center justify-between border rounded-xl p-3"
             >
               <div>
                 <p className="font-medium">
                   {member.user?.name}
                 </p>
 
-                <p className="text-xs text-gray-500">
+                <p className="text-sm text-gray-500 capitalize">
                   {member.role}
                 </p>
               </div>
 
               <div className="flex gap-2">
-                <button
-                  onClick={() =>
-                    promoteAdmin(member.user._id)
-                  }
-                  className="px-2 py-1 bg-purple-500 text-white rounded text-sm"
-                >
-                  Promote
-                </button>
+
+                {member.role !== "admin" && (
+                  <button
+                    disabled={loading}
+                    onClick={() =>
+                      promoteAdmin(member.user._id)
+                    }
+                    className="px-3 py-1 bg-purple-500 text-white rounded-lg text-sm"
+                  >
+                    Promote
+                  </button>
+                )}
 
                 <button
+                  disabled={loading}
                   onClick={() =>
                     kickUser(member.user._id)
                   }
-                  className="px-2 py-1 bg-red-500 text-white rounded text-sm"
+                  className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm"
                 >
                   Kick
                 </button>
+
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ================= ADD USERS ================= */}
-
+      {/* ADD MEMBERS */}
       <div>
-        <h2 className="font-semibold mb-2">
+        <h2 className="font-bold text-lg mb-3">
           Add Members
         </h2>
+
+        <input
+          type="text"
+          placeholder="Search users..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full border rounded-lg p-2 mb-3"
+        />
 
         <div className="space-y-2">
           {availableUsers.map((u) => (
             <div
               key={u._id}
-              className="flex items-center justify-between border rounded-lg p-2"
+              className="flex items-center justify-between border rounded-xl p-3"
             >
               <p>{u.name}</p>
 
               <button
+                disabled={loading}
                 onClick={() => addMember(u._id)}
-                className="px-3 py-1 bg-blue-500 text-white rounded text-sm"
+                className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm"
               >
                 Add
               </button>
