@@ -10,13 +10,34 @@ export default function GroupHeader({
 }) {
   const { user } = useSelector((state) => state.auth);
 
+  /* ================= ADMIN CHECK ================= */
+
   const isAdmin = useMemo(() => {
     if (!group || !user) return false;
-    return group?.admin?._id === user._id;
+
+    return group.members?.some(
+      (m) =>
+        String(m.user?._id) === String(user._id) &&
+        m.role === "admin"
+    );
   }, [group, user]);
+
+  /* ================= ONLINE COUNT ================= */
+
+  const onlineCount = useMemo(() => {
+    if (!group?.members?.length) return 0;
+
+    return group.members.filter((member) =>
+      onlineMembers.some(
+        (id) =>
+          String(id) === String(member.user?._id)
+      )
+    ).length;
+  }, [group, onlineMembers]);
 
   return (
     <header className="bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
+
       {/* LEFT */}
       <div>
         <h1 className="font-semibold text-lg flex items-center gap-2">
@@ -31,12 +52,14 @@ export default function GroupHeader({
 
         <p className="text-sm text-gray-500 flex items-center gap-1">
           <Users size={14} />
-          {group?.members?.length || 0} members • {onlineMembers.length} online
+          {group?.members?.length || 0} members •{" "}
+          {onlineCount} online
         </p>
       </div>
 
       {/* RIGHT ACTIONS */}
       <div className="flex items-center gap-2">
+
         {/* ADMIN BUTTON */}
         {isAdmin && (
           <button
@@ -48,13 +71,13 @@ export default function GroupHeader({
           </button>
         )}
 
-        {/* ADD MEMBERS */}
+        {/* GROUP CONTROL */}
         <button
           onClick={onAddMembers}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition"
         >
           <UserPlus size={16} />
-          Add Members
+          Group Control
         </button>
       </div>
     </header>
