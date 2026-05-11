@@ -15,7 +15,7 @@ export default function useGroupSocket({ groupId, user, token, onGroupEvent }) {
     if (!groupId || !token) return;
 
     try {
-      const res = await API.get(`/group/messages/${groupId}`, {
+      const res = await API.get(`/group/${groupId}/messages`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
