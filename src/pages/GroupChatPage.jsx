@@ -144,7 +144,7 @@ export default function GroupChatPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div className="h-screen flex flex-col bg-transparent">
       {/* HEADER */}
       <GroupHeader
         group={group}
@@ -163,12 +163,14 @@ export default function GroupChatPage() {
       />
 
       {/* MESSAGES */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-transparent pb-2">
         <MessageList messages={messages} userId={user?._id} />
       </div>
 
-      {/* INPUT */}
-      <ChatInput onSend={sendMessage} typingUser={typingUser} />
+      {/* CHAT INPUT (FIXED ABOVE BOTTOM NAV) */}
+      <div className="sticky bottom-0 z-50 bg-transparent pb-[70px]">
+        <ChatInput onSend={sendMessage} typingUser={typingUser} />
+      </div>
     </div>
   );
 }

@@ -15,11 +15,7 @@ export default function ChatPage() {
   const { user } = useSelector((s) => s.auth);
 
   /* ================= CHAT ================= */
-  const {
-    messages,
-    setMessages,
-    sendMessage,
-  } = useMessages(chatUserId);
+  const { messages, setMessages, sendMessage } = useMessages(chatUserId);
 
   /* ================= SOCKET ================= */
   useChatSocket({
@@ -30,10 +26,7 @@ export default function ChatPage() {
         Prevent duplicate messages
       */
       setMessages((prev) => {
-        const next =
-          typeof updater === "function"
-            ? updater(prev)
-            : updater;
+        const next = typeof updater === "function" ? updater(prev) : updater;
 
         const unique = [];
 
@@ -63,35 +56,29 @@ export default function ChatPage() {
   /* ================= EMPTY STATE ================= */
   if (!chatUserId) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-gray-500">
-          Select a user to start chatting
-        </p>
+      <div className="h-screen flex items-center justify-center bg-transparent">
+        <p className="text-gray-500">Select a user to start chatting</p>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
-
+    <div className="h-screen flex flex-col bg-transparent">
       {/* ================= HEADER ================= */}
       <ChatHeader chatUserId={chatUserId} />
 
       {/* ================= MESSAGES ================= */}
       <div
         id="chat-scroll"
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto bg-transparent px-2 pb-2"
       >
-        <MessageList
-          messages={messages}
-          userId={user?._id}
-        />
+        <MessageList messages={messages} userId={user?._id} />
       </div>
 
-      {/* ================= INPUT ================= */}
-      <ChatInput
-        onSend={sendMessage}
-      />
+      {/* ================= INPUT (FIXED ABOVE BOTTOM NAV) ================= */}
+      <div className="fixed bottom-[70px] left-0 right-0 z-50 bg-transparent">
+        <ChatInput onSend={sendMessage} typingUser={typingUser} />
+      </div>
     </div>
   );
 }
