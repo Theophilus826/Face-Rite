@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useEffect, useState, useCallback } from "react";
-import GroupAdminModal from "../hook/GroupAdminModal";
+// import GroupAdminModal from "../hook/GroupAdminModal";
 import MessageList from "../hook/MessageList";
 import ChatInput from "../hook/ChatInput";
 import GroupHeader from "../hook/GroupHeader";
@@ -156,13 +156,6 @@ export default function GroupChatPage() {
       {/* ADMIN */}
       <GroupAdminPanel groupId={groupId} />
 
-      <GroupAdminModal
-        open={adminOpen}
-        onClose={() => setAdminOpen(false)}
-        group={group}
-        token={token}
-        onUpdated={loadGroup}
-      />
       {/* MESSAGES */}
       <div className="flex-1 overflow-y-auto">
         <MessageList messages={messages} userId={user?._id} />
