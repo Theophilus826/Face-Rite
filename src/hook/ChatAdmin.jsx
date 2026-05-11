@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { API } from "../features/Api";
 
 export default function GroupAdminPanel({
@@ -9,12 +9,28 @@ export default function GroupAdminPanel({
 }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [search, setSearch] = useState("");
+  const [showAddMembers, setShowAddMembers] = useState(false);
+
+  /* ================= MEMBERS ================= */
+
+  const groupMembers = useMemo(() => {
+    return group?.members || [];
+  }, [group]);
 
   /* ================= LOAD USERS ================= */
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = async () => {
+    // prevent reloading every click
+    if (users.length > 0) {
+      setShowAddMembers(true);
+      return;
+    }
+
     try {
+      setLoadingUsers(true);
+
       const res = await API.get("/users", {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -22,23 +38,17 @@ export default function GroupAdminPanel({
       });
 
       setUsers(res.data.users || []);
+      setShowAddMembers(true);
+
     } catch (err) {
       console.error(
         "Load users failed:",
         err.response?.data || err.message
       );
+    } finally {
+      setLoadingUsers(false);
     }
-  }, [token]);
-
-  useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
-
-  /* ================= MEMBERS ================= */
-
-  const groupMembers = useMemo(() => {
-    return group?.members || [];
-  }, [group]);
+  };
 
   /* ================= FILTER USERS ================= */
 
@@ -61,6 +71,7 @@ export default function GroupAdminPanel({
       await cb();
 
       await onRefresh?.();
+
     } catch (err) {
       console.error(
         err.response?.data || err.message
@@ -82,6 +93,11 @@ export default function GroupAdminPanel({
             Authorization: `Bearer ${token}`,
           },
         }
+      );
+
+      // remove added user instantly
+      setUsers((prev) =>
+        prev.filter((u) => u._id !== memberId)
       );
     });
   };
@@ -120,9 +136,23 @@ export default function GroupAdminPanel({
 
       {/* MEMBERS */}
       <div>
-        <h2 className="font-bold text-lg mb-3">
-          Group Members
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-lg">
+            Group Members
+          </h2>
+
+          <button
+            onClick={loadUsers}
+            disabled={loadingUsers}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm"
+          >
+            {loadingUsers
+              ? "Loading..."
+              : showAddMembers
+              ? "Refresh Users"
+              : "Add Members"}
+          </button>
+        </div>
 
         <div className="space-y-2">
           {groupMembers.map((member) => (
@@ -171,44 +201,46 @@ export default function GroupAdminPanel({
       </div>
 
       {/* ADD MEMBERS */}
-      <div>
-        <h2 className="font-bold text-lg mb-3">
-          Add Members
-        </h2>
+      {showAddMembers && (
+        <div>
+          <h2 className="font-bold text-lg mb-3">
+            Add Members
+          </h2>
 
-        <input
-          type="text"
-          placeholder="Search users..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full border rounded-lg p-2 mb-3"
-        />
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full border rounded-lg p-2 mb-3"
+          />
 
-        <div className="space-y-2">
-          {availableUsers.map((u) => (
-            <div
-              key={u._id}
-              className="flex items-center justify-between border rounded-xl p-3"
-            >
-              <p>{u.name}</p>
-
-              <button
-                disabled={loading}
-                onClick={() => addMember(u._id)}
-                className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm"
+          <div className="space-y-2">
+            {availableUsers.map((u) => (
+              <div
+                key={u._id}
+                className="flex items-center justify-between border rounded-xl p-3"
               >
-                Add
-              </button>
-            </div>
-          ))}
+                <p>{u.name}</p>
 
-          {availableUsers.length === 0 && (
-            <p className="text-sm text-gray-500">
-              No users available
-            </p>
-          )}
+                <button
+                  disabled={loading}
+                  onClick={() => addMember(u._id)}
+                  className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm"
+                >
+                  Add
+                </button>
+              </div>
+            ))}
+
+            {availableUsers.length === 0 && (
+              <p className="text-sm text-gray-500">
+                No users available
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
