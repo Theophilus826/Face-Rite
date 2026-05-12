@@ -96,13 +96,9 @@ export default function ChatInput({ onSend }) {
           type: "audio/webm",
         });
 
-        const audioFile = new File(
-          [audioBlob],
-          "voice-message.webm",
-          {
-            type: "audio/webm",
-          }
-        );
+        const audioFile = new File([audioBlob], "voice-message.webm", {
+          type: "audio/webm",
+        });
 
         onSend({
           type: "audio",
@@ -171,7 +167,6 @@ export default function ChatInput({ onSend }) {
 
   return (
     <div className="relative px-3 py-2 bg-transparent">
-
       {/* HIDDEN INPUTS */}
 
       <input
@@ -194,13 +189,13 @@ export default function ChatInput({ onSend }) {
       {/* MENU */}
 
       <div
-        className={`absolute bottom-20 left-3 right-3 transition-all duration-300 ease-in-out z-50 ${
+        className={`absolute left-3 right-3 top-full mt-3 z-50 origin-top transition-all duration-300 ease-in-out ${
           showMenu
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-6 pointer-events-none"
+            ? "opacity-100 scale-100 translate-y-0"
+            : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
         }`}
       >
-        <div className="grid grid-cols-4 gap-4 rounded-3xl p-5 backdrop-blur-2xl bg-white/10 border border-white/10 shadow-2xl">
+        <div className="grid grid-cols-4 gap-4 rounded-3xl p-5 backdrop-blur-2xl bg-black/30 border border-white/10 shadow-2xl">
           {menuItems.map((item) => (
             <div
               key={item.label}
@@ -208,15 +203,13 @@ export default function ChatInput({ onSend }) {
                 item.action?.();
                 setShowMenu(false);
               }}
-              className="flex flex-col items-center text-center cursor-pointer active:scale-95 transition"
+              className="flex flex-col items-center text-center cursor-pointer active:scale-95 transition duration-200"
             >
-              <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center backdrop-blur-xl">
+              <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center backdrop-blur-xl shadow-lg">
                 {item.icon}
               </div>
 
-              <span className="text-gray-200 text-xs mt-2">
-                {item.label}
-              </span>
+              <span className="text-gray-200 text-xs mt-2">{item.label}</span>
             </div>
           ))}
         </div>
@@ -225,7 +218,6 @@ export default function ChatInput({ onSend }) {
       {/* INPUT */}
 
       <div className="flex items-center gap-3 rounded-full px-4 py-3 backdrop-blur-2xl bg-white/10 border border-white/10 shadow-xl">
-
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -239,9 +231,7 @@ export default function ChatInput({ onSend }) {
         <button
           onClick={() => setShowMenu(!showMenu)}
           className={`transition duration-300 ${
-            showMenu
-              ? "rotate-45 text-white"
-              : "text-gray-300"
+            showMenu ? "rotate-45 text-white" : "text-gray-300"
           }`}
         >
           <Paperclip size={24} />
@@ -258,11 +248,7 @@ export default function ChatInput({ onSend }) {
           </button>
         ) : (
           <button
-            onClick={
-              recording
-                ? stopRecording
-                : startRecording
-            }
+            onClick={recording ? stopRecording : startRecording}
             className={`w-11 h-11 rounded-full flex items-center justify-center transition ${
               recording
                 ? "bg-red-500"
