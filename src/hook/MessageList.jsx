@@ -1,9 +1,12 @@
-export default function MessageList({ messages = [], userId }) {
+export default function MessageList({
+  messages = [],
+  userId,
+}) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
       {messages.map((msg, index) => {
+        /* ================= SENDER ================= */
 
-        /* ================= FIX SENDER ================= */
         const senderId =
           typeof msg.fromUser === "object"
             ? msg.fromUser?._id
@@ -11,7 +14,8 @@ export default function MessageList({ messages = [], userId }) {
 
         const mine = senderId === userId;
 
-        /* ================= GROUP SAME USER ================= */
+        /* ================= GROUP ================= */
+
         const prev = messages[index - 1];
 
         const prevSender =
@@ -21,33 +25,146 @@ export default function MessageList({ messages = [], userId }) {
 
         const sameSender = prevSender === senderId;
 
+        /* ================= MESSAGE TYPE ================= */
+
+        const type =
+          msg.type ||
+          msg.messageType ||
+          "text";
+
         return (
           <div
             key={msg._id || index}
             className={`flex ${
-              mine ? "justify-end" : "justify-start"
+              mine
+                ? "justify-end"
+                : "justify-start"
             }`}
           >
-            <div className="max-w-xs">
+            <div className="max-w-xs md:max-w-sm">
 
-              {/* SHOW NAME ONLY ON FIRST MESSAGE */}
+              {/* NAME */}
+
               {!mine && !sameSender && (
-                <p className="text-xs text-gray-500 mb-1 ml-1">
+                <p className="text-xs text-gray-400 mb-1 ml-1">
                   {msg.fromUser?.name || "User"}
                 </p>
               )}
 
-              {/* MESSAGE */}
+              {/* MESSAGE BUBBLE */}
+
               <div
-                className={`px-4 py-2 rounded-2xl ${
+                className={`rounded-2xl overflow-hidden backdrop-blur-xl border shadow-lg ${
                   mine
-                    ? "bg-blue-500 text-white"
-                    : "bg-white border"
+                    ? "bg-blue-500/80 border-blue-400/20 text-white"
+                    : "bg-white/10 border-white/10 text-white"
                 }`}
               >
-                {msg.text}
+
+                {/* ================= TEXT ================= */}
+
+                {type === "text" && (
+                  <div className="px-4 py-3 break-words">
+                    {msg.text || msg.content}
+                  </div>
+                )}
+
+                {/* ================= IMAGE ================= */}
+
+                {type === "image" && (
+                  <div className="p-1">
+                    <img
+                      src={
+                        msg.imageUrl ||
+                        msg.file ||
+                        msg.media
+                      }
+                      alt="chat"
+                      className="rounded-2xl max-w-full object-cover"
+                    />
+
+                    {(msg.text || msg.caption) && (
+                      <p className="px-3 pb-3 pt-2 text-sm">
+                        {msg.text || msg.caption}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* ================= AUDIO ================= */}
+
+                {type === "audio" && (
+                  <div className="p-3">
+                    <audio
+                      controls
+                      className="max-w-[240px]"
+                    >
+                      <source
+                        src={
+                          msg.audioUrl ||
+                          msg.file ||
+                          msg.media
+                        }
+                        type="audio/webm"
+                      />
+                    </audio>
+                  </div>
+                )}
+
+                {/* ================= VIDEO ================= */}
+
+                {type === "video" && (
+                  <div className="p-1">
+                    <video
+                      controls
+                      className="rounded-2xl max-w-full"
+                    >
+                      <source
+                        src={
+                          msg.videoUrl ||
+                          msg.file ||
+                          msg.media
+                        }
+                      />
+                    </video>
+                  </div>
+                )}
+
+                {/* ================= FILE ================= */}
+
+                {type === "file" && (
+                  <a
+                    href={
+                      msg.fileUrl ||
+                      msg.file
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block px-4 py-3 underline text-sm"
+                  >
+                    Download File
+                  </a>
+                )}
               </div>
 
+              {/* ================= TIME ================= */}
+
+              <p
+                className={`text-[10px] mt-1 px-1 text-gray-400 ${
+                  mine
+                    ? "text-right"
+                    : "text-left"
+                }`}
+              >
+                {msg.createdAt
+                  ? new Date(
+                      msg.createdAt
+                    ).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : ""}
+              </p>
             </div>
           </div>
         );
