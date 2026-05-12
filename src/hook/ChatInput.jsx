@@ -247,15 +247,6 @@ export default function ChatInput({ onSend }) {
           <Paperclip size={24} />
         </button>
 
-        {/* CAMERA */}
-
-        <button
-          onClick={openCamera}
-          className="text-gray-300 hover:text-white transition"
-        >
-          <Camera size={24} />
-        </button>
-
         {/* SEND / MIC */}
 
         {text.trim() ? (
