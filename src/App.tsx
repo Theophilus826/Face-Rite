@@ -118,7 +118,11 @@ function AppContent() {
     dispatch(fetchCoins());
   }, [dispatch]);
 
-  const hideLayout = location.pathname.startsWith("/host-game");
+  /* ================= UI HIDE LOGIC ================= */
+  const hideLayout =
+    location.pathname.startsWith("/host-game") ||
+    location.pathname.startsWith("/chat") ||
+    location.pathname.startsWith("/group");
 
   return (
     <div
@@ -127,10 +131,11 @@ function AppContent() {
     >
       <ToastContainer position="top-right" autoClose={3000} />
 
+      {/* ================= NAVIGATION ================= */}
       {!hideLayout && <Navbar />}
       {!hideLayout && <BottomNav />}
 
-      {/* ✅ IMPORTANT: Suspense ONLY wraps lazy usage */}
+      {/* ================= ROUTES ================= */}
       <Suspense fallback={<GameLoader />}>
         <Routes>
           {/* ================= PUBLIC ================= */}
@@ -139,12 +144,22 @@ function AppContent() {
 
           <Route
             path="/login"
-            element={user?.token ? <Navigate to="/home" replace /> : <Login />}
+            element={
+              user?.token ? (
+                <Navigate to="/home" replace />
+              ) : (
+                <Login />
+              )
+            }
           />
 
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route
+            path="/reset-password/:token"
+            element={<ResetPassword />}
+          />
+
           <Route path="/host-game" element={<HostGame />} />
 
           {/* ================= PROTECTED ================= */}
@@ -274,7 +289,9 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          {/* Chat route  */}
+
+          {/* ================= CHAT ================= */}
+
           <Route
             path="/chat"
             element={
@@ -292,14 +309,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/chat/:chatUserId"
-            element={
-              <ProtectedRoute>
-                <ChatPage />
-              </ProtectedRoute>
-            }
-          />
+
           <Route
             path="/group/:groupId"
             element={
@@ -315,19 +325,30 @@ function AppContent() {
             <Route element={<AdminLayout />}>
               <Route index element={<Navigate to="monitor" replace />} />
               <Route path="monitor" element={<AdminMonitor />} />
-              <Route path="credit-coins" element={<AdminCreditCoins />} />
-              <Route path="carousel-upload" element={<CarouselUploader />} />
+              <Route
+                path="credit-coins"
+                element={<AdminCreditCoins />}
+              />
+              <Route
+                path="carousel-upload"
+                element={<CarouselUploader />}
+              />
               <Route path="deposits" element={<AdminDeposit />} />
-              <Route path="withdraw" element={<AdminWithdrawals />} />
+              <Route
+                path="withdraw"
+                element={<AdminWithdrawals />}
+              />
 
-              {/* ⚡ Lazy works safely here now */}
-              <Route path="host-game" element={<HostGame />} />
+              <Route
+                path="host-game"
+                element={<HostGame />}
+              />
 
               <Route path="feedbacks" element={<FeedbackPages />} />
             </Route>
           </Route>
 
-          {/* ================= OPTIONAL ================= */}
+          {/* ================= OTHER ================= */}
 
           <Route path="/cards" element={<CardGrid />} />
 

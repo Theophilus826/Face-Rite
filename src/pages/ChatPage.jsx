@@ -9,15 +9,18 @@ import ChatHeader from "../hook/ChatHeader";
 import { useMessages } from "../hook/useMessages";
 import { useChatSocket } from "../hook/useChatSocket";
 
+import { API } from "../features/Api";
+
 export default function ChatPage() {
   const { chatUserId } = useParams();
+
   const { user } = useSelector((s) => s.auth);
 
   /* ================= LOCAL STATE ================= */
   const [typingUser, setTypingUser] = useState(null);
 
   /* ================= CHAT ================= */
-  const { messages, setMessages, sendMessage } = useMessages(chatUserId);
+  const { messages, setMessages } = useMessages(chatUserId);
 
   /* ================= SOCKET ================= */
   useChatSocket({
@@ -27,8 +30,11 @@ export default function ChatPage() {
     setMessages: (updater) => {
       setMessages((prev) => {
         const next =
-          typeof updater === "function" ? updater(prev) : updater;
+          typeof updater === "function"
+            ? updater(prev)
+            : updater;
 
+        // ✅ remove duplicates
         const unique = [];
         const ids = new Set();
 
@@ -43,15 +49,189 @@ export default function ChatPage() {
       });
     },
 
-    setTypingUser, // 🔥 ADD THIS
+    setTypingUser,
   });
+
+  /* ================= SEND MESSAGE ================= */
+  const sendMessage = async (payload) => {
+    if (!payload || !user || !chatUserId) return;
+
+    /* ================= TEXT ================= */
+    if (payload.type === "text") {
+      const text = payload.content?.trim();
+
+      if (!text) return;
+
+      const tempId = Date.now().toString();
+
+      const tempMessage = {
+        _id: tempId,
+        text,
+        type: "text",
+
+        fromUser: {
+          _id: user._id,
+          name: user.name,
+        },
+
+        toUser: chatUserId,
+
+        pending: true,
+
+        createdAt: new Date().toISOString(),
+      };
+
+      // optimistic UI
+      setMessages((prev) => [...prev, tempMessage]);
+
+      try {
+        const res = await API.post("/chat/messages", {
+          toUserId: chatUserId,
+          text,
+        });
+
+        // replace temp message
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === tempId ? res.data.message : m
+          )
+        );
+      } catch (err) {
+        console.error(
+          "Text send failed:",
+          err.response?.data || err.message
+        );
+
+        // remove failed message
+        setMessages((prev) =>
+          prev.filter((m) => m._id !== tempId)
+        );
+      }
+    }
+
+    /* ================= IMAGE ================= */
+    if (payload.type === "image") {
+      const formData = new FormData();
+
+      formData.append("image", payload.file);
+      formData.append("toUserId", chatUserId);
+
+      const tempId = Date.now().toString();
+
+      const tempMessage = {
+        _id: tempId,
+
+        type: "image",
+
+        image: URL.createObjectURL(payload.file),
+
+        fromUser: {
+          _id: user._id,
+          name: user.name,
+        },
+
+        pending: true,
+
+        createdAt: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, tempMessage]);
+
+      try {
+        const res = await API.post(
+          "/chat/messages/image",
+          formData,
+          {
+            headers: {
+              "Content-Type":
+                "multipart/form-data",
+            },
+          }
+        );
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === tempId ? res.data.message : m
+          )
+        );
+      } catch (err) {
+        console.error(
+          "Image send failed:",
+          err.response?.data || err.message
+        );
+
+        setMessages((prev) =>
+          prev.filter((m) => m._id !== tempId)
+        );
+      }
+    }
+
+    /* ================= AUDIO ================= */
+    if (payload.type === "audio") {
+      const formData = new FormData();
+
+      formData.append("audio", payload.file);
+      formData.append("toUserId", chatUserId);
+
+      const tempId = Date.now().toString();
+
+      const tempMessage = {
+        _id: tempId,
+
+        type: "voice",
+
+        audio: URL.createObjectURL(payload.file),
+
+        fromUser: {
+          _id: user._id,
+          name: user.name,
+        },
+
+        pending: true,
+
+        createdAt: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, tempMessage]);
+
+      try {
+        const res = await API.post(
+          "/chat/messages/voice",
+          formData,
+          {
+            headers: {
+              "Content-Type":
+                "multipart/form-data",
+            },
+          }
+        );
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === tempId ? res.data.message : m
+          )
+        );
+      } catch (err) {
+        console.error(
+          "Voice send failed:",
+          err.response?.data || err.message
+        );
+
+        setMessages((prev) =>
+          prev.filter((m) => m._id !== tempId)
+        );
+      }
+    }
+  };
 
   /* ================= AUTO SCROLL ================= */
   useEffect(() => {
-    const container = document.getElementById("chat-scroll");
+    const container =
+      document.getElementById("chat-scroll");
 
     if (container) {
-      container.scrollTop = container.scrollHeight;
+      container.scrollTop =
+        container.scrollHeight;
     }
   }, [messages]);
 
@@ -68,7 +248,6 @@ export default function ChatPage() {
 
   return (
     <div className="h-screen flex flex-col bg-transparent">
-
       {/* ================= HEADER ================= */}
       <ChatHeader chatUserId={chatUserId} />
 
@@ -77,9 +256,12 @@ export default function ChatPage() {
         id="chat-scroll"
         className="flex-1 overflow-y-auto bg-transparent px-2 pb-2"
       >
-        <MessageList messages={messages} userId={user?._id} />
+        <MessageList
+          messages={messages}
+          userId={user?._id}
+        />
 
-        {/* Typing indicator */}
+        {/* typing */}
         {typingUser && (
           <p className="text-xs text-gray-400 px-3 pb-2">
             {typingUser} is typing...
@@ -94,7 +276,6 @@ export default function ChatPage() {
           typingUser={typingUser}
         />
       </div>
-
     </div>
   );
 }
