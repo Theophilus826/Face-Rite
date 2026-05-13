@@ -29,10 +29,7 @@ export default function ChatPage() {
 
     setMessages: (updater) => {
       setMessages((prev) => {
-        const next =
-          typeof updater === "function"
-            ? updater(prev)
-            : updater;
+        const next = typeof updater === "function" ? updater(prev) : updater;
 
         // ✅ remove duplicates
         const unique = [];
@@ -92,20 +89,13 @@ export default function ChatPage() {
 
         // replace temp message
         setMessages((prev) =>
-          prev.map((m) =>
-            m._id === tempId ? res.data.message : m
-          )
+          prev.map((m) => (m._id === tempId ? res.data.message : m)),
         );
       } catch (err) {
-        console.error(
-          "Text send failed:",
-          err.response?.data || err.message
-        );
+        console.error("Text send failed:", err.response?.data || err.message);
 
         // remove failed message
-        setMessages((prev) =>
-          prev.filter((m) => m._id !== tempId)
-        );
+        setMessages((prev) => prev.filter((m) => m._id !== tempId));
       }
     }
 
@@ -138,31 +128,19 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, tempMessage]);
 
       try {
-        const res = await API.post(
-          "/chat/messages/image",
-          formData,
-          {
-            headers: {
-              "Content-Type":
-                "multipart/form-data",
-            },
-          }
-        );
+        const res = await API.post("/chat/messages/image", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
 
         setMessages((prev) =>
-          prev.map((m) =>
-            m._id === tempId ? res.data.message : m
-          )
+          prev.map((m) => (m._id === tempId ? res.data.message : m)),
         );
       } catch (err) {
-        console.error(
-          "Image send failed:",
-          err.response?.data || err.message
-        );
+        console.error("Image send failed:", err.response?.data || err.message);
 
-        setMessages((prev) =>
-          prev.filter((m) => m._id !== tempId)
-        );
+        setMessages((prev) => prev.filter((m) => m._id !== tempId));
       }
     }
 
@@ -195,43 +173,29 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, tempMessage]);
 
       try {
-        const res = await API.post(
-          "/chat/messages/voice",
-          formData,
-          {
-            headers: {
-              "Content-Type":
-                "multipart/form-data",
-            },
-          }
-        );
+        const res = await API.post("/chat/messages/voice", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
 
         setMessages((prev) =>
-          prev.map((m) =>
-            m._id === tempId ? res.data.message : m
-          )
+          prev.map((m) => (m._id === tempId ? res.data.message : m)),
         );
       } catch (err) {
-        console.error(
-          "Voice send failed:",
-          err.response?.data || err.message
-        );
+        console.error("Voice send failed:", err.response?.data || err.message);
 
-        setMessages((prev) =>
-          prev.filter((m) => m._id !== tempId)
-        );
+        setMessages((prev) => prev.filter((m) => m._id !== tempId));
       }
     }
   };
 
   /* ================= AUTO SCROLL ================= */
   useEffect(() => {
-    const container =
-      document.getElementById("chat-scroll");
+    const container = document.getElementById("chat-scroll");
 
     if (container) {
-      container.scrollTop =
-        container.scrollHeight;
+      container.scrollTop = container.scrollHeight;
     }
   }, [messages]);
 
@@ -239,9 +203,7 @@ export default function ChatPage() {
   if (!chatUserId) {
     return (
       <div className="h-screen flex items-center justify-center bg-transparent">
-        <p className="text-gray-500">
-          Select a user to start chatting
-        </p>
+        <p className="text-gray-500">Select a user to start chatting</p>
       </div>
     );
   }
@@ -256,10 +218,7 @@ export default function ChatPage() {
         id="chat-scroll"
         className="flex-1 overflow-y-auto bg-transparent px-2 pb-2"
       >
-        <MessageList
-          messages={messages}
-          userId={user?._id}
-        />
+        <MessageList messages={messages} userId={user?._id} />
 
         {/* typing */}
         {typingUser && (
@@ -270,11 +229,8 @@ export default function ChatPage() {
       </div>
 
       {/* ================= INPUT ================= */}
-      <div className="fixed bottom-[70px] left-0 right-0 z-50 bg-transparent">
-        <ChatInput
-          onSend={sendMessage}
-          typingUser={typingUser}
-        />
+      <div className="sticky bottom-0 w-full z-50 bg-transparent">
+        <ChatInput onSend={sendMessage} typingUser={typingUser} />
       </div>
     </div>
   );
