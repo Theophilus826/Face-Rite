@@ -95,7 +95,7 @@ export const fetchCoinHistory = createAsyncThunk(
   "coins/fetchCoinHistory",
   async (_, thunkAPI) => {
     const res = await API.get("/coins/history", getAuthHeader(thunkAPI));
-    return res.data.history;
+    return res.data;
   },
 );
 
