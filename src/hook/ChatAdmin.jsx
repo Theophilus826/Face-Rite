@@ -12,17 +12,22 @@ export default function GroupAdminPanel({
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [search, setSearch] = useState("");
   const [showAddMembers, setShowAddMembers] = useState(false);
+  const [toast, setToast] = useState("");
 
   /* ================= MEMBERS ================= */
 
-  const groupMembers = useMemo(() => {
-    return group?.members || [];
-  }, [group]);
+  const groupMembers = useMemo(() => group?.members || [], [group]);
+
+  /* ================= TOAST ================= */
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2000);
+  };
 
   /* ================= LOAD USERS ================= */
 
   const loadUsers = async () => {
-    // prevent reloading every click
     if (users.length > 0) {
       setShowAddMembers(true);
       return;
@@ -39,12 +44,8 @@ export default function GroupAdminPanel({
 
       setUsers(res.data.users || []);
       setShowAddMembers(true);
-
     } catch (err) {
-      console.error(
-        "Load users failed:",
-        err.response?.data || err.message
-      );
+      console.error(err.response?.data || err.message);
     } finally {
       setLoadingUsers(false);
     }
@@ -64,18 +65,17 @@ export default function GroupAdminPanel({
 
   /* ================= ACTION WRAPPER ================= */
 
-  const runAction = async (cb) => {
+  const runAction = async (action, successMsg) => {
     try {
       setLoading(true);
 
-      await cb();
+      await action();
 
       await onRefresh?.();
 
+      if (successMsg) showToast(successMsg);
     } catch (err) {
-      console.error(
-        err.response?.data || err.message
-      );
+      console.error(err.response?.data || err.message);
     } finally {
       setLoading(false);
     }
@@ -83,63 +83,50 @@ export default function GroupAdminPanel({
 
   /* ================= ACTIONS ================= */
 
-  const addMember = async (memberId) => {
+  const addMember = (memberId) =>
     runAction(async () => {
       await API.post(
         `/group/${groupId}/members`,
         { memberId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // remove added user instantly
-      setUsers((prev) =>
-        prev.filter((u) => u._id !== memberId)
-      );
-    });
-  };
+      setUsers((prev) => prev.filter((u) => u._id !== memberId));
+    }, "Member added & rewards issued 🎉");
 
-  const kickUser = async (memberId) => {
+  const kickUser = (memberId) =>
     runAction(async () => {
       await API.delete(
         `/group/${groupId}/members/${memberId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-    });
-  };
+    }, "Member removed (reward updated)");
 
-  const promoteAdmin = async (memberId) => {
+  const promoteAdmin = (memberId) =>
     runAction(async () => {
       await API.patch(
         `/group/${groupId}/members/${memberId}/role`,
         { role: "admin" },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-    });
-  };
+    }, "Role updated & reward granted ⚡");
 
   /* ================= UI ================= */
 
   return (
     <div className="p-4 space-y-6">
 
+      {/* TOAST */}
+      {toast && (
+        <div className="p-2 bg-green-100 text-green-700 rounded-lg text-sm">
+          {toast}
+        </div>
+      )}
+
       {/* MEMBERS */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-lg">
-            Group Members
-          </h2>
+          <h2 className="font-bold text-lg">Group Members</h2>
 
           <button
             onClick={loadUsers}
@@ -161,23 +148,17 @@ export default function GroupAdminPanel({
               className="flex items-center justify-between border rounded-xl p-3"
             >
               <div>
-                <p className="font-medium">
-                  {member.user?.name}
-                </p>
-
+                <p className="font-medium">{member.user?.name}</p>
                 <p className="text-sm text-gray-500 capitalize">
                   {member.role}
                 </p>
               </div>
 
               <div className="flex gap-2">
-
                 {member.role !== "admin" && (
                   <button
                     disabled={loading}
-                    onClick={() =>
-                      promoteAdmin(member.user._id)
-                    }
+                    onClick={() => promoteAdmin(member.user._id)}
                     className="px-3 py-1 bg-purple-500 text-white rounded-lg text-sm"
                   >
                     Promote
@@ -186,14 +167,11 @@ export default function GroupAdminPanel({
 
                 <button
                   disabled={loading}
-                  onClick={() =>
-                    kickUser(member.user._id)
-                  }
+                  onClick={() => kickUser(member.user._id)}
                   className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm"
                 >
                   Kick
                 </button>
-
               </div>
             </div>
           ))}
@@ -203,9 +181,7 @@ export default function GroupAdminPanel({
       {/* ADD MEMBERS */}
       {showAddMembers && (
         <div>
-          <h2 className="font-bold text-lg mb-3">
-            Add Members
-          </h2>
+          <h2 className="font-bold text-lg mb-3">Add Members</h2>
 
           <input
             type="text"

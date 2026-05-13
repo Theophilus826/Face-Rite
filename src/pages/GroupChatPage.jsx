@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import GroupAdminModal from "../hook/GroupAdminModal";
 import MessageList from "../hook/MessageList";
@@ -8,76 +8,57 @@ import ChatInput from "../hook/ChatInput";
 import GroupHeader from "../hook/GroupHeader";
 
 import useGroupSocket from "../hook/useGroupSocket";
-
 import { API } from "../features/Api";
 
 export default function GroupChatPage() {
   const { groupId } = useParams();
-
   const navigate = useNavigate();
 
   const { user } = useSelector((s) => s.auth);
-
   const token = localStorage.getItem("token");
 
   /* ================= STATE ================= */
 
   const [group, setGroup] = useState(null);
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
-
   const [adminOpen, setAdminOpen] = useState(false);
 
   /* ================= LOAD GROUP ================= */
 
-  const loadGroup = useCallback(async () => {
+  const fetchGroup = useCallback(async () => {
     try {
       setLoading(true);
-
       setError("");
 
       const res = await API.get(`/group/${groupId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       setGroup(res.data.group);
     } catch (err) {
-      console.error(
-        "Group load error:",
-        err.response?.data || err.message,
-      );
+      const status = err.response?.status;
+      const msg = err.response?.data?.error;
 
-      const msg =
-        err.response?.data?.error ||
-        "Failed to load group";
-
-      setError(msg);
-
-      if (err.response?.status === 403) {
-        setError("You are not a member of this group");
-      }
-
-      if (err.response?.status === 401) {
-        setError("Session expired. Please login again.");
-
+      if (status === 401) {
         navigate("/login");
+        return;
       }
+
+      if (status === 403) {
+        setError("You are not allowed to access this group");
+        return;
+      }
+
+      setError(msg || "Failed to load group");
     } finally {
       setLoading(false);
     }
   }, [groupId, token, navigate]);
 
-  /* ================= INITIAL LOAD ================= */
-
   useEffect(() => {
-    if (groupId && token) {
-      loadGroup();
-    }
-  }, [groupId, token, loadGroup]);
+    if (groupId && token) fetchGroup();
+  }, [groupId, token, fetchGroup]);
 
   /* ================= SOCKET ================= */
 
@@ -93,193 +74,138 @@ export default function GroupChatPage() {
     token,
   });
 
-  /* ================= SEND MESSAGE ================= */
+  /* ================= TEXT MESSAGE ================= */
+
+  const sendTextMessage = async (text) => {
+    const tempId = Date.now().toString();
+
+    const tempMessage = {
+      _id: tempId,
+      type: "text",
+      text,
+      fromUser: {
+        _id: user._id,
+        name: user.name,
+      },
+      pending: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, tempMessage]);
+
+    try {
+      const res = await API.post(
+        "/group/send-message",
+        { groupId, text },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === tempId ? res.data.message : m
+        )
+      );
+    } catch (err) {
+      setMessages((prev) =>
+        prev.filter((m) => m._id !== tempId)
+      );
+    }
+  };
+
+  /* ================= MEDIA MESSAGE ================= */
+
+  const sendMediaMessage = async (file, type) => {
+    const formData = new FormData();
+    formData.append("groupId", groupId);
+    formData.append(type, file);
+
+    try {
+      const res = await API.post(
+        "/group/send-message",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      addMessage(res.data.message);
+    } catch (err) {
+      console.error(`${type} send failed`, err.response?.data || err.message);
+    }
+  };
+
+  /* ================= MESSAGE ROUTER ================= */
 
   const sendMessage = async (payload) => {
     if (!payload || !user) return;
 
-    const tempId = Date.now().toString();
-
-    /* ================= TEXT ================= */
-
     if (payload.type === "text") {
-      const messageText = payload.content?.trim();
-
-      if (!messageText) return;
-
-      const tempMessage = {
-        _id: tempId,
-
-        type: "text",
-
-        text: messageText,
-
-        fromUser: {
-          _id: user._id,
-          name: user.name,
-        },
-
-        pending: true,
-
-        createdAt: new Date().toISOString(),
-      };
-
-      // optimistic UI
-      setMessages((prev) => [...prev, tempMessage]);
-
-      try {
-        const res = await API.post(
-          "/group/send-message",
-          {
-            groupId,
-            text: messageText,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        // replace temp message
-        setMessages((prev) =>
-          prev.map((m) =>
-            m._id === tempId
-              ? res.data.message
-              : m,
-          ),
-        );
-      } catch (err) {
-        console.error(
-          "Send failed:",
-          err.response?.data || err.message,
-        );
-
-        // remove failed temp
-        setMessages((prev) =>
-          prev.filter((m) => m._id !== tempId),
-        );
-      }
-
-      return;
+      const text = payload.content?.trim();
+      if (!text) return;
+      return sendTextMessage(text);
     }
-
-    /* ================= IMAGE ================= */
 
     if (payload.type === "image") {
-      const formData = new FormData();
-
-      formData.append("groupId", groupId);
-
-      formData.append("image", payload.file);
-
-      try {
-        const res = await API.post(
-          "/group/send-message",
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type":
-                "multipart/form-data",
-            },
-          },
-        );
-
-        addMessage(res.data.message);
-      } catch (err) {
-        console.error(
-          "Image send failed:",
-          err.response?.data || err.message,
-        );
-      }
-
-      return;
+      return sendMediaMessage(payload.file, "image");
     }
 
-    /* ================= AUDIO ================= */
-
     if (payload.type === "audio") {
-      const formData = new FormData();
-
-      formData.append("groupId", groupId);
-
-      formData.append("audio", payload.file);
-
-      try {
-        const res = await API.post(
-          "/group/send-message",
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type":
-                "multipart/form-data",
-            },
-          },
-        );
-
-        addMessage(res.data.message);
-      } catch (err) {
-        console.error(
-          "Audio send failed:",
-          err.response?.data || err.message,
-        );
-      }
-
-      return;
+      return sendMediaMessage(payload.file, "audio");
     }
   };
 
-  /* ================= LOADING ================= */
+  /* ================= ADMIN REFRESH ================= */
+
+  const refreshGroup = async () => {
+    await fetchGroup();
+  };
+
+  /* ================= LOADING UI ================= */
 
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <p className="text-gray-500">
-          Loading group...
-        </p>
+        <p className="text-gray-500">Loading group...</p>
       </div>
     );
   }
 
-  /* ================= ERROR ================= */
+  /* ================= ERROR UI ================= */
 
   if (error) {
     return (
       <div className="h-screen flex items-center justify-center flex-col gap-3">
-        <p className="text-red-500">
-          {error}
-        </p>
+        <p className="text-red-500">{error}</p>
 
         <button
           onClick={() => navigate("/groups")}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg"
         >
-          Go Back
+          Back to Groups
         </button>
       </div>
     );
   }
 
-  /* ================= NO GROUP ================= */
+  /* ================= EMPTY STATE ================= */
 
   if (!group) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <p className="text-gray-500">
-          Group not found
-        </p>
+        <p className="text-gray-500">Group not found</p>
       </div>
     );
   }
 
-  /* ================= UI ================= */
+  /* ================= MAIN UI ================= */
 
   return (
-    <div className="h-screen flex flex-col bg-transparent">
-      {/* ================= HEADER ================= */}
+    <div className="h-screen flex flex-col">
 
+      {/* HEADER */}
       <GroupHeader
         group={group}
         onlineMembers={onlineMembers}
@@ -287,33 +213,31 @@ export default function GroupChatPage() {
         onOpenAdmin={() => setAdminOpen(true)}
       />
 
-      {/* ================= ADMIN MODAL ================= */}
-
+      {/* ADMIN PANEL */}
       <GroupAdminModal
         open={adminOpen}
         onClose={() => setAdminOpen(false)}
         group={group}
         token={token}
-        onUpdated={loadGroup}
+        onUpdated={refreshGroup}
       />
 
-      {/* ================= MESSAGES ================= */}
-
-      <div className="flex-1 overflow-y-auto bg-transparent pb-2">
+      {/* MESSAGES */}
+      <div className="flex-1 overflow-y-auto">
         <MessageList
           messages={messages}
           userId={user?._id}
         />
       </div>
 
-      {/* ================= INPUT ================= */}
-
-      <div className="sticky bottom-0 z-30 bg-transparent pb-[30px]">
+      {/* INPUT */}
+      <div className="sticky bottom-0 z-30">
         <ChatInput
           onSend={sendMessage}
           typingUser={typingUser}
         />
       </div>
+
     </div>
   );
 }
