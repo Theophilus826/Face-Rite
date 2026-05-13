@@ -40,6 +40,8 @@ import PostComments, { type CommentType } from "./pages/PostComments";
 import AdminDeposit from "./pages/AdminDeposit";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
 import ChatContant from "./pages/ChatContant";
+import AboutPage from "./pages/AboutPage";
+
 
 // Components
 import Navbar from "./component/Navbar";
@@ -351,7 +353,7 @@ function AppContent() {
           {/* ================= OTHER ================= */}
 
           <Route path="/cards" element={<CardGrid />} />
-
+          <Route path="/about" element={<AboutPage/>}/>
           {/* ================= FALLBACK ================= */}
 
           <Route path="*" element={<Navigate to="/" replace />} />
