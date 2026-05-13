@@ -229,7 +229,7 @@ export default function ChatPage() {
       </div>
 
       {/* ================= INPUT ================= */}
-      <div className="sticky bottom-0 w-full z-50 bg-transparent">
+      <div className="sticky bottom-0 w-full z-50 bg-transparent pb-[30px]">
         <ChatInput onSend={sendMessage} typingUser={typingUser} />
       </div>
     </div>

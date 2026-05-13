@@ -308,7 +308,7 @@ export default function GroupChatPage() {
 
       {/* ================= INPUT ================= */}
 
-      <div className="sticky bottom-0 z-50 bg-transparent pb-[70px]">
+      <div className="sticky bottom-0 z-30 bg-transparent pb-[30px]">
         <ChatInput
           onSend={sendMessage}
           typingUser={typingUser}
