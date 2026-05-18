@@ -40,11 +40,20 @@ export default function GroupAdminPanel({
   }, [groupMembers, currentUser]);
 
   const myRole = myMemberData?.role || "member";
-  const isAdmin = myRole === "admin";
-  const canModerate = isAdmin || myRole === "moderator";
 
-  /* ================= REWARD SETTINGS (TOGGLE SYSTEM) ================= */
-  const rewardEnabled = group?.settings?.allowRewards ?? true;
+  const isAdmin = myRole === "admin";
+  const canModerate = myRole === "admin" || myRole === "moderator";
+
+  /* ================= REWARD SETTINGS ================= */
+  const rewardEnabled =
+    group?.settings?.allowRewards ??
+    group?.groupRewardEnabled ??
+    true;
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  };
 
   const toggleRewards = async () => {
     if (!isAdmin) return;
@@ -63,33 +72,21 @@ export default function GroupAdminPanel({
         `Rewards ${!rewardEnabled ? "enabled" : "disabled"}`
       );
     } catch (err) {
-      showToast("Failed to update settings");
+      console.error(err);
+      showToast("Failed to update reward settings");
     } finally {
       setUpdatingSettings(false);
     }
   };
 
   /* ================= STATS ================= */
-  const totalCoins =
-    group?.stats?.totalCoinsDistributed || 0;
+  const totalCoins = group?.stats?.totalCoinsDistributed || 0;
+  const totalMessages = group?.stats?.totalMessages || 0;
 
-  const totalMessages =
-    group?.stats?.totalMessages || 0;
+  const milestone = group?.rewards?.messageMilestone || 10;
+  const nextReward = group?.rewards?.messageRewardCoins || 20;
 
-  const milestone =
-    group?.rewards?.messageMilestone || 10;
-
-  const nextReward =
-    group?.rewards?.messageRewardCoins || 20;
-
-  const progress =
-    ((totalMessages % milestone) * 100) / milestone;
-
-  /* ================= TOAST ================= */
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 2500);
-  };
+  const progress = ((totalMessages % milestone) * 100) / milestone;
 
   /* ================= USERS ================= */
   const loadUsers = async () => {
@@ -109,7 +106,8 @@ export default function GroupAdminPanel({
 
       setUsers(res.data.users || []);
       setShowAddMembers(true);
-    } catch {
+    } catch (err) {
+      console.error(err);
       showToast("Failed to load users");
     } finally {
       setLoadingUsers(false);
@@ -133,14 +131,15 @@ export default function GroupAdminPanel({
       await action();
       await onRefresh?.();
       if (msg) showToast(msg);
-    } catch {
+    } catch (err) {
+      console.error(err);
       showToast("Action failed");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ================= REWARD CLAIM ================= */
+  /* ================= CLAIM REWARDS ================= */
   const claimCoins = async () => {
     if (!rewardEnabled) {
       return showToast("Rewards are disabled");
@@ -160,7 +159,8 @@ export default function GroupAdminPanel({
 
       showToast(`+${res.data.coins} coins claimed 🎉`);
       await onRefresh?.();
-    } catch {
+    } catch (err) {
+      console.error(err);
       showToast("Reward unavailable");
     } finally {
       setClaiming(false);
@@ -176,7 +176,9 @@ export default function GroupAdminPanel({
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setUsers((prev) => prev.filter((u) => u._id !== memberId));
+      setUsers((prev) =>
+        prev.filter((u) => u._id !== memberId)
+      );
     }, "Member added");
 
   const kickUser = (memberId) =>
@@ -194,23 +196,25 @@ export default function GroupAdminPanel({
         { role },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-    }, "Role updated");
+    }, `Role changed to ${role}`);
 
   /* ================= ROLE BADGE ================= */
   const RoleBadge = ({ role }) => {
-    if (role === "admin")
+    if (role === "admin") {
       return (
         <span className="flex items-center gap-1 text-yellow-600 text-xs bg-yellow-100 px-2 py-1 rounded-full">
           <Crown size={12} /> Admin
         </span>
       );
+    }
 
-    if (role === "moderator")
+    if (role === "moderator") {
       return (
         <span className="flex items-center gap-1 text-purple-600 text-xs bg-purple-100 px-2 py-1 rounded-full">
           <Shield size={12} /> Mod
         </span>
       );
+    }
 
     return (
       <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
@@ -223,7 +227,14 @@ export default function GroupAdminPanel({
   return (
     <div className="p-4 space-y-6">
 
-      {/* ================= SETTINGS (REWARD TOGGLE) ================= */}
+      {/* ================= TOAST ================= */}
+      {toast && (
+        <div className="p-3 bg-green-100 text-green-700 rounded-xl">
+          {toast}
+        </div>
+      )}
+
+      {/* ================= REWARD TOGGLE ================= */}
       {isAdmin && (
         <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border">
           <div className="flex items-center gap-2">
@@ -236,7 +247,7 @@ export default function GroupAdminPanel({
           <button
             onClick={toggleRewards}
             disabled={updatingSettings}
-            className="flex items-center gap-2"
+            className="text-2xl"
           >
             {rewardEnabled ? (
               <ToggleRight className="text-green-500" />
@@ -247,7 +258,7 @@ export default function GroupAdminPanel({
         </div>
       )}
 
-      {/* ================= CLAIM ================= */}
+      {/* ================= REWARD CARD ================= */}
       <div className="bg-gradient-to-r from-yellow-400 to-orange-400 p-5 rounded-3xl text-white">
         <div className="flex justify-between">
           <div>
@@ -269,30 +280,48 @@ export default function GroupAdminPanel({
 
       {/* ================= MEMBERS ================= */}
       <div>
-        <div className="flex justify-between items-center">
-          <h2 className="font-bold text-lg">Members</h2>
-
-          {canModerate && (
-            <button onClick={loadUsers}>
-              <UserPlus />
-            </button>
-          )}
-        </div>
+        <h2 className="font-bold text-lg mb-3">Members</h2>
 
         {groupMembers.map((m) => (
-          <div key={m.user?._id} className="flex justify-between p-3 border rounded-xl">
+          <div
+            key={m.user?._id}
+            className="flex justify-between p-3 border rounded-xl"
+          >
             <div>
-              <p className="font-medium">{m.user?.name}</p>
+              <p>{m.user?.name}</p>
               <RoleBadge role={m.role} />
             </div>
 
-            {canModerate && (
-              <div className="flex gap-2">
-                <button onClick={() => changeRole(m.user._id, "moderator")}>
-                  Mod
-                </button>
-                <button onClick={() => kickUser(m.user._id)}>
-                  <Trash2 size={14} />
+            {isAdmin && (
+              <div className="flex gap-2 flex-wrap">
+                
+                {m.role !== "admin" && (
+                  <button
+                    onClick={() =>
+                      changeRole(m.user._id, "admin")
+                    }
+                    className="text-xs bg-yellow-500 text-white px-2 py-1 rounded"
+                  >
+                    Admin
+                  </button>
+                )}
+
+                {m.role !== "moderator" && (
+                  <button
+                    onClick={() =>
+                      changeRole(m.user._id, "moderator")
+                    }
+                    className="text-xs bg-purple-500 text-white px-2 py-1 rounded"
+                  >
+                    Mod
+                  </button>
+                )}
+
+                <button
+                  onClick={() => kickUser(m.user._id)}
+                  className="text-xs bg-red-500 text-white px-2 py-1 rounded"
+                >
+                  <Trash2 size={12} />
                 </button>
               </div>
             )}
