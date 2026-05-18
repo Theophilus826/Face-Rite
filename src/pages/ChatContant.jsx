@@ -1,10 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { useNavigate } from "react-router-dom";
+
 import {
   Search,
   Users,
   Plus,
   Coins,
+  UserPlus,
 } from "lucide-react";
 
 import { API } from "../features/Api";
@@ -13,10 +20,17 @@ function ChatContant() {
   const navigate = useNavigate();
 
   /* ================= DATA ================= */
-  const [users, setUsers] = useState([]);
+
+  const [contacts, setContacts] =
+    useState([]);
+
+  const [searchUsers, setSearchUsers] =
+    useState([]);
+
   const [groups, setGroups] = useState([]);
 
   /* ================= SEARCH ================= */
+
   const [globalSearch, setGlobalSearch] =
     useState("");
 
@@ -24,6 +38,7 @@ function ChatContant() {
     useState("");
 
   /* ================= CREATE GROUP ================= */
+
   const [showCreate, setShowCreate] =
     useState(false);
 
@@ -34,93 +49,171 @@ function ChatContant() {
     useState([]);
 
   /* ================= REWARD ================= */
+
   const [showReward, setShowReward] =
     useState(false);
 
   /* ================= LOAD DATA ================= */
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [uRes, gRes] =
-          await Promise.all([
-            API.get("/users"),
-            API.get("/group"),
-          ]);
-
-        setUsers(uRes.data.users || []);
-        setGroups(gRes.data.groups || []);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
     loadData();
   }, []);
 
-  /* ================= FILTER USERS ================= */
-  const filteredUsers = useMemo(() => {
-    return users.filter((u) =>
-      u.name
-        ?.toLowerCase()
-        .includes(globalSearch.toLowerCase())
-    );
-  }, [users, globalSearch]);
+  const loadData = async () => {
+    try {
+      const [contactsRes, groupsRes] =
+        await Promise.all([
+          API.get("/users/contacts"),
+          API.get("/group"),
+        ]);
+
+      setContacts(
+        contactsRes.data.users || []
+      );
+
+      setGroups(
+        groupsRes.data.groups || []
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  /* ================= SEARCH USERS ================= */
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      if (globalSearch.trim()) {
+        handleSearch(globalSearch);
+      } else {
+        setSearchUsers([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delay);
+  }, [globalSearch]);
+
+  const handleSearch = async (q) => {
+    try {
+      const res = await API.get(
+        `/users/search?q=${q}`
+      );
+
+      setSearchUsers(
+        res.data.users || []
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  /* ================= ADD CONTACT ================= */
+
+  const addContact = async (userId) => {
+    try {
+      await API.post(
+        "/users/contacts/add",
+        {
+          userId,
+        }
+      );
+
+      await loadData();
+
+      setSearchUsers((prev) =>
+        prev.filter(
+          (u) => u._id !== userId
+        )
+      );
+    } catch (err) {
+      console.error(
+        err.response?.data ||
+          err.message
+      );
+    }
+  };
+
+  /* ================= FILTER CONTACTS ================= */
+
+  const filteredContacts =
+    useMemo(() => {
+      return contacts.filter((u) =>
+        u.name
+          ?.toLowerCase()
+          .includes(
+            globalSearch.toLowerCase()
+          )
+      );
+    }, [contacts, globalSearch]);
 
   /* ================= FILTER GROUPS ================= */
+
   const filteredGroups = useMemo(() => {
     return groups.filter((g) =>
       g.name
         ?.toLowerCase()
-        .includes(globalSearch.toLowerCase())
+        .includes(
+          globalSearch.toLowerCase()
+        )
     );
   }, [groups, globalSearch]);
 
-  /* ================= GROUP MODAL USERS ================= */
+  /* ================= GROUP USERS ================= */
+
   const modalUsers = useMemo(() => {
-    return users.filter((u) =>
+    return contacts.filter((u) =>
       u.name
         ?.toLowerCase()
-        .includes(groupSearch.toLowerCase())
+        .includes(
+          groupSearch.toLowerCase()
+        )
     );
-  }, [users, groupSearch]);
+  }, [contacts, groupSearch]);
 
   /* ================= TOGGLE USER ================= */
+
   const toggleUser = (user) => {
     setSelectedUsers((prev) =>
-      prev.find((u) => u._id === user._id)
+      prev.find(
+        (u) => u._id === user._id
+      )
         ? prev.filter(
-            (u) => u._id !== user._id
+            (u) =>
+              u._id !== user._id
           )
         : [...prev, user]
     );
   };
 
   /* ================= CREATE GROUP ================= */
+
   const createGroup = async () => {
     try {
       if (!groupName.trim()) return;
 
-      if (selectedUsers.length === 0)
+      if (
+        selectedUsers.length === 0
+      )
         return;
 
       const res = await API.post(
         "/group",
         {
           name: groupName.trim(),
-          members: selectedUsers.map(
-            (u) => u._id
-          ),
+          members:
+            selectedUsers.map(
+              (u) => u._id
+            ),
         }
       );
 
-      const newGroup = res.data.group;
+      const newGroup =
+        res.data.group;
 
       setGroups((prev) => [
         newGroup,
         ...prev,
       ]);
-
-      /* ================= REWARD ANIMATION ================= */
 
       setShowReward(true);
 
@@ -128,14 +221,14 @@ function ChatContant() {
         setShowReward(false);
       }, 3000);
 
-      /* ================= RESET ================= */
-
       setGroupName("");
       setSelectedUsers([]);
       setGroupSearch("");
       setShowCreate(false);
 
-      navigate(`/group/${newGroup._id}`);
+      navigate(
+        `/group/${newGroup._id}`
+      );
     } catch (err) {
       console.error(
         "CREATE GROUP ERROR:",
@@ -149,7 +242,7 @@ function ChatContant() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-      {/* ================= HEADER ================= */}
+      {/* HEADER */}
 
       <div className="bg-white border-b p-4 flex items-center justify-between">
         <h1 className="text-xl font-bold">
@@ -157,15 +250,17 @@ function ChatContant() {
         </h1>
 
         <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 transition-all duration-300 text-white px-4 py-2 rounded-xl shadow-md hover:scale-105"
+          onClick={() =>
+            setShowCreate(true)
+          }
+          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl"
         >
           <Plus size={15} />
           Create Group
         </button>
       </div>
 
-      {/* ================= SEARCH ================= */}
+      {/* SEARCH */}
 
       <div className="p-4 bg-white border-b">
         <div className="flex items-center gap-2 border rounded-xl px-3 py-2 bg-gray-50">
@@ -187,51 +282,122 @@ function ChatContant() {
         </div>
       </div>
 
-      {/* ================= CONTENT ================= */}
-
       <div className="flex-1 overflow-y-auto">
-        {/* ================= USERS ================= */}
+        {/* SEARCH RESULTS */}
+
+        {globalSearch.trim() &&
+          searchUsers.length > 0 && (
+            <div className="p-4">
+              <h2 className="text-sm font-bold text-gray-500 mb-3">
+                SEARCH RESULTS
+              </h2>
+
+              <div className="space-y-2">
+                {searchUsers.map((u) => {
+                  const alreadyAdded =
+                    contacts.some(
+                      (c) =>
+                        c._id === u._id
+                    );
+
+                  return (
+                    <div
+                      key={u._id}
+                      className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
+                          {u.avatar ? (
+                            <img
+                              src={
+                                u.avatar
+                              }
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            u.name?.charAt(
+                              0
+                            )
+                          )}
+                        </div>
+
+                        <div>
+                          <p className="font-medium text-sm">
+                            {u.name}
+                          </p>
+                        </div>
+                      </div>
+
+                      {!alreadyAdded && (
+                        <button
+                          onClick={() =>
+                            addContact(
+                              u._id
+                            )
+                          }
+                          className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-xl text-sm"
+                        >
+                          <UserPlus
+                            size={16}
+                          />
+                          Add
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        {/* CONTACTS */}
 
         <div className="p-4">
           <h2 className="text-sm font-bold text-gray-500 mb-3">
-            USERS
+            CONTACTS
           </h2>
 
           <div className="space-y-2">
-            {filteredUsers.map((u) => (
-              <div
-                key={u._id}
-                onClick={() =>
-                  navigate(`/chat/${u._id}`)
-                }
-                className="flex items-center gap-3 bg-white hover:bg-gray-50 p-3 rounded-2xl cursor-pointer shadow-sm transition-all duration-300 hover:scale-[1.02]"
-              >
-                <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold overflow-hidden">
-                  {u.avatar ? (
-                    <img
-                      src={u.avatar}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    u.name?.charAt(0)
-                  )}
-                </div>
+            {filteredContacts.map(
+              (u) => (
+                <div
+                  key={u._id}
+                  onClick={() =>
+                    navigate(
+                      `/chat/${u._id}`
+                    )
+                  }
+                  className="flex items-center gap-3 bg-white hover:bg-gray-50 p-3 rounded-2xl cursor-pointer shadow-sm"
+                >
+                  <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
+                    {u.avatar ? (
+                      <img
+                        src={u.avatar}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      u.name?.charAt(
+                        0
+                      )
+                    )}
+                  </div>
 
-                <div>
-                  <p className="font-medium text-sm">
-                    {u.name}
-                  </p>
+                  <div>
+                    <p className="font-medium text-sm">
+                      {u.name}
+                    </p>
 
-                  <p className="text-xs text-gray-500">
-                    Tap to chat
-                  </p>
+                    <p className="text-xs text-gray-500">
+                      Tap to chat
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
 
-        {/* ================= GROUPS ================= */}
+        {/* GROUPS */}
 
         <div className="p-4 border-t">
           <h2 className="text-sm font-bold text-gray-500 mb-3 flex items-center gap-2">
@@ -240,45 +406,49 @@ function ChatContant() {
           </h2>
 
           <div className="space-y-2">
-            {filteredGroups.map((g) => (
-              <div
-                key={g._id}
-                onClick={() =>
-                  navigate(`/group/${g._id}`)
-                }
-                className="flex items-center gap-3 bg-white hover:bg-gray-50 p-3 rounded-2xl cursor-pointer shadow-sm transition-all duration-300 hover:scale-[1.02]"
-              >
-                <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">
-                  {g.name?.charAt(0)}
-                </div>
+            {filteredGroups.map(
+              (g) => (
+                <div
+                  key={g._id}
+                  onClick={() =>
+                    navigate(
+                      `/group/${g._id}`
+                    )
+                  }
+                  className="flex items-center gap-3 bg-white hover:bg-gray-50 p-3 rounded-2xl cursor-pointer shadow-sm"
+                >
+                  <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">
+                    {g.name?.charAt(
+                      0
+                    )}
+                  </div>
 
-                <div>
-                  <p className="font-medium text-sm">
-                    {g.name}
-                  </p>
+                  <div>
+                    <p className="font-medium text-sm">
+                      {g.name}
+                    </p>
 
-                  <p className="text-xs text-gray-500">
-                    {g.members?.length ||
-                      0}{" "}
-                    members
-                  </p>
+                    <p className="text-xs text-gray-500">
+                      {g.members
+                        ?.length || 0}{" "}
+                      members
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
       </div>
 
-      {/* ================= CREATE GROUP MODAL ================= */}
+      {/* CREATE GROUP MODAL */}
 
       {showCreate && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white w-[420px] rounded-3xl p-5 shadow-2xl animate-in fade-in zoom-in duration-300">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white w-[420px] rounded-3xl p-5 shadow-2xl">
             <h2 className="text-lg font-bold mb-4">
               Create Group
             </h2>
-
-            {/* GROUP NAME */}
 
             <input
               value={groupName}
@@ -288,10 +458,8 @@ function ChatContant() {
                 )
               }
               placeholder="Group name"
-              className="w-full border rounded-xl p-3 mb-4 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border rounded-xl p-3 mb-4"
             />
-
-            {/* SEARCH USERS */}
 
             <input
               value={groupSearch}
@@ -300,18 +468,17 @@ function ChatContant() {
                   e.target.value
                 )
               }
-              placeholder="Search users..."
-              className="w-full border rounded-xl p-3 mb-4 outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Search contacts..."
+              className="w-full border rounded-xl p-3 mb-4"
             />
-
-            {/* USERS LIST */}
 
             <div className="max-h-60 overflow-y-auto border rounded-xl">
               {modalUsers.map((u) => {
                 const checked =
                   selectedUsers.some(
                     (x) =>
-                      x._id === u._id
+                      x._id ===
+                      u._id
                   );
 
                 return (
@@ -320,7 +487,7 @@ function ChatContant() {
                     onClick={() =>
                       toggleUser(u)
                     }
-                    className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b transition-all"
+                    className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b"
                   >
                     <input
                       type="checkbox"
@@ -328,14 +495,18 @@ function ChatContant() {
                       readOnly
                     />
 
-                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white overflow-hidden">
+                    <div className="w-10 h-10 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white">
                       {u.avatar ? (
                         <img
-                          src={u.avatar}
+                          src={
+                            u.avatar
+                          }
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        u.name?.charAt(0)
+                        u.name?.charAt(
+                          0
+                        )
                       )}
                     </div>
 
@@ -347,14 +518,14 @@ function ChatContant() {
               })}
             </div>
 
-            {/* ACTIONS */}
-
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() =>
-                  setShowCreate(false)
+                  setShowCreate(
+                    false
+                  )
                 }
-                className="flex-1 border rounded-xl py-2 hover:bg-gray-100 transition-all"
+                className="flex-1 border rounded-xl py-2"
               >
                 Cancel
               </button>
@@ -363,9 +534,10 @@ function ChatContant() {
                 onClick={createGroup}
                 disabled={
                   !groupName.trim() ||
-                  selectedUsers.length === 0
+                  selectedUsers.length ===
+                    0
                 }
-                className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-xl py-2 transition-all hover:scale-105"
+                className="flex-1 bg-blue-500 text-white rounded-xl py-2"
               >
                 Create
               </button>
@@ -374,21 +546,17 @@ function ChatContant() {
         </div>
       )}
 
-      {/* ================= REWARD ANIMATION ================= */}
+      {/* REWARD */}
 
       {showReward && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center pointer-events-none">
           <div className="animate-bounce">
             <div className="bg-yellow-400 border-4 border-yellow-300 rounded-3xl px-10 py-6 shadow-2xl">
               <div className="flex flex-col items-center">
-                <div className="relative">
-                  <Coins
-                    size={60}
-                    className="text-yellow-700 animate-spin"
-                  />
-
-                  <div className="absolute inset-0 bg-yellow-300 rounded-full blur-2xl opacity-50 animate-pulse" />
-                </div>
+                <Coins
+                  size={60}
+                  className="text-yellow-700 animate-spin"
+                />
 
                 <h1 className="text-4xl font-extrabold text-black mt-3">
                   +50
