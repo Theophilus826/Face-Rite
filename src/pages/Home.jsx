@@ -11,6 +11,7 @@ import CardGrid from "../component/CardGrid";
 import CoinBalanceCard from "../component/CoinBalanceCard";
 import PostGalleryWithUpload from "../component/PostGallery";
 import { toast } from "react-toastify";
+import Adsense from "../component/Adsense";
 
 function Home() {
   const navigate = useNavigate();
@@ -137,6 +138,7 @@ function Home() {
         <CoinBalanceCard />
 
         <h2 className="text-2xl sm:text-3xl font-bold mt-4">Hosted Games 🎮</h2>
+        <Adsense slot="5698589390" />
       </motion.section>
 
       {/* CREATE POST */}
@@ -247,61 +249,67 @@ function Home() {
 
       {/* POSTS */}
       <section className="max-w-5xl mx-auto space-y-6">
-        {posts.map((post) => {
+        {posts.map((post, index) => {
           const postUser = post.user || {};
 
           return (
-            <div key={post._id} className="p-4 bg-white/30 rounded-xl">
-              {/* USER HEADER */}
-              <div className="flex gap-3 items-center mb-3">
-                <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white overflow-hidden">
-                  {postUser?.avatar ? (
-                    <img
-                      src={postUser.avatar}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    getInitials(postUser?.name || "U")
-                  )}
+            <div key={post._id}>
+              {/* SHOW AD EVERY 3 POSTS */}
+              {index > 0 && index % 3 === 0 && <Adsense slot="5698589390" />}
+
+              <div className="p-4 bg-white/30 rounded-xl">
+                {/* USER HEADER */}
+                <div className="flex gap-3 items-center mb-3">
+                  <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white overflow-hidden">
+                    {postUser?.avatar ? (
+                      <img
+                        src={postUser.avatar}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      getInitials(postUser?.name || "U")
+                    )}
+                  </div>
+
+                  <p className="font-semibold">{postUser?.name}</p>
                 </div>
 
-                <p className="font-semibold">{postUser?.name}</p>
+                {/* MEDIA */}
+                <PostGalleryWithUpload
+                  postId={post._id}
+                  postOwnerId={post.user?._id}
+                  token={user?.token}
+                  user={user}
+                  text={post.text}
+                  createdAt={post.createdAt}
+                  mediaFiles={post.media || []}
+                  initialLikes={post.likeCount || 0}
+                  initialLoves={post.loveCount || 0}
+                />
+
+                {/* COMMENTS */}
+                <PostComments
+                  postId={post._id}
+                  comments={post.comments || []}
+                  user={user}
+                  onNewComment={(comment) => {
+                    setPosts((prev) =>
+                      prev.map((p) =>
+                        p._id === post._id
+                          ? {
+                              ...p,
+                              comments: [...(p.comments || []), comment],
+                            }
+                          : p,
+                      ),
+                    );
+                  }}
+                />
               </div>
-
-              {/* MEDIA */}
-              <PostGalleryWithUpload
-                postId={post._id}
-                postOwnerId={post.user?._id}
-                token={user?.token}
-                user={user}
-                text={post.text}
-                createdAt={post.createdAt}
-                mediaFiles={post.media || []}
-                initialLikes={post.likeCount || 0}
-                initialLoves={post.loveCount || 0}
-              />
-
-              {/* COMMENTS */}
-              <PostComments
-                postId={post._id}
-                comments={post.comments || []}
-                user={user}
-                onNewComment={(comment) => {
-                  setPosts((prev) =>
-                    prev.map((p) =>
-                      p._id === post._id
-                        ? { ...p, comments: [...(p.comments || []), comment] }
-                        : p,
-                    ),
-                  );
-                }}
-              />
             </div>
           );
         })}
       </section>
-
-      
     </div>
   );
 }
