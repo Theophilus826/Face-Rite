@@ -1,195 +1,114 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API } from "../features/Api";
 
-export default function useGroupSocket({ groupId, user, token, onGroupEvent }) {
-  const esRef = useRef(null);
+export default function useGroupSocket({
+  groupId,
+  user,
+  token,
+}) {
+  const eventRef = useRef(null);
 
   const [messages, setMessages] = useState([]);
   const [typingUser, setTypingUser] = useState(null);
   const [onlineMembers, setOnlineMembers] = useState([]);
-  const [connected, setConnected] = useState(false);
 
-  /* ================= LOAD OLD MESSAGES ================= */
+  /* ================= ADD MESSAGE ================= */
 
-  const loadMessages = useCallback(async () => {
+  const addMessage = (message) => {
+    setMessages((prev) => {
+      const exists = prev.some((m) => m._id === message._id);
+
+      if (exists) return prev;
+
+      return [...prev, message];
+    });
+  };
+
+  /* ================= SSE ================= */
+
+  useEffect(() => {
     if (!groupId || !token) return;
 
-    try {
-      const res = await API.get(`/group/${groupId}/messages`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      setMessages(res.data.messages || []);
-    } catch (err) {
-      console.error(
-        "LOAD GROUP MESSAGES ERROR:",
-        err.response?.data || err.message,
-      );
-    }
-  }, [groupId, token]);
-
-  /* ================= SAFE ADD MESSAGE ================= */
-
-  const addMessage = useCallback((message) => {
-    if (!message?._id) return;
-
-    setMessages((prev) => {
-      // remove temp message from same sender
-      const cleaned = prev.filter((m) => {
-        if (!m.pending) return true;
-
-        const sameText = m.text === message.text;
-
-        const tempSender =
-          typeof m.fromUser === "object" ? m.fromUser?._id : m.fromUser;
-
-        const realSender =
-          typeof message.fromUser === "object"
-            ? message.fromUser?._id
-            : message.fromUser;
-
-        const sameSender = String(tempSender) === String(realSender);
-
-        return !(sameText && sameSender);
-      });
-
-      // avoid duplicates
-      const exists = cleaned.some((m) => String(m._id) === String(message._id));
-
-      if (exists) return cleaned;
-
-      return [...cleaned, message];
-    });
-  }, []);
-
-  /* ================= HANDLE EVENTS ================= */
-
-  const handleEvent = useCallback(
-    (data) => {
-      switch (data.type) {
-        case "connected":
-          setConnected(true);
-          break;
-
-        case "new_message":
-          if (data.message) {
-            addMessage(data.message);
-          }
-          break;
-
-        case "typing":
-          setTypingUser(data.fromUser?.name || "Someone");
-          break;
-
-        case "stop_typing":
-          setTypingUser(null);
-          break;
-
-        case "online_members":
-          setOnlineMembers(data.members || []);
-          break;
-
-        case "group_event":
-          onGroupEvent?.(data);
-          break;
-
-        case "ping":
-          // keep alive
-          break;
-
-        default:
-          break;
-      }
-    },
-    [onGroupEvent, addMessage],
-  );
-
-  /* ================= CONNECT ================= */
-
-  const connect = useCallback(() => {
-    if (!groupId || !user || !token) return;
-
-    // close old connection
-    if (esRef.current) {
-      esRef.current.close();
+    // close old stream
+    if (eventRef.current) {
+      eventRef.current.close();
     }
 
-    const url = `${API.defaults.baseURL}/group/stream/${groupId}?token=${encodeURIComponent(token)}`;
+    const baseURL = API.defaults.baseURL;
 
-    const es = new EventSource(url);
+    // IMPORTANT: token passed in query
+    const streamURL =
+      `${baseURL}/group/stream/${groupId}?token=${token}`;
 
-    esRef.current = es;
+    const es = new EventSource(streamURL);
+
+    eventRef.current = es;
 
     es.onopen = () => {
-      console.log("✅ Group SSE connected");
-      setConnected(true);
+      console.log("✅ GROUP SSE CONNECTED");
+    };
+
+    es.onerror = (err) => {
+      console.error("❌ GROUP SSE ERROR:", err);
     };
 
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
 
-        handleEvent(data);
+        console.log("SSE EVENT:", data);
+
+        /* ================= INITIAL ================= */
+
+        if (data.type === "init") {
+          setMessages(data.messages || []);
+        }
+
+        /* ================= NEW MESSAGE ================= */
+
+        if (
+          data.type === "new_message" ||
+          data.type === "group_message"
+        ) {
+          addMessage(data.message);
+        }
+
+        /* ================= TYPING ================= */
+
+        if (data.type === "typing") {
+          setTypingUser(data.user);
+
+          setTimeout(() => {
+            setTypingUser(null);
+          }, 2000);
+        }
+
+        /* ================= ONLINE ================= */
+
+        if (data.type === "online_members") {
+          setOnlineMembers(data.members || []);
+        }
+
+        /* ================= GROUP EVENTS ================= */
+
+        if (data.type === "group_event") {
+          console.log("GROUP EVENT:", data);
+        }
       } catch (err) {
-        console.error("GROUP SSE PARSE ERROR:", err);
+        console.error("SSE PARSE ERROR:", err);
       }
     };
 
-    es.onerror = (err) => {
-      console.error("❌ GROUP SSE ERROR:", err);
-
-      setConnected(false);
-
-      es.close();
-
-      // auto reconnect
-      setTimeout(() => {
-        if (esRef.current?.readyState === EventSource.CLOSED) {
-          connect();
-        }
-      }, 3000);
-    };
-  }, [groupId, user, token, handleEvent]);
-
-  /* ================= DISCONNECT ================= */
-
-  const disconnect = useCallback(() => {
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
-    }
-
-    setConnected(false);
-  }, []);
-
-  /* ================= INIT ================= */
-
-  useEffect(() => {
-    if (!groupId || !token) return;
-
-    loadMessages();
-    connect();
-
     return () => {
-      disconnect();
+      es.close();
     };
-  }, [groupId, token, loadMessages, connect, disconnect]);
-
-  /* ================= RETURN ================= */
+  }, [groupId, token]);
 
   return {
-    connected,
-
     messages,
     setMessages,
     addMessage,
-
     typingUser,
     onlineMembers,
-
-    reconnect: connect,
-    disconnect,
   };
 }
