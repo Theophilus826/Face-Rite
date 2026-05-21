@@ -4,10 +4,10 @@ import {
   Gift,
   Shield,
   Crown,
-  UserPlus,
   Trash2,
   ToggleLeft,
   ToggleRight,
+  Loader2,
 } from "lucide-react";
 
 import { API } from "../features/Api";
@@ -31,63 +31,114 @@ export default function GroupAdminPanel({
   const [updatingSettings, setUpdatingSettings] = useState(false);
 
   /* ================= MEMBERS ================= */
-  const groupMembers = useMemo(() => group?.members || [], [group]);
+
+  const groupMembers = useMemo(
+    () => group?.members || [],
+    [group]
+  );
 
   const myMemberData = useMemo(() => {
     return groupMembers.find(
-      (m) => String(m.user?._id) === String(currentUser?._id),
+      (m) =>
+        String(m.user?._id) ===
+        String(currentUser?._id)
     );
   }, [groupMembers, currentUser]);
 
   const myRole = myMemberData?.role || "member";
 
   const isAdmin = myRole === "admin";
-  const canModerate = myRole === "admin" || myRole === "moderator";
+
+  const canModerate =
+    myRole === "admin" ||
+    myRole === "moderator";
+
+  /* ================= DEBUG ================= */
+
+  console.log({
+    currentUser,
+    myMemberData,
+    myRole,
+    isAdmin,
+  });
 
   /* ================= REWARD SETTINGS ================= */
-  const rewardEnabled = group?.rewards?.enabled ?? true;
+
+  const rewardEnabled =
+    group?.rewards?.enabled ?? true;
 
   const showToast = (msg) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 2500);
+
+    setTimeout(() => {
+      setToast("");
+    }, 2500);
   };
 
+  /* ================= TOGGLE REWARDS ================= */
+
   const toggleRewards = async () => {
-    if (!isAdmin) return;
+    if (!isAdmin) {
+      return showToast(
+        "Only admins can change reward settings"
+      );
+    }
 
     try {
       setUpdatingSettings(true);
 
       await API.patch(
         `/group/${groupId}/reward-toggle`,
-        { enabled: !rewardEnabled },
+        {
+          enabled: !rewardEnabled,
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        },
+        }
       );
 
       await onRefresh?.();
 
-      showToast(`Rewards ${!rewardEnabled ? "enabled" : "disabled"}`);
+      showToast(
+        `Rewards ${
+          !rewardEnabled
+            ? "enabled"
+            : "disabled"
+        }`
+      );
     } catch (err) {
-      console.error(err);
-      showToast("Failed to update reward settings");
+      console.error(
+        "TOGGLE ERROR:",
+        err.response?.data || err.message
+      );
+
+      showToast(
+        err.response?.data?.error ||
+          "Failed to update reward settings"
+      );
     } finally {
       setUpdatingSettings(false);
     }
   };
+
   /* ================= STATS ================= */
-  const totalCoins = group?.stats?.totalCoinsDistributed || 0;
-  const totalMessages = group?.stats?.totalMessages || 0;
 
-  const milestone = group?.rewards?.messageMilestone || 10;
-  const nextReward = group?.rewards?.messageRewardCoins || 20;
+  const totalCoins =
+    group?.stats?.totalCoinsDistributed || 0;
 
-  const progress = ((totalMessages % milestone) * 100) / milestone;
+  const totalMessages =
+    group?.stats?.totalMessages || 0;
+
+  const milestone =
+    group?.rewards?.messageMilestone || 10;
+
+  const nextReward =
+    group?.rewards?.messageRewardCoins || 20;
 
   /* ================= USERS ================= */
+
   const loadUsers = async () => {
     if (!canModerate) return;
 
@@ -100,13 +151,17 @@ export default function GroupAdminPanel({
       setLoadingUsers(true);
 
       const res = await API.get("/users", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       setUsers(res.data.users || []);
+
       setShowAddMembers(true);
     } catch (err) {
       console.error(err);
+
       showToast("Failed to load users");
     } finally {
       setLoadingUsers(false);
@@ -116,30 +171,49 @@ export default function GroupAdminPanel({
   const availableUsers = useMemo(() => {
     return users.filter(
       (u) =>
-        !groupMembers.some((m) => String(m.user?._id) === String(u._id)) &&
-        u.name?.toLowerCase().includes(search.toLowerCase()),
+        !groupMembers.some(
+          (m) =>
+            String(m.user?._id) ===
+            String(u._id)
+        ) &&
+        u.name
+          ?.toLowerCase()
+          .includes(search.toLowerCase())
     );
   }, [users, groupMembers, search]);
 
   /* ================= ACTION WRAPPER ================= */
+
   const runAction = async (action, msg) => {
     try {
       setLoading(true);
+
       await action();
+
       await onRefresh?.();
-      if (msg) showToast(msg);
+
+      if (msg) {
+        showToast(msg);
+      }
     } catch (err) {
       console.error(err);
-      showToast("Action failed");
+
+      showToast(
+        err.response?.data?.error ||
+          "Action failed"
+      );
     } finally {
       setLoading(false);
     }
   };
 
   /* ================= CLAIM REWARDS ================= */
+
   const claimCoins = async () => {
     if (!rewardEnabled) {
-      return showToast("Rewards are disabled");
+      return showToast(
+        "Rewards are disabled"
+      );
     }
 
     try {
@@ -148,39 +222,67 @@ export default function GroupAdminPanel({
       const res = await API.post(
         `/group/${groupId}/claim-reward`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       setClaimAnimation(true);
-      setTimeout(() => setClaimAnimation(false), 3000);
 
-      showToast(`+${res.data.coins} coins claimed 🎉`);
+      setTimeout(() => {
+        setClaimAnimation(false);
+      }, 3000);
+
+      showToast(
+        `+${res.data.coins} coins claimed 🎉`
+      );
+
       await onRefresh?.();
     } catch (err) {
       console.error(err);
-      showToast("Reward unavailable");
+
+      showToast(
+        err.response?.data?.error ||
+          "Reward unavailable"
+      );
     } finally {
       setClaiming(false);
     }
   };
 
   /* ================= MEMBER ACTIONS ================= */
+
   const addMember = (memberId) =>
     runAction(async () => {
       await API.post(
         `/group/${groupId}/members`,
         { memberId },
-        { headers: { Authorization: `Bearer ${token}` } },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      setUsers((prev) => prev.filter((u) => u._id !== memberId));
+      setUsers((prev) =>
+        prev.filter(
+          (u) => u._id !== memberId
+        )
+      );
     }, "Member added");
 
   const kickUser = (memberId) =>
     runAction(async () => {
-      await API.delete(`/group/${groupId}/members/${memberId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await API.delete(
+        `/group/${groupId}/members/${memberId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
     }, "Member removed");
 
   const changeRole = (memberId, role) =>
@@ -188,133 +290,219 @@ export default function GroupAdminPanel({
       await API.patch(
         `/group/${groupId}/members/${memberId}/role`,
         { role },
-        { headers: { Authorization: `Bearer ${token}` } },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
     }, `Role changed to ${role}`);
 
   /* ================= ROLE BADGE ================= */
+
   const RoleBadge = ({ role }) => {
     if (role === "admin") {
       return (
-        <span className="flex items-center gap-1 text-yellow-600 text-xs bg-yellow-100 px-2 py-1 rounded-full">
-          <Crown size={12} /> Admin
+        <span className="flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-1 text-xs text-yellow-700">
+          <Crown size={12} />
+          Admin
         </span>
       );
     }
 
     if (role === "moderator") {
       return (
-        <span className="flex items-center gap-1 text-purple-600 text-xs bg-purple-100 px-2 py-1 rounded-full">
-          <Shield size={12} /> Mod
+        <span className="flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-700">
+          <Shield size={12} />
+          Mod
         </span>
       );
     }
 
     return (
-      <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">Member</span>
+      <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
+        Member
+      </span>
     );
   };
 
   /* ================= UI ================= */
+
   return (
-    <div className="p-4 space-y-6">
+    <div className="space-y-6 p-4">
+      
       {/* ================= TOAST ================= */}
+
       {toast && (
-        <div className="p-3 bg-green-100 text-green-700 rounded-xl">
+        <div className="rounded-xl bg-green-100 p-3 text-sm text-green-700">
           {toast}
         </div>
       )}
 
-      {/* ================= REWARD TOGGLE ================= */}
-      {isAdmin && (
-        <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border">
-          <div className="flex items-center gap-2">
-            <Gift size={18} />
-            <span className="font-medium">Group Rewards</span>
-          </div>
+      {/* ================= REWARD SETTINGS ================= */}
 
-          <button
-            onClick={toggleRewards}
-            disabled={updatingSettings}
-            className="text-2xl"
-          >
-            {rewardEnabled ? (
-              <ToggleRight className="text-green-500" />
-            ) : (
-              <ToggleLeft className="text-gray-400" />
-            )}
-          </button>
+      {isAdmin && (
+        <div className="rounded-2xl border bg-gray-50 p-4">
+          <div className="flex items-center justify-between">
+            
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-yellow-100 p-2">
+                <Gift
+                  size={18}
+                  className="text-yellow-600"
+                />
+              </div>
+
+              <div>
+                <h3 className="font-semibold">
+                  Group Rewards
+                </h3>
+
+                <p className="text-sm text-gray-500">
+                  Enable or disable rewards
+                  for members
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={toggleRewards}
+              disabled={updatingSettings}
+              className="transition hover:scale-105"
+            >
+              {updatingSettings ? (
+                <Loader2 className="animate-spin text-gray-500" />
+              ) : rewardEnabled ? (
+                <ToggleRight
+                  size={36}
+                  className="text-green-500"
+                />
+              ) : (
+                <ToggleLeft
+                  size={36}
+                  className="text-gray-400"
+                />
+              )}
+            </button>
+          </div>
         </div>
       )}
 
       {/* ================= REWARD CARD ================= */}
-      <div className="bg-gradient-to-r from-yellow-400 to-orange-400 p-5 rounded-3xl text-white">
-        <div className="flex justify-between">
+
+      <div className="rounded-3xl bg-gradient-to-r from-yellow-400 to-orange-500 p-5 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          
           <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Coins /> {totalCoins}
+            <h2 className="flex items-center gap-2 text-3xl font-bold">
+              <Coins />
+              {totalCoins}
             </h2>
-            <p>{totalMessages} messages</p>
+
+            <p className="mt-1 text-sm opacity-90">
+              {totalMessages} messages
+            </p>
           </div>
 
           <button
-            disabled={!rewardEnabled || claiming}
+            disabled={
+              !rewardEnabled || claiming
+            }
             onClick={claimCoins}
-            className="bg-white text-orange-500 px-4 py-2 rounded-xl font-bold disabled:opacity-50"
+            className="rounded-xl bg-white px-4 py-2 font-bold text-orange-500 transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Claim +{nextReward}
+            {claiming
+              ? "Claiming..."
+              : `Claim +${nextReward}`}
           </button>
         </div>
       </div>
 
       {/* ================= MEMBERS ================= */}
+
       <div>
-        <h2 className="font-bold text-lg mb-3">Members</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold">
+            Members
+          </h2>
 
-        {groupMembers.map((m) => (
-          <div
-            key={m.user?._id}
-            className="flex justify-between p-3 border rounded-xl"
-          >
-            <div>
-              <p>{m.user?.name}</p>
-              <RoleBadge role={m.role} />
-            </div>
+          {canModerate && (
+            <button
+              onClick={loadUsers}
+              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white"
+            >
+              Add Members
+            </button>
+          )}
+        </div>
 
-            {isAdmin && (
-              <div className="flex gap-2 flex-wrap">
-                {m.role !== "admin" && (
-                  <button
-                    onClick={() => changeRole(m.user._id, "admin")}
-                    className="text-xs bg-yellow-500 text-white px-2 py-1 rounded"
-                  >
-                    Admin
-                  </button>
-                )}
+        <div className="space-y-3">
+          {groupMembers.map((m) => (
+            <div
+              key={m.user?._id}
+              className="flex items-center justify-between rounded-2xl border p-3"
+            >
+              <div>
+                <p className="font-medium">
+                  {m.user?.name}
+                </p>
 
-                {m.role !== "moderator" && (
-                  <button
-                    onClick={() => changeRole(m.user._id, "moderator")}
-                    className="text-xs bg-purple-500 text-white px-2 py-1 rounded"
-                  >
-                    Mod
-                  </button>
-                )}
-
-                <button
-                  onClick={() => kickUser(m.user._id)}
-                  className="text-xs bg-red-500 text-white px-2 py-1 rounded"
-                >
-                  <Trash2 size={12} />
-                </button>
+                <div className="mt-1">
+                  <RoleBadge role={m.role} />
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+
+              {isAdmin && (
+                <div className="flex flex-wrap gap-2">
+                  
+                  {m.role !== "admin" && (
+                    <button
+                      onClick={() =>
+                        changeRole(
+                          m.user._id,
+                          "admin"
+                        )
+                      }
+                      className="rounded-lg bg-yellow-500 px-2 py-1 text-xs text-white"
+                    >
+                      Admin
+                    </button>
+                  )}
+
+                  {m.role !== "moderator" && (
+                    <button
+                      onClick={() =>
+                        changeRole(
+                          m.user._id,
+                          "moderator"
+                        )
+                      }
+                      className="rounded-lg bg-purple-500 px-2 py-1 text-xs text-white"
+                    >
+                      Mod
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() =>
+                      kickUser(m.user._id)
+                    }
+                    className="rounded-lg bg-red-500 px-2 py-1 text-xs text-white"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ================= REWARD WIDGET ================= */}
-      <GroupReward group={group} />
+
+      {rewardEnabled && (
+        <GroupReward group={group} />
+      )}
     </div>
   );
 }
