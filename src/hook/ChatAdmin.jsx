@@ -45,8 +45,7 @@ export default function GroupAdminPanel({
   const canModerate = myRole === "admin" || myRole === "moderator";
 
   /* ================= REWARD SETTINGS ================= */
-  const rewardEnabled =
-    group?.settings?.allowRewards ?? group?.groupRewardEnabled ?? true;
+  const rewardEnabled = group?.rewards?.enabled ?? true;
 
   const showToast = (msg) => {
     setToast(msg);
@@ -61,11 +60,16 @@ export default function GroupAdminPanel({
 
       await API.patch(
         `/group/${groupId}/reward-toggle`,
-        { allowRewards: !rewardEnabled },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { enabled: !rewardEnabled },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
 
       await onRefresh?.();
+
       showToast(`Rewards ${!rewardEnabled ? "enabled" : "disabled"}`);
     } catch (err) {
       console.error(err);
@@ -74,7 +78,6 @@ export default function GroupAdminPanel({
       setUpdatingSettings(false);
     }
   };
-
   /* ================= STATS ================= */
   const totalCoins = group?.stats?.totalCoinsDistributed || 0;
   const totalMessages = group?.stats?.totalMessages || 0;
