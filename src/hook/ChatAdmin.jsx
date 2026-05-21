@@ -35,7 +35,7 @@ export default function GroupAdminPanel({
 
   const myMemberData = useMemo(() => {
     return groupMembers.find(
-      (m) => String(m.user?._id) === String(currentUser?._id)
+      (m) => String(m.user?._id) === String(currentUser?._id),
     );
   }, [groupMembers, currentUser]);
 
@@ -46,9 +46,7 @@ export default function GroupAdminPanel({
 
   /* ================= REWARD SETTINGS ================= */
   const rewardEnabled =
-    group?.settings?.allowRewards ??
-    group?.groupRewardEnabled ??
-    true;
+    group?.settings?.allowRewards ?? group?.groupRewardEnabled ?? true;
 
   const showToast = (msg) => {
     setToast(msg);
@@ -62,15 +60,13 @@ export default function GroupAdminPanel({
       setUpdatingSettings(true);
 
       await API.patch(
-        `/group/${groupId}/settings`,
+        `/group/${groupId}/reward-toggle`,
         { allowRewards: !rewardEnabled },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       await onRefresh?.();
-      showToast(
-        `Rewards ${!rewardEnabled ? "enabled" : "disabled"}`
-      );
+      showToast(`Rewards ${!rewardEnabled ? "enabled" : "disabled"}`);
     } catch (err) {
       console.error(err);
       showToast("Failed to update reward settings");
@@ -117,10 +113,8 @@ export default function GroupAdminPanel({
   const availableUsers = useMemo(() => {
     return users.filter(
       (u) =>
-        !groupMembers.some(
-          (m) => String(m.user?._id) === String(u._id)
-        ) &&
-        u.name?.toLowerCase().includes(search.toLowerCase())
+        !groupMembers.some((m) => String(m.user?._id) === String(u._id)) &&
+        u.name?.toLowerCase().includes(search.toLowerCase()),
     );
   }, [users, groupMembers, search]);
 
@@ -151,7 +145,7 @@ export default function GroupAdminPanel({
       const res = await API.post(
         `/group/${groupId}/claim-reward`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setClaimAnimation(true);
@@ -173,20 +167,17 @@ export default function GroupAdminPanel({
       await API.post(
         `/group/${groupId}/members`,
         { memberId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
-      setUsers((prev) =>
-        prev.filter((u) => u._id !== memberId)
-      );
+      setUsers((prev) => prev.filter((u) => u._id !== memberId));
     }, "Member added");
 
   const kickUser = (memberId) =>
     runAction(async () => {
-      await API.delete(
-        `/group/${groupId}/members/${memberId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await API.delete(`/group/${groupId}/members/${memberId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     }, "Member removed");
 
   const changeRole = (memberId, role) =>
@@ -194,7 +185,7 @@ export default function GroupAdminPanel({
       await API.patch(
         `/group/${groupId}/members/${memberId}/role`,
         { role },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
     }, `Role changed to ${role}`);
 
@@ -217,16 +208,13 @@ export default function GroupAdminPanel({
     }
 
     return (
-      <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">
-        Member
-      </span>
+      <span className="text-xs bg-gray-100 px-2 py-1 rounded-full">Member</span>
     );
   };
 
   /* ================= UI ================= */
   return (
     <div className="p-4 space-y-6">
-
       {/* ================= TOAST ================= */}
       {toast && (
         <div className="p-3 bg-green-100 text-green-700 rounded-xl">
@@ -239,9 +227,7 @@ export default function GroupAdminPanel({
         <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border">
           <div className="flex items-center gap-2">
             <Gift size={18} />
-            <span className="font-medium">
-              Group Rewards
-            </span>
+            <span className="font-medium">Group Rewards</span>
           </div>
 
           <button
@@ -294,12 +280,9 @@ export default function GroupAdminPanel({
 
             {isAdmin && (
               <div className="flex gap-2 flex-wrap">
-                
                 {m.role !== "admin" && (
                   <button
-                    onClick={() =>
-                      changeRole(m.user._id, "admin")
-                    }
+                    onClick={() => changeRole(m.user._id, "admin")}
                     className="text-xs bg-yellow-500 text-white px-2 py-1 rounded"
                   >
                     Admin
@@ -308,9 +291,7 @@ export default function GroupAdminPanel({
 
                 {m.role !== "moderator" && (
                   <button
-                    onClick={() =>
-                      changeRole(m.user._id, "moderator")
-                    }
+                    onClick={() => changeRole(m.user._id, "moderator")}
                     className="text-xs bg-purple-500 text-white px-2 py-1 rounded"
                   >
                     Mod

@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useDispatch } from "react-redux";
+
 import { creditCoins } from "../features/coins/CoinSlice";
 
 function GroupReward({
@@ -10,106 +11,64 @@ function GroupReward({
   const dispatch = useDispatch();
 
   /* ===============================
-     SETTINGS (TOGGLE SYSTEM)
+     MESSAGE PROGRESS
   =============================== */
-  const rewardsEnabled =
-    group?.settings?.allowRewards ?? true;
 
-  /* ===============================
-     MILESTONE CONFIG
-  =============================== */
-  const milestone =
-    group?.rewards?.messageMilestone || 10;
-
-  const rewardCoins =
-    group?.rewards?.messageRewardCoins || 20;
-
-  /* ===============================
-     MESSAGE COUNT
-  =============================== */
   const messageCount = messages.length;
 
-  /* ===============================
-     PROGRESS
-  =============================== */
   const progress = useMemo(() => {
-    if (!milestone) return 0;
-    return ((messageCount % milestone) * 100) / milestone;
-  }, [messageCount, milestone]);
-
-  /* ===============================
-     PREVENT DUPLICATE REWARDS
-  =============================== */
-  const lastRewardRef = useRef(0);
+    return (messageCount % 10) * 10;
+  }, [messageCount]);
 
   /* ===============================
      GROUP CREATE REWARD
   =============================== */
+
   useEffect(() => {
-    if (!group || !createdReward) return;
-    if (!rewardsEnabled) return;
+    if (!group) return;
+
+    // avoid refresh farming
+    if (!createdReward) return;
 
     dispatch(creditCoins({ coins: 50 }));
-  }, [group, createdReward, rewardsEnabled, dispatch]);
+  }, [group, createdReward, dispatch]);
 
   /* ===============================
-     MESSAGE MILESTONE REWARD
+     EVERY 10 MESSAGES REWARD
   =============================== */
+
   useEffect(() => {
-    if (!rewardsEnabled) return;
     if (!messageCount) return;
 
-    const reachedMilestone =
-      messageCount % milestone === 0;
-
-    if (!reachedMilestone) return;
-
-    // prevent duplicate trigger on re-render
-    if (lastRewardRef.current === messageCount) return;
-
-    lastRewardRef.current = messageCount;
-
-    dispatch(
-      creditCoins({
-        coins: rewardCoins,
-      })
-    );
-  }, [
-    messageCount,
-    milestone,
-    rewardCoins,
-    rewardsEnabled,
-    dispatch,
-  ]);
+    if (messageCount % 10 === 0) {
+      dispatch(creditCoins({ coins: 20 }));
+    }
+  }, [messageCount, dispatch]);
 
   /* ===============================
      UI
   =============================== */
-  return (
-    <div className="fixed right-3 top-28 z-40 flex flex-col items-center opacity-90">
 
-      {/* COUNT */}
+  return (
+    <div className="fixed right-3 top-28 z-40 flex flex-col items-center">
+      {/* count */}
       <p className="text-xs text-gray-400 mb-2">
-        {messageCount}/{milestone}
+        {messageCount}/10
       </p>
 
-      {/* PROGRESS BAR */}
+      {/* vertical bar */}
       <div className="relative h-56 w-4 bg-gray-200 rounded-full overflow-hidden shadow-inner">
         <div
-          className={`absolute bottom-0 left-0 w-full transition-all duration-500 ${
-            rewardsEnabled ? "bg-green-500" : "bg-gray-400"
-          }`}
-          style={{ height: `${progress}%` }}
+          className="absolute bottom-0 left-0 w-full bg-green-500 transition-all duration-500"
+          style={{
+            height: `${progress}%`,
+          }}
         />
       </div>
 
-      {/* LABEL */}
-      <p
-        className={`text-[10px] mt-2 font-semibold ${
-          rewardsEnabled ? "text-green-500" : "text-gray-400"
-        }`}
-      >
-        {rewardsEnabled ? `+${rewardCoins} Coins` : "Rewards Off"}
+      {/* reward text */}
+      <p className="text-[10px] text-green-500 mt-2 font-semibold">
+        +20 Coins
       </p>
     </div>
   );

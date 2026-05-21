@@ -266,7 +266,7 @@ export default function GroupChatPage() {
 
       {/* ================= REWARD ================= */}
 
-      {group?.settings?.allowRewards && (
+      {group?.rewards?.enabled && (
         <GroupReward messages={messages} group={group} />
       )}
 
