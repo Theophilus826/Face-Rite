@@ -277,6 +277,7 @@ export default function GroupChatPage() {
         onClose={() => setAdminOpen(false)}
         group={group}
         token={token}
+        currentUser={user}
         onUpdated={loadGroup}
       />
 

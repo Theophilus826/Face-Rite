@@ -5,6 +5,7 @@ export default function GroupAdminModal({
   onClose,
   group,
   token,
+  currentUser,
   onUpdated,
 }) {
   if (!open) return null;
@@ -34,6 +35,7 @@ export default function GroupAdminModal({
             group={group}
             token={token}
             onRefresh={onUpdated}
+            currentUser={currentUser}
           />
         </div>
       </div>
