@@ -1,32 +1,118 @@
 import { useEffect, useRef } from "react";
 import { API } from "../features/Api";
 
-export function useChatSocket({ userId, chatUserId, setMessages }) {
+export function useChatSocket({
+  userId,
+  chatUserId,
+  setMessages,
+}) {
   const ref = useRef(null);
 
   useEffect(() => {
     if (!userId || !chatUserId) return;
 
-    ref.current?.close();
+    // close old connection
+    if (ref.current) {
+      ref.current.close();
+    }
 
-    const es = new EventSource(
-      `${API.defaults.baseURL}/chat/stream/${userId}/${chatUserId}`
-    );
+    const base =
+      API.defaults.baseURL?.replace(/\/$/, "");
+
+    const url =
+      `${base}/chat/stream/` +
+      `${userId}/${chatUserId}`;
+
+    const es = new EventSource(url);
 
     ref.current = es;
 
+    /* ================= CONNECTED ================= */
+
+    es.onopen = () => {
+      console.log("CHAT SSE CONNECTED");
+    };
+
+    /* ================= MESSAGE ================= */
+
     es.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+      try {
+        const data = JSON.parse(e.data);
 
-      if (data.type === "init") {
-        setMessages(data.messages || []);
-      }
+        /* ================= INIT ================= */
 
-      if (data.type === "new_message") {
-        setMessages((prev) => [...prev, data.message]);
+        if (data.type === "init") {
+          setMessages(data.messages || []);
+          return;
+        }
+
+        /* ================= NEW MESSAGE ================= */
+
+        if (data.type === "new_message") {
+          setMessages((prev) => {
+            // prevent duplicates
+            const exists = prev.some(
+              (m) => m._id === data.message?._id
+            );
+
+            if (exists) return prev;
+
+            return [...prev, data.message];
+          });
+
+          return;
+        }
+
+        /* ================= MESSAGE UPDATED ================= */
+
+        if (data.type === "message_updated") {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m._id === data.message?._id
+                ? data.message
+                : m
+            )
+          );
+
+          return;
+        }
+
+        /* ================= MESSAGE DELETED ================= */
+
+        if (data.type === "message_deleted") {
+          setMessages((prev) =>
+            prev.filter(
+              (m) => m._id !== data.messageId
+            )
+          );
+        }
+      } catch (err) {
+        console.error(
+          "CHAT SSE PARSE ERROR:",
+          err
+        );
       }
     };
 
-    return () => es.close();
-  }, [userId, chatUserId]);
+    /* ================= ERROR ================= */
+
+    es.onerror = (err) => {
+      console.error(
+        "CHAT SSE ERROR:",
+        err
+      );
+    };
+
+    /* ================= CLEANUP ================= */
+
+    return () => {
+      console.log("CHAT SSE CLOSED");
+
+      es.close();
+
+      if (ref.current === es) {
+        ref.current = null;
+      }
+    };
+  }, [userId, chatUserId, setMessages]);
 }

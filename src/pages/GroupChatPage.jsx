@@ -1,35 +1,46 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { useEffect, useState, useCallback } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 
 import GroupAdminModal from "../hook/GroupAdminModal";
 import MessageList from "../hook/MessageList";
 import ChatInput from "../hook/ChatInput";
 import GroupHeader from "../hook/GroupHeader";
+import GroupReward from "../hook/GroupReward";
 
 import useGroupSocket from "../hook/useGroupSocket";
-import GroupReward from "../hook/GroupReward";
+
 import { API } from "../features/Api";
-import { creditCoins } from "../features/coins/CoinSlice";
 
 export default function GroupChatPage() {
   const { groupId } = useParams();
 
   const navigate = useNavigate();
 
-  const { user } = useSelector((s) => s.auth);
+  const { user } = useSelector(
+    (s) => s.auth
+  );
 
-  const token = localStorage.getItem("token");
+  const token =
+    localStorage.getItem("token");
 
   /* ================= STATE ================= */
 
-  const [group, setGroup] = useState(null);
+  const [group, setGroup] =
+    useState(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
-  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminOpen, setAdminOpen] =
+    useState(false);
 
   /* ================= LOAD GROUP ================= */
 
@@ -39,26 +50,43 @@ export default function GroupChatPage() {
 
       setError("");
 
-      const res = await API.get(`/group/${groupId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await API.get(
+        `/group/${groupId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       setGroup(res.data.group);
     } catch (err) {
-      console.error("Group load error:", err.response?.data || err.message);
+      console.error(
+        "GROUP LOAD ERROR:",
+        err.response?.data ||
+          err.message
+      );
 
-      const msg = err.response?.data?.error || "Failed to load group";
+      const msg =
+        err.response?.data?.error ||
+        "Failed to load group";
 
       setError(msg);
 
-      if (err.response?.status === 403) {
-        setError("You are not a member of this group");
+      if (
+        err.response?.status === 403
+      ) {
+        setError(
+          "You are not a member of this group"
+        );
       }
 
-      if (err.response?.status === 401) {
-        setError("Session expired. Please login again.");
+      if (
+        err.response?.status === 401
+      ) {
+        setError(
+          "Session expired. Please login again."
+        );
 
         navigate("/login");
       }
@@ -72,48 +100,39 @@ export default function GroupChatPage() {
   useEffect(() => {
     if (!groupId || !token) return;
 
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const res = await API.get(`/group/${groupId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        setGroup(res.data.group);
-      } catch (err) {
-        setError(err.response?.data?.error || "Failed to load group");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, [groupId, token]);
+    loadGroup();
+  }, [groupId, token, loadGroup]);
 
   /* ================= SOCKET ================= */
 
-  const { messages, setMessages, addMessage, typingUser, onlineMembers } =
-    useGroupSocket({
-      groupId,
-      user,
-      token,
-    });
+  const {
+    messages,
+    setMessages,
+    typingUser,
+    onlineMembers,
+  } = useGroupSocket({
+    groupId,
+    user,
+    token,
+  });
 
   /* ================= SEND MESSAGE ================= */
 
-  const sendMessage = async (payload) => {
+  const sendMessage = async (
+    payload
+  ) => {
     if (!payload || !user) return;
-
-    const tempId = Date.now().toString();
 
     /* ================= TEXT ================= */
 
     if (payload.type === "text") {
-      const messageText = payload.content?.trim();
+      const messageText =
+        payload.content?.trim();
 
       if (!messageText) return;
+
+      const tempId =
+        `temp-${Date.now()}`;
 
       const tempMessage = {
         _id: tempId,
@@ -129,11 +148,16 @@ export default function GroupChatPage() {
 
         pending: true,
 
-        createdAt: new Date().toISOString(),
+        createdAt:
+          new Date().toISOString(),
       };
 
-      // optimistic UI
-      setMessages((prev) => [...prev, tempMessage]);
+      /* ================= OPTIMISTIC ================= */
+
+      setMessages((prev) => [
+        ...prev,
+        tempMessage,
+      ]);
 
       try {
         const res = await API.post(
@@ -146,18 +170,51 @@ export default function GroupChatPage() {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          },
+          }
         );
 
-        // replace temp message
-        setMessages((prev) =>
-          prev.map((m) => (m._id === tempId ? res.data.message : m)),
-        );
+        const realMessage =
+          res.data.message;
+
+        /* ================= REPLACE TEMP ================= */
+
+        setMessages((prev) => {
+          const filtered =
+            prev.filter(
+              (m) =>
+                m._id !== tempId
+            );
+
+          const exists =
+            filtered.some(
+              (m) =>
+                m._id ===
+                realMessage._id
+            );
+
+          if (exists)
+            return filtered;
+
+          return [
+            ...filtered,
+            realMessage,
+          ];
+        });
       } catch (err) {
-        console.error("Send failed:", err.response?.data || err.message);
+        console.error(
+          "TEXT SEND FAILED:",
+          err.response?.data ||
+            err.message
+        );
 
-        // remove failed temp
-        setMessages((prev) => prev.filter((m) => m._id !== tempId));
+        /* ================= REMOVE FAILED TEMP ================= */
+
+        setMessages((prev) =>
+          prev.filter(
+            (m) =>
+              m._id !== tempId
+          )
+        );
       }
 
       return;
@@ -166,23 +223,39 @@ export default function GroupChatPage() {
     /* ================= IMAGE ================= */
 
     if (payload.type === "image") {
-      const formData = new FormData();
+      const formData =
+        new FormData();
 
-      formData.append("groupId", groupId);
+      formData.append(
+        "groupId",
+        groupId
+      );
 
-      formData.append("image", payload.file);
+      formData.append(
+        "image",
+        payload.file
+      );
 
       try {
-        const res = await API.post("/group/send-message", formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        });
+        await API.post(
+          "/group/send-message",
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type":
+                "multipart/form-data",
+            },
+          }
+        );
 
-        addMessage(res.data.message);
+        // SSE handles realtime updates
       } catch (err) {
-        console.error("Image send failed:", err.response?.data || err.message);
+        console.error(
+          "IMAGE SEND FAILED:",
+          err.response?.data ||
+            err.message
+        );
       }
 
       return;
@@ -191,23 +264,39 @@ export default function GroupChatPage() {
     /* ================= AUDIO ================= */
 
     if (payload.type === "audio") {
-      const formData = new FormData();
+      const formData =
+        new FormData();
 
-      formData.append("groupId", groupId);
+      formData.append(
+        "groupId",
+        groupId
+      );
 
-      formData.append("audio", payload.file);
+      formData.append(
+        "audio",
+        payload.file
+      );
 
       try {
-        const res = await API.post("/group/send-message", formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        });
+        await API.post(
+          "/group/send-message",
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type":
+                "multipart/form-data",
+            },
+          }
+        );
 
-        addMessage(res.data.message);
+        // SSE handles realtime updates
       } catch (err) {
-        console.error("Audio send failed:", err.response?.data || err.message);
+        console.error(
+          "AUDIO SEND FAILED:",
+          err.response?.data ||
+            err.message
+        );
       }
 
       return;
@@ -219,7 +308,9 @@ export default function GroupChatPage() {
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading group...</p>
+        <p className="text-gray-500">
+          Loading group...
+        </p>
       </div>
     );
   }
@@ -229,10 +320,14 @@ export default function GroupChatPage() {
   if (error) {
     return (
       <div className="h-screen flex items-center justify-center flex-col gap-3">
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-500">
+          {error}
+        </p>
 
         <button
-          onClick={() => navigate("/groups")}
+          onClick={() =>
+            navigate("/groups")
+          }
           className="px-4 py-2 bg-blue-600 text-white rounded-lg"
         >
           Go Back
@@ -246,7 +341,9 @@ export default function GroupChatPage() {
   if (!group) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <p className="text-gray-500">Group not found</p>
+        <p className="text-gray-500">
+          Group not found
+        </p>
       </div>
     );
   }
@@ -259,22 +356,33 @@ export default function GroupChatPage() {
 
       <GroupHeader
         group={group}
-        onlineMembers={onlineMembers}
-        onAddMembers={() => setAdminOpen(true)}
-        onOpenAdmin={() => setAdminOpen(true)}
+        onlineMembers={
+          onlineMembers
+        }
+        onAddMembers={() =>
+          setAdminOpen(true)
+        }
+        onOpenAdmin={() =>
+          setAdminOpen(true)
+        }
       />
 
-      {/* ================= REWARD ================= */}
+      {/* ================= REWARDS ================= */}
 
       {group?.rewards?.enabled && (
-        <GroupReward messages={messages} group={group} />
+        <GroupReward
+          messages={messages}
+          group={group}
+        />
       )}
 
-      {/* ================= ADMIN MODAL ================= */}
+      {/* ================= ADMIN ================= */}
 
       <GroupAdminModal
         open={adminOpen}
-        onClose={() => setAdminOpen(false)}
+        onClose={() =>
+          setAdminOpen(false)
+        }
         group={group}
         token={token}
         currentUser={user}
@@ -284,13 +392,19 @@ export default function GroupChatPage() {
       {/* ================= MESSAGES ================= */}
 
       <div className="flex-1 overflow-y-auto bg-transparent pb-2">
-        <MessageList messages={messages} userId={user?._id} />
+        <MessageList
+          messages={messages}
+          userId={user?._id}
+        />
       </div>
 
       {/* ================= INPUT ================= */}
 
       <div className="sticky bottom-0 z-30 bg-transparent pb-[30px]">
-        <ChatInput onSend={sendMessage} typingUser={typingUser} />
+        <ChatInput
+          onSend={sendMessage}
+          typingUser={typingUser}
+        />
       </div>
     </div>
   );
