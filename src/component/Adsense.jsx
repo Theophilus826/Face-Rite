@@ -1,6 +1,12 @@
 import { useEffect } from "react";
 
-const Adsense = ({ slot }) => {
+const Adsense = ({
+  slot,
+  format = "auto",
+  responsive = true,
+  className = "",
+  style = {},
+}) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
@@ -13,20 +19,23 @@ const Adsense = ({ slot }) => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [slot]);
 
   return (
-    <div className="my-6 w-full overflow-hidden">
+    <div
+      className={`w-full overflow-hidden my-6 ${className}`}
+    >
       <ins
         className="adsbygoogle"
         style={{
           display: "block",
           minHeight: "250px",
+          ...style,
         }}
         data-ad-client="ca-pub-6698884898009230"
         data-ad-slot={slot}
-        data-ad-format="auto"
-        data-full-width-responsive="true"
+        data-ad-format={format}
+        data-full-width-responsive={responsive.toString()}
       />
     </div>
   );

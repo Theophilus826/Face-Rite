@@ -1,3 +1,7 @@
+import Adsense from "../component/Adsense";
+
+
+
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black text-white">
@@ -34,6 +38,7 @@ export default function AboutPage() {
             <button className="px-6 py-3 rounded-2xl border border-white/20 hover:bg-white/10 transition">
               Learn More
             </button>
+            <Adsense slot="4834199906" />
           </div>
         </div>
 

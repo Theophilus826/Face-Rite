@@ -7,6 +7,7 @@ import { io } from "socket.io-client";
 import { buyItem } from "../features/coins/CoinSlice.js";
 import { hostGame } from "../features/gameSlice/gameSlice";
 import gameScene from "../scenes/gameScene.js";
+import Adsense from "./Adsense.jsx";
 
 export default function HostGame() {
   const dispatch = useDispatch();
@@ -267,6 +268,7 @@ return (
         disabled={loading}
         className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 transition-all font-medium shadow-md disabled:opacity-50"
       >
+        <Adsense slot="5548515776" />
         {loading ? "Creating Game..." : "Play Game 🎮"}
       </button>
 

@@ -5,6 +5,7 @@ import { creditCoins } from "../features/coins/CoinSlice.js";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Adsense from "../component/Adsense.jsx";
 
 const clubs = [
   { name: "Call of Duty", img: "/favicon.ico/Call of Duty.jpg" },
@@ -85,9 +86,11 @@ export default function NewFeedback() {
               onClick={() => setClub(item.name)}
               className={`
                 rounded-xl overflow-hidden border transition-all
-                ${club === item.name
-                  ? "ring-2 ring-black border-black scale-[1.02]"
-                  : "border-gray-300 hover:scale-[1.02]"}
+                ${
+                  club === item.name
+                    ? "ring-2 ring-black border-black scale-[1.02]"
+                    : "border-gray-300 hover:scale-[1.02]"
+                }
               `}
             >
               {/* IMAGE */}
@@ -111,9 +114,7 @@ export default function NewFeedback() {
         </div>
 
         {!club && (
-          <p className="text-xs text-gray-500 mt-2">
-            Please select a club
-          </p>
+          <p className="text-xs text-gray-500 mt-2">Please select a club</p>
         )}
       </div>
 
@@ -135,16 +136,32 @@ export default function NewFeedback() {
       </div>
 
       {/* ================= SUBMIT ================= */}
-      <div className="relative">
+      <div className="relative pb-32">
+        {/* ADSENSE */}
+        {!isLoading && (
+          <div className="mb-4">
+            <Adsense
+              slot="8292126393"
+              style={{
+                minHeight: "120px",
+              }}
+            />
+          </div>
+        )}
+
+        {/* SUBMIT BUTTON */}
         <button
           type="submit"
           disabled={isLoading}
           className={`
-            w-full py-3 rounded text-white text-sm sm:text-base
-            ${isLoading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-black hover:bg-gray-800"}
-          `}
+      w-full py-3 rounded text-white text-sm sm:text-base
+      transition-all duration-300
+      ${
+        isLoading
+          ? "bg-gray-400 cursor-not-allowed"
+          : "bg-black hover:bg-gray-800"
+      }
+    `}
         >
           {isLoading ? "Submitting..." : "Submit Feedback (+10 Coins)"}
         </button>

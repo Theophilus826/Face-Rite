@@ -211,6 +211,7 @@ function Home() {
         {/* Carousel */}
         <div className="rounded-2xl overflow-hidden">
           <Carousel />
+          <Adsense slot="2966127614" />
         </div>
 
         {/* Action Cards */}

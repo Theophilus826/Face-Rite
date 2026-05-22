@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { useDispatch } from "react-redux";
-
+import Adsense from "../component/Adsense";
 import { creditCoins } from "../features/coins/CoinSlice";
 
 function GroupReward({
@@ -27,7 +27,6 @@ function GroupReward({
   useEffect(() => {
     if (!group) return;
 
-    // avoid refresh farming
     if (!createdReward) return;
 
     dispatch(creditCoins({ coins: 50 }));
@@ -50,13 +49,14 @@ function GroupReward({
   =============================== */
 
   return (
-    <div className="fixed right-3 top-28 z-40 flex flex-col items-center">
-      {/* count */}
-      <p className="text-xs text-gray-400 mb-2">
+    <div className="fixed right-3 top-28 z-40 flex flex-col items-center gap-3">
+      
+      {/* COUNT */}
+      <p className="text-xs text-gray-400">
         {messageCount}/10
       </p>
 
-      {/* vertical bar */}
+      {/* PROGRESS BAR */}
       <div className="relative h-56 w-4 bg-gray-200 rounded-full overflow-hidden shadow-inner">
         <div
           className="absolute bottom-0 left-0 w-full bg-green-500 transition-all duration-500"
@@ -66,10 +66,21 @@ function GroupReward({
         />
       </div>
 
-      {/* reward text */}
-      <p className="text-[10px] text-green-500 mt-2 font-semibold">
+      {/* REWARD TEXT */}
+      <p className="text-[10px] text-green-500 font-semibold">
         +20 Coins
       </p>
+
+      {/* ADSENSE */}
+      <div className="w-24 sm:w-28">
+        <Adsense
+          slot="8016794227"
+          style={{
+            minHeight: "120px",
+          }}
+        />
+      </div>
+
     </div>
   );
 }
