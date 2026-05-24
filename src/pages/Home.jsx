@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { FaQuestionCircle, FaTicketAlt } from "react-icons/fa";
 import { useSelector } from "react-redux";
+import { Capacitor } from "@capacitor/core";
 import { useEffect, useState } from "react";
 import { API } from "../features/Api";
 import { motion } from "framer-motion";
@@ -12,6 +13,9 @@ import CoinBalanceCard from "../component/CoinBalanceCard";
 import PostGalleryWithUpload from "../component/PostGallery";
 import { toast } from "react-toastify";
 import Adsense from "../component/Adsense";
+import { AdMob } from "@capacitor-community/admob";
+
+const rewardedId = "ca-app-pub-6698884898009230/7549505928";
 
 function Home() {
   const navigate = useNavigate();
@@ -124,6 +128,25 @@ function Home() {
     };
   }, [selectedFiles]);
 
+  // Admob Reward Ad
+  async function showRewardAd() {
+    if (!Capacitor.isNativePlatform()) {
+      toast.info("Reward ads only work in mobile app");
+      return;
+    }
+
+    try {
+      await AdMob.prepareRewardVideoAd({
+        adId: rewardedId,
+        isTesting: true,
+      });
+
+      await AdMob.showRewardVideoAd();
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   return (
     <div className="min-h-screen px-3 sm:px-4 md:px-6 lg:px-8 max-w-7xl mx-auto overflow-x-hidden">
       {/* HEADER */}
@@ -211,7 +234,13 @@ function Home() {
         {/* Carousel */}
         <div className="rounded-2xl overflow-hidden">
           <Carousel />
-          <Adsense slot="2966127614" />
+
+          <button
+            onClick={showRewardAd}
+            className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 rounded-xl"
+          >
+            Watch Ad for Reward
+          </button>
         </div>
 
         {/* Action Cards */}
