@@ -42,11 +42,10 @@ import AdminWithdrawals from "./pages/AdminWithdrawals";
 import ChatContant from "./pages/ChatContant";
 import AboutPage from "./pages/AboutPage";
 
-
 // Components
 import Navbar from "./component/Navbar";
 import CardGrid from "./component/CardGrid";
-import ProtectedRoute from "./component/ProtectedRoute";
+// import ProtectedRoute from "./component/ProtectedRoute";
 import BottomNav from "./component/BottomNav";
 import AdminLayout from "./component/AdminLayout";
 import AdminRoute from "./component/AdminRoute";
@@ -70,13 +69,11 @@ function GameLoader() {
 function PostGalleryWrapper() {
   const user = useSelector((state: RootState) => state.auth.user);
 
-  if (!user?.token) return <Navigate to="/login" replace />;
-
   return (
     <PostGalleryWithUpload
       postId="example-post-id"
-      postOwnerId={user.id}
-      token={user.token}
+      postOwnerId={user?.id || ""}
+      token={user?.token || ""}
       createdAt={new Date().toISOString()}
       user={user}
       comments={[]}
@@ -89,14 +86,12 @@ function PostCommentsWrapper() {
   const user = useSelector((state: RootState) => state.auth.user);
   const { id } = useParams();
 
-  if (!user?.token) return <Navigate to="/login" replace />;
-
   return (
     <PostComments
       postId={id || ""}
       user={user}
       comments={[]}
-      onNewComment={(c: CommentType) => console.log("New comment:", c)}
+      onNewComment={(c :CommentType) => console.log("New comment:", c)}
     />
   );
 }
@@ -146,180 +141,32 @@ function AppContent() {
 
           <Route
             path="/login"
-            element={
-              user?.token ? (
-                <Navigate to="/home" replace />
-              ) : (
-                <Login />
-              )
-            }
+            element={user?.token ? <Navigate to="/home" replace /> : <Login />}
           />
 
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route
-            path="/reset-password/:token"
-            element={<ResetPassword />}
-          />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           <Route path="/host-game" element={<HostGame />} />
 
-          {/* ================= PROTECTED ================= */}
-
-          <Route
-            path="/home"
-            element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/me"
-            element={
-              <ProtectedRoute>
-                <Me />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/deposit"
-            element={
-              <ProtectedRoute>
-                <DepositPanel />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/withdraw"
-            element={
-              <ProtectedRoute>
-                <Withdraw />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/profile/:profileUserId"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/post"
-            element={
-              <ProtectedRoute>
-                <PostGalleryWrapper />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/postComments/:id"
-            element={
-              <ProtectedRoute>
-                <PostCommentsWrapper />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/coin-history"
-            element={
-              <ProtectedRoute>
-                <CoinHistory />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/feedbacks"
-            element={
-              <ProtectedRoute>
-                <FeedbackPages />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/newfeedback"
-            element={
-              <ProtectedRoute>
-                <NewFeedback />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/feedback/:id"
-            element={
-              <ProtectedRoute>
-                <FeedbackDetail />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute>
-                <Notifications />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/gemes"
-            element={
-              <ProtectedRoute>
-                <Gemes />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* ================= CHAT ================= */}
-
-          <Route
-            path="/chat"
-            element={
-              <ProtectedRoute>
-                <ChatContant />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/chat/:chatUserId"
-            element={
-              <ProtectedRoute>
-                <ChatPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/group/:groupId"
-            element={
-              <ProtectedRoute>
-                <GroupChatPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/home" element={<Home />} />
+          <Route path="/me" element={<Me />} />
+          <Route path="/deposit" element={<DepositPanel />} />
+          <Route path="/withdraw" element={<Withdraw />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:profileUserId" element={<Profile />} />
+          <Route path="/post" element={<PostGalleryWrapper />} />
+          <Route path="/postComments/:id" element={<PostCommentsWrapper />} />
+          <Route path="/coin-history" element={<CoinHistory />} />
+          <Route path="/feedbacks" element={<FeedbackPages />} />
+          <Route path="/newfeedback" element={<NewFeedback />} />
+          <Route path="/feedback/:id" element={<FeedbackDetail />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/gemes" element={<Gemes />} />
+          <Route path="/chat" element={<ChatContant />} />
+          <Route path="/chat/:chatUserId" element={<ChatPage />} />
+          <Route path="/group/:groupId" element={<GroupChatPage />} />
 
           {/* ================= ADMIN ================= */}
 
@@ -327,24 +174,12 @@ function AppContent() {
             <Route element={<AdminLayout />}>
               <Route index element={<Navigate to="monitor" replace />} />
               <Route path="monitor" element={<AdminMonitor />} />
-              <Route
-                path="credit-coins"
-                element={<AdminCreditCoins />}
-              />
-              <Route
-                path="carousel-upload"
-                element={<CarouselUploader />}
-              />
+              <Route path="credit-coins" element={<AdminCreditCoins />} />
+              <Route path="carousel-upload" element={<CarouselUploader />} />
               <Route path="deposits" element={<AdminDeposit />} />
-              <Route
-                path="withdraw"
-                element={<AdminWithdrawals />}
-              />
+              <Route path="withdraw" element={<AdminWithdrawals />} />
 
-              <Route
-                path="host-game"
-                element={<HostGame />}
-              />
+              <Route path="host-game" element={<HostGame />} />
 
               <Route path="feedbacks" element={<FeedbackPages />} />
             </Route>
@@ -353,7 +188,7 @@ function AppContent() {
           {/* ================= OTHER ================= */}
 
           <Route path="/cards" element={<CardGrid />} />
-          <Route path="/about" element={<AboutPage/>}/>
+          <Route path="/about" element={<AboutPage />} />
           {/* ================= FALLBACK ================= */}
 
           <Route path="*" element={<Navigate to="/" replace />} />
