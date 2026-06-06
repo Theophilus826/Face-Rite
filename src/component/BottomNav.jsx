@@ -9,21 +9,17 @@ export default function BottomNav() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 flex justify-between px-2 py-2 rounded-2xl bg-gradient-to-br from-black/60 via-gray-900/50 to-black/70 backdrop-blur-2xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.7)] z-50">
-      <NavLink
-        to="/"
-        className={({ isActive }) =>
-          `${base} ${isActive ? active : inactive}`
-        }
+      <a
+        href="/"
+        className={`${base} ${inactive}`} // NavLink active state won't matter on full reload
       >
         <FaHome className="text-xl mb-1" />
         Home
-      </NavLink>
+      </a>
 
       <NavLink
         to="/Gemes"
-        className={({ isActive }) =>
-          `${base} ${isActive ? active : inactive}`
-        }
+        className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
       >
         <FaGamepad className="text-xl mb-1" />
         Game
@@ -31,9 +27,7 @@ export default function BottomNav() {
 
       <NavLink
         to="/chat"
-        className={({ isActive }) =>
-          `${base} ${isActive ? active : inactive}`
-        }
+        className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
       >
         <FaComments className="text-xl mb-1" />
         Chat
@@ -41,9 +35,7 @@ export default function BottomNav() {
 
       <NavLink
         to="/Me"
-        className={({ isActive }) =>
-          `${base} ${isActive ? active : inactive}`
-        }
+        className={({ isActive }) => `${base} ${isActive ? active : inactive}`}
       >
         <FaEllipsisH className="text-xl mb-1" />
         Me
