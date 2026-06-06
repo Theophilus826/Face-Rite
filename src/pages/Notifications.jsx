@@ -57,7 +57,7 @@ export default function Notifications() {
 
     // ⚠️ IMPORTANT: NO userId in URL
     const es = new EventSource(
-      `${API_BASE}/api/notifications/stream?token=${token}`
+      `${API_BASE}/api/notifications/stream?token=${token}`,
     );
 
     eventSourceRef.current = es;
@@ -71,9 +71,10 @@ export default function Notifications() {
 
       es.close();
 
-      // silent reconnect (no spam toast)
       setTimeout(() => {
-        eventSourceRef.current = null;
+        if (user && token) {
+          fetchNotifications();
+        }
       }, 3000);
     };
 
@@ -105,7 +106,7 @@ export default function Notifications() {
 
           setNotifications((prev) => [notif, ...prev]);
 
-          toast.info(`🔔 ${notif.message}`);
+          toast.info(`🔔 ${notif?.message || "New notification"}`);
         }
       } catch (err) {
         console.error("SSE PARSE ERROR:", err);
@@ -127,13 +128,11 @@ export default function Notifications() {
           {},
           {
             headers: { Authorization: `Bearer ${token}` },
-          }
+          },
         );
 
         setNotifications((prev) =>
-          prev.map((n) =>
-            n._id === notif._id ? { ...n, read: true } : n
-          )
+          prev.map((n) => (n._id === notif._id ? { ...n, read: true } : n)),
         );
       } catch {
         toast.error("Failed to mark as read");
@@ -180,9 +179,7 @@ export default function Notifications() {
       {loading ? (
         <p className="text-center text-gray-500">Loading...</p>
       ) : notifications.length === 0 ? (
-        <p className="text-center text-gray-500">
-          You have no notifications.
-        </p>
+        <p className="text-center text-gray-500">You have no notifications.</p>
       ) : (
         <div className="space-y-2">
           {notifications.map((notif) => (

@@ -8,6 +8,7 @@ import {
   useLocation,
   useParams,
 } from "react-router-dom";
+import { PushNotifications } from "@capacitor/push-notifications";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import globle from "/globle.png";
@@ -114,6 +115,50 @@ function AppContent() {
   useEffect(() => {
     dispatch(fetchCoins());
   }, [dispatch]);
+
+  useEffect(() => {
+  dispatch(fetchCoins());
+}, [dispatch]);
+
+useEffect(() => {
+  const initPush = async () => {
+    try {
+      PushNotifications.addListener("registration", (token) => {
+        console.log("FCM TOKEN:", token.value);
+      });
+
+      PushNotifications.addListener("registrationError", (error) => {
+        console.error("FCM ERROR:", error);
+      });
+
+      PushNotifications.addListener(
+        "pushNotificationReceived",
+        (notification) => {
+          console.log("PUSH RECEIVED:", notification);
+        }
+      );
+
+      PushNotifications.addListener(
+        "pushNotificationActionPerformed",
+        (notification) => {
+          console.log("PUSH CLICKED:", notification);
+        }
+      );
+
+      const perm = await PushNotifications.requestPermissions();
+
+      console.log("Permission:", perm);
+
+      if (perm.receive === "granted") {
+        await PushNotifications.register();
+      }
+    } catch (err) {
+      console.error("Push init error:", err);
+    }
+  };
+
+  initPush();
+}, []);
 
   /* ================= UI HIDE LOGIC ================= */
   const hideLayout =

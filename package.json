@@ -35,11 +35,13 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.11.0",
     "react-toastify": "^11.0.5",
+    "sharp": "^0.34.5",
     "socket.io-client": "^4.8.3",
     "three": "^0.183.1",
     "vite-plugin-pwa": "^1.2.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
@@ -56,5 +58,10 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
+  },
+  "allowScripts": {
+    "sharp@0.32.6": true,
+    "sharp@0.34.5": true,
+    "esbuild@0.27.1": true
   }
 }
