@@ -149,6 +149,8 @@ function AppContent() {
 
         const perm = await PushNotifications.requestPermissions();
 
+        console.log("Notification permission result:", perm);
+        
         if (perm.receive === "granted") {
           await PushNotifications.register();
         }
