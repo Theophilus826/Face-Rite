@@ -128,39 +128,62 @@ function AppContent() {
         console.log("PUSH STEP 1");
 
         const check = await PushNotifications.checkPermissions();
-        console.log("CHECK:", JSON.stringify(check));
+        console.log("CHECK:", check);
 
         console.log("PUSH STEP 2");
 
         const perm = await PushNotifications.requestPermissions();
-        console.log("REQUEST RESULT:", JSON.stringify(perm));
+        console.log("REQUEST RESULT:", perm);
 
-        console.log("PUSH STEP 3");
+        console.log("PUSH STEP 3 - registering listeners");
 
-        PushNotifications.addListener("registration", (token) => {
-          console.log("FCM TOKEN:", token.value);
+        // ✅ IMPORTANT: register listeners BEFORE register()
+        PushNotifications.addListener("registration", async (token) => {
+          console.log("🔥 FCM TOKEN RECEIVED:", token.value);
+
+          try {
+            const res = await fetch(
+              "https://swordgame-5.onrender.com/api/save-fcm-token",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${user?.token}`,
+                },
+                body: JSON.stringify({
+                  token: token.value,
+                }),
+              },
+            );
+
+            const data = await res.json();
+            console.log("✅ TOKEN SAVE RESPONSE:", data);
+          } catch (err) {
+            console.error("❌ FAILED TO SAVE FCM TOKEN:", err);
+          }
         });
 
         PushNotifications.addListener("registrationError", (err) => {
-          console.error("FCM REG ERROR:", JSON.stringify(err));
+          console.error("❌ FCM REG ERROR:", err);
         });
 
-        if (perm.receive === "granted") {
-          console.log("PUSH STEP 4 REGISTER");
-
-          await PushNotifications.register();
-
-          console.log("PUSH STEP 5 REGISTER CALLED");
-        } else {
-          console.log("NOTIFICATION PERMISSION DENIED");
+        if (perm.receive !== "granted") {
+          console.log("❌ NOTIFICATION PERMISSION DENIED");
+          return;
         }
+
+        console.log("PUSH STEP 4 - REGISTERING");
+
+        await PushNotifications.register();
+
+        console.log("PUSH STEP 5 - REGISTER CALLED");
       } catch (e) {
-        console.error("PUSH ERROR:", e);
+        console.error("❌ PUSH INIT ERROR:", e);
       }
     };
 
     initPush();
-  }, []);
+  }, [user?.token]);
 
   /* ================= UI HIDE LOGIC ================= */
   const hideLayout =
