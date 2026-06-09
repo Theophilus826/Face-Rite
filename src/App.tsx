@@ -125,37 +125,37 @@ function AppContent() {
 
     const initPush = async () => {
       try {
+        console.log("PUSH STEP 1");
+
+        const check = await PushNotifications.checkPermissions();
+        console.log("CHECK:", JSON.stringify(check));
+
+        console.log("PUSH STEP 2");
+
+        const perm = await PushNotifications.requestPermissions();
+        console.log("REQUEST RESULT:", JSON.stringify(perm));
+
+        console.log("PUSH STEP 3");
+
         PushNotifications.addListener("registration", (token) => {
           console.log("FCM TOKEN:", token.value);
         });
 
-        PushNotifications.addListener("registrationError", (error) => {
-          console.error("FCM ERROR:", error);
+        PushNotifications.addListener("registrationError", (err) => {
+          console.error("FCM REG ERROR:", JSON.stringify(err));
         });
 
-        PushNotifications.addListener(
-          "pushNotificationReceived",
-          (notification) => {
-            console.log("PUSH RECEIVED:", notification);
-          },
-        );
-
-        PushNotifications.addListener(
-          "pushNotificationActionPerformed",
-          (notification) => {
-            console.log("PUSH CLICKED:", notification);
-          },
-        );
-
-        const perm = await PushNotifications.requestPermissions();
-
-        console.log("Notification permission result:", perm);
-        
         if (perm.receive === "granted") {
+          console.log("PUSH STEP 4 REGISTER");
+
           await PushNotifications.register();
+
+          console.log("PUSH STEP 5 REGISTER CALLED");
+        } else {
+          console.log("NOTIFICATION PERMISSION DENIED");
         }
-      } catch (err) {
-        console.error("Push init error:", err);
+      } catch (e) {
+        console.error("PUSH ERROR:", e);
       }
     };
 
