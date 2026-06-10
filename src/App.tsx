@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, lazy, Suspense, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   BrowserRouter,
@@ -112,113 +112,110 @@ function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
   const user = useSelector((state: RootState) => state.auth.user);
+  const pushInitializedRef = useRef(false);
 
   useEffect(() => {
     dispatch(fetchCoins());
   }, [dispatch]);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) {
-      console.log("Push notifications disabled on web");
-      return;
-    }
+  if (!Capacitor.isNativePlatform()) {
+    console.log("Push notifications disabled on web");
+    return;
+  }
 
-    if (!user?.token) {
-      console.log("Waiting for user token...");
-      return;
-    }
+  if (!user?.token) {
+    console.log("Waiting for user token...");
+    return;
+  }
 
-    let registrationListener;
-    let registrationErrorListener;
-    let receivedListener;
-    let actionListener;
+  let registrationListener;
+  let registrationErrorListener;
+  let receivedListener;
+  let actionListener;
 
-    const initPush = async () => {
-      try {
-        console.log("🔵 PUSH INIT START");
+  const initPush = async () => {
+    try {
+      // ✅ prevent duplicate init across re-renders
+      if (pushInitializedRef.current) return;
+      pushInitializedRef.current = true;
 
-        const permission = await PushNotifications.requestPermissions();
+      console.log("🔵 PUSH INIT START");
 
-        console.log("Permission:", permission);
+      const permission = await PushNotifications.requestPermissions();
+      console.log("Permission:", permission);
 
-        if (permission.receive !== "granted") {
-          console.log("❌ Notification permission denied");
-          return;
-        }
+      if (permission.receive !== "granted") {
+        console.log("❌ Notification permission denied");
+        return;
+      }
 
-        // Registration token
-        registrationListener = await PushNotifications.addListener(
-          "registration",
-          async (token) => {
-            console.log("🔥 FCM TOKEN:", token.value);
+      registrationListener = await PushNotifications.addListener(
+        "registration",
+        async (token) => {
+          console.log("🔥 FCM TOKEN:", token.value);
+
+          try {
+            const response = await fetch(
+              "https://swordgame-5.onrender.com/api/notifications/fcm-token",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${user.token}`,
+                },
+                body: JSON.stringify({ token: token.value }),
+              }
+            );
+
+            const text = await response.text();
 
             try {
-              const response = await fetch(
-                "https://swordgame-5.onrender.com/api/notifications/save-fcm-token",
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${user.token}`,
-                  },
-                  body: JSON.stringify({
-                    token: token.value,
-                  }),
-                },
-              );
-
-              const data = await response.json();
-
+              const data = JSON.parse(text);
               console.log("✅ TOKEN SAVED:", data);
-            } catch (err) {
-              console.error("❌ TOKEN SAVE ERROR:", err);
+            } catch {
+              console.error("❌ Non-JSON response:", text);
             }
-          },
-        );
+          } catch (err) {
+            console.error("❌ TOKEN SAVE ERROR:", err);
+          }
+        }
+      );
 
-        // Registration error
-        registrationErrorListener = await PushNotifications.addListener(
-          "registrationError",
-          (error) => {
-            console.error("❌ REGISTRATION ERROR:", error);
-          },
-        );
+      registrationErrorListener = await PushNotifications.addListener(
+        "registrationError",
+        (error) => console.error("❌ REGISTRATION ERROR:", error)
+      );
 
-        // Foreground notification
-        receivedListener = await PushNotifications.addListener(
-          "pushNotificationReceived",
-          (notification) => {
-            console.log("📩 PUSH RECEIVED:", notification);
-          },
-        );
+      receivedListener = await PushNotifications.addListener(
+        "pushNotificationReceived",
+        (notification) => console.log("📩 PUSH RECEIVED:", notification)
+      );
 
-        // User taps notification
-        actionListener = await PushNotifications.addListener(
-          "pushNotificationActionPerformed",
-          (action) => {
-            console.log("👆 PUSH CLICKED:", action);
-          },
-        );
+      actionListener = await PushNotifications.addListener(
+        "pushNotificationActionPerformed",
+        (action) => console.log("👆 PUSH CLICKED:", action)
+      );
 
-        console.log("🔵 REGISTERING WITH FCM");
+      console.log("🔵 REGISTERING WITH FCM");
 
-        await PushNotifications.register();
+      await PushNotifications.register();
 
-        console.log("✅ REGISTER CALLED");
-      } catch (err) {
-        console.error("❌ PUSH INIT ERROR:", err);
-      }
-    };
+      console.log("✅ REGISTER CALLED");
+    } catch (err) {
+      console.error("❌ PUSH INIT ERROR:", err);
+    }
+  };
 
-    initPush();
+  initPush();
 
-    return () => {
-      registrationListener?.remove();
-      registrationErrorListener?.remove();
-      receivedListener?.remove();
-      actionListener?.remove();
-    };
-  }, [user?.token]);
+  return () => {
+    registrationListener?.remove();
+    registrationErrorListener?.remove();
+    receivedListener?.remove();
+    actionListener?.remove();
+  };
+}, [user?.token]);
 
   /* ================= UI HIDE LOGIC ================= */
   const hideLayout =
