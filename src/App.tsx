@@ -123,66 +123,101 @@ function AppContent() {
       return;
     }
 
+    if (!user?.token) {
+      console.log("Waiting for user token...");
+      return;
+    }
+
+    let registrationListener;
+    let registrationErrorListener;
+    let receivedListener;
+    let actionListener;
+
     const initPush = async () => {
       try {
-        console.log("PUSH STEP 1");
+        console.log("🔵 PUSH INIT START");
 
-        const check = await PushNotifications.checkPermissions();
-        console.log("CHECK:", check);
+        const permission = await PushNotifications.requestPermissions();
 
-        console.log("PUSH STEP 2");
+        console.log("Permission:", permission);
 
-        const perm = await PushNotifications.requestPermissions();
-        console.log("REQUEST RESULT:", perm);
-
-        console.log("PUSH STEP 3 - registering listeners");
-
-        // ✅ IMPORTANT: register listeners BEFORE register()
-        PushNotifications.addListener("registration", async (token) => {
-          console.log("🔥 FCM TOKEN RECEIVED:", token.value);
-
-          try {
-            const res = await fetch(
-              "https://swordgame-5.onrender.com/api/save-fcm-token",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${user?.token}`,
-                },
-                body: JSON.stringify({
-                  token: token.value,
-                }),
-              },
-            );
-
-            const data = await res.json();
-            console.log("✅ TOKEN SAVE RESPONSE:", data);
-          } catch (err) {
-            console.error("❌ FAILED TO SAVE FCM TOKEN:", err);
-          }
-        });
-
-        PushNotifications.addListener("registrationError", (err) => {
-          console.error("❌ FCM REG ERROR:", err);
-        });
-
-        if (perm.receive !== "granted") {
-          console.log("❌ NOTIFICATION PERMISSION DENIED");
+        if (permission.receive !== "granted") {
+          console.log("❌ Notification permission denied");
           return;
         }
 
-        console.log("PUSH STEP 4 - REGISTERING");
+        // Registration token
+        registrationListener = await PushNotifications.addListener(
+          "registration",
+          async (token) => {
+            console.log("🔥 FCM TOKEN:", token.value);
+
+            try {
+              const response = await fetch(
+                "https://swordgame-5.onrender.com/api/notifications/save-fcm-token",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${user.token}`,
+                  },
+                  body: JSON.stringify({
+                    token: token.value,
+                  }),
+                },
+              );
+
+              const data = await response.json();
+
+              console.log("✅ TOKEN SAVED:", data);
+            } catch (err) {
+              console.error("❌ TOKEN SAVE ERROR:", err);
+            }
+          },
+        );
+
+        // Registration error
+        registrationErrorListener = await PushNotifications.addListener(
+          "registrationError",
+          (error) => {
+            console.error("❌ REGISTRATION ERROR:", error);
+          },
+        );
+
+        // Foreground notification
+        receivedListener = await PushNotifications.addListener(
+          "pushNotificationReceived",
+          (notification) => {
+            console.log("📩 PUSH RECEIVED:", notification);
+          },
+        );
+
+        // User taps notification
+        actionListener = await PushNotifications.addListener(
+          "pushNotificationActionPerformed",
+          (action) => {
+            console.log("👆 PUSH CLICKED:", action);
+          },
+        );
+
+        console.log("🔵 REGISTERING WITH FCM");
 
         await PushNotifications.register();
 
-        console.log("PUSH STEP 5 - REGISTER CALLED");
-      } catch (e) {
-        console.error("❌ PUSH INIT ERROR:", e);
+        console.log("✅ REGISTER CALLED");
+      } catch (err) {
+        console.error("❌ PUSH INIT ERROR:", err);
       }
     };
 
     initPush();
+
+    return () => {
+      registrationListener?.remove();
+      registrationErrorListener?.remove();
+      receivedListener?.remove();
+      actionListener?.remove();
+    };
   }, [user?.token]);
 
   /* ================= UI HIDE LOGIC ================= */
