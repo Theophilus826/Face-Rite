@@ -119,103 +119,101 @@ function AppContent() {
   }, [dispatch]);
 
   useEffect(() => {
-  if (!Capacitor.isNativePlatform()) {
-    console.log("Push notifications disabled on web");
-    return;
-  }
+    if (!Capacitor.isNativePlatform()) return;
+    if (!user?.token) return;
 
-  if (!user?.token) {
-    console.log("Waiting for user token...");
-    return;
-  }
+    if (pushInitializedRef.current) return;
+    pushInitializedRef.current = true;
 
-  let registrationListener;
-  let registrationErrorListener;
-  let receivedListener;
-  let actionListener;
+    let regListener;
+    let receivedListener;
+    let actionListener;
 
-  const initPush = async () => {
-    try {
-      // ✅ prevent duplicate init across re-renders
-      if (pushInitializedRef.current) return;
-      pushInitializedRef.current = true;
+    const initPush = async () => {
+      try {
+        console.log("🔵 PUSH INIT");
 
-      console.log("🔵 PUSH INIT START");
+        const perm = await PushNotifications.requestPermissions();
 
-      const permission = await PushNotifications.requestPermissions();
-      console.log("Permission:", permission);
+        if (perm.receive !== "granted") {
+          console.log("❌ Permission denied");
+          return;
+        }
 
-      if (permission.receive !== "granted") {
-        console.log("❌ Notification permission denied");
-        return;
-      }
+        // ========================
+        // LISTENERS FIRST (IMPORTANT FIX)
+        // ========================
 
-      registrationListener = await PushNotifications.addListener(
-        "registration",
-        async (token) => {
-          console.log("🔥 FCM TOKEN:", token.value);
-
-          try {
-            const response = await fetch(
-              "https://swordgame-5.onrender.com/api/notifications/fcm-token",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${user.token}`,
-                },
-                body: JSON.stringify({ token: token.value }),
-              }
-            );
-
-            const text = await response.text();
+        regListener = PushNotifications.addListener(
+          "registration",
+          async (token) => {
+            console.log("🔥 TOKEN:", token.value);
 
             try {
-              const data = JSON.parse(text);
-              console.log("✅ TOKEN SAVED:", data);
-            } catch {
-              console.error("❌ Non-JSON response:", text);
+              await fetch(
+                `${import.meta.env.VITE_API_URL}/api/notifications/fcm-token`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${user.token}`,
+                  },
+                  body: JSON.stringify({ token: token.value }),
+                },
+              );
+            } catch (err) {
+              console.error("TOKEN SAVE ERROR:", err);
             }
-          } catch (err) {
-            console.error("❌ TOKEN SAVE ERROR:", err);
-          }
-        }
-      );
+          },
+        );
 
-      registrationErrorListener = await PushNotifications.addListener(
-        "registrationError",
-        (error) => console.error("❌ REGISTRATION ERROR:", error)
-      );
+        receivedListener = PushNotifications.addListener(
+          "pushNotificationReceived",
+          (notification) => {
+            console.log("📩 FOREGROUND PUSH:", notification);
+          },
+        );
 
-      receivedListener = await PushNotifications.addListener(
-        "pushNotificationReceived",
-        (notification) => console.log("📩 PUSH RECEIVED:", notification)
-      );
+        actionListener = PushNotifications.addListener(
+          "pushNotificationActionPerformed",
+          (action) => {
+            const data = action.notification.data;
 
-      actionListener = await PushNotifications.addListener(
-        "pushNotificationActionPerformed",
-        (action) => console.log("👆 PUSH CLICKED:", action)
-      );
+            console.log("👆 PUSH CLICK:", data);
 
-      console.log("🔵 REGISTERING WITH FCM");
+            if (data?.type === "chat") {
+              window.location.href = `/chat/${data.chatUserId}`;
+            }
 
-      await PushNotifications.register();
+            if (data?.type === "like") {
+              window.location.href = `/postComments/${data.postId}`;
+            }
 
-      console.log("✅ REGISTER CALLED");
-    } catch (err) {
-      console.error("❌ PUSH INIT ERROR:", err);
-    }
-  };
+            if (data?.type === "system") {
+              window.location.href = `/notifications`;
+            }
+          },
+        );
 
-  initPush();
+        // ========================
+        // REGISTER LAST (IMPORTANT FIX)
+        // ========================
+        await PushNotifications.register();
 
-  return () => {
-    registrationListener?.remove();
-    registrationErrorListener?.remove();
-    receivedListener?.remove();
-    actionListener?.remove();
-  };
-}, [user?.token]);
+        console.log("✅ PUSH READY");
+      } catch (err) {
+        console.error("❌ PUSH INIT ERROR:", err);
+      }
+    };
+
+    initPush();
+
+    return () => {
+      regListener?.remove?.();
+      receivedListener?.remove?.();
+      actionListener?.remove?.();
+    };
+  }, [user?.token]);
 
   /* ================= UI HIDE LOGIC ================= */
   const hideLayout =
