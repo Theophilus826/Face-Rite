@@ -1,6 +1,7 @@
 import { useSelector } from "react-redux";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { API } from "../features/Api";
 
 export default function ChatHeader({ users = [], chatUserId }) {
@@ -12,7 +13,7 @@ export default function ChatHeader({ users = [], chatUserId }) {
   /* ================= LOCAL USER LOOKUP ================= */
   const selectedUser = useMemo(
     () => users.find((u) => u._id === chatUserId),
-    [users, chatUserId]
+    [users, chatUserId],
   );
 
   /* ================= FETCH USER ================= */
@@ -41,9 +42,20 @@ export default function ChatHeader({ users = [], chatUserId }) {
 
   return (
     <div className="px-6 py-4 bg-white border-b flex items-center justify-between">
-
       {/* LEFT */}
       <div className="flex items-center gap-3">
+        <button
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate("/home");
+            }
+          }}
+          className="p-2 rounded-full hover:bg-gray-100"
+        >
+          <ArrowLeft size={20} />
+        </button>
 
         {chatUser?.avatar ? (
           <img
@@ -62,15 +74,12 @@ export default function ChatHeader({ users = [], chatUserId }) {
             {chatUser?.name || "Loading..."}
           </h2>
 
-          <p className="text-xs text-green-500">
-            Online
-          </p>
+          <p className="text-xs text-green-500">Online</p>
         </div>
       </div>
 
       {/* RIGHT */}
       <div className="flex items-center gap-2">
-
         <button
           onClick={() => navigate(`/profile/${chatUserId}`)}
           className="px-3 py-1.5 text-sm rounded-lg border hover:bg-gray-100 transition"
@@ -85,7 +94,6 @@ export default function ChatHeader({ users = [], chatUserId }) {
         <button className="w-9 h-9 rounded-lg border hover:bg-gray-100 flex items-center justify-center">
           ⋮
         </button>
-
       </div>
     </div>
   );
