@@ -119,101 +119,137 @@ function AppContent() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    if (!user?.token) return;
+  if (!Capacitor.isNativePlatform()) return;
 
-    if (pushInitializedRef.current) return;
-    pushInitializedRef.current = true;
+  if (pushInitializedRef.current) return;
+  pushInitializedRef.current = true;
 
-    let regListener;
-    let receivedListener;
-    let actionListener;
+  let regListener;
+  let receivedListener;
+  let actionListener;
+  let errorListener;
 
-    const initPush = async () => {
-      try {
-        console.log("🔵 PUSH INIT");
+  const initPush = async () => {
+    try {
+      console.log("🔵 PUSH INIT START");
 
-        const perm = await PushNotifications.requestPermissions();
+      const perm = await PushNotifications.requestPermissions();
 
-        if (perm.receive !== "granted") {
-          console.log("❌ Permission denied");
-          return;
-        }
+      console.log("🔵 PUSH PERMISSION:", JSON.stringify(perm));
 
-        // ========================
-        // LISTENERS FIRST (IMPORTANT FIX)
-        // ========================
+      if (perm.receive !== "granted") {
+        console.log("❌ Permission denied");
+        return;
+      }
 
-        regListener = PushNotifications.addListener(
-          "registration",
-          async (token) => {
-            console.log("🔥 TOKEN:", token.value);
+      // LISTENERS FIRST
+      errorListener = await PushNotifications.addListener(
+        "registrationError",
+        (error) => {
+          console.error("❌ REGISTRATION ERROR:", error);
+        },
+      );
+
+      regListener = await PushNotifications.addListener(
+        "registration",
+        async (token) => {
+          try {
+            console.log("🔥 DEVICE TOKEN:", token.value);
+
+            const storedUser = JSON.parse(
+              localStorage.getItem("user") || "null",
+            );
+
+            const userToken = storedUser?.token;
+
+            console.log("👤 USER FOUND:", !!storedUser);
+            console.log("🔑 AUTH TOKEN FOUND:", !!userToken);
+
+            if (!userToken) {
+              console.log(
+                "⚠️ user not logged in, skipping token save",
+              );
+              return;
+            }
+
+            // TEMPORARY: use real API directly
+            const url =
+              "https://swordgame-5.onrender.com/api/notifications/fcm-token";
+
+            console.log("📤 SAVING FCM TOKEN TO:", url);
+
+            const response = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${userToken}`,
+              },
+              body: JSON.stringify({
+                token: token.value,
+              }),
+            });
+
+            const text = await response.text();
+
+            console.log("✅ FCM SAVE STATUS:", response.status);
+            console.log("✅ FCM SAVE RESPONSE:", text);
 
             try {
-              await fetch(
-                `${import.meta.env.VITE_API_URL}/api/notifications/fcm-token`,
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${user.token}`,
-                  },
-                  body: JSON.stringify({ token: token.value }),
-                },
-              );
-            } catch (err) {
-              console.error("TOKEN SAVE ERROR:", err);
+              console.log("✅ FCM JSON:", JSON.parse(text));
+            } catch {
+              console.log("⚠️ RESPONSE NOT JSON");
             }
-          },
-        );
+          } catch (err) {
+            console.error("❌ FCM SAVE ERROR:", err);
+          }
+        },
+      );
 
-        receivedListener = PushNotifications.addListener(
-          "pushNotificationReceived",
-          (notification) => {
-            console.log("📩 FOREGROUND PUSH:", notification);
-          },
-        );
+      receivedListener = await PushNotifications.addListener(
+        "pushNotificationReceived",
+        (notification) => {
+          console.log("📩 PUSH RECEIVED:", notification);
+        },
+      );
 
-        actionListener = PushNotifications.addListener(
-          "pushNotificationActionPerformed",
-          (action) => {
-            const data = action.notification.data;
+      actionListener = await PushNotifications.addListener(
+        "pushNotificationActionPerformed",
+        (action) => {
+          console.log("👆 PUSH CLICKED:", action);
 
-            console.log("👆 PUSH CLICK:", data);
+          const data = action.notification.data;
 
-            if (data?.type === "chat") {
-              window.location.href = `/chat/${data.chatUserId}`;
-            }
+          if (data?.type === "chat") {
+            window.location.href = `/chat/${data.chatUserId}`;
+          }
 
-            if (data?.type === "like") {
-              window.location.href = `/postComments/${data.postId}`;
-            }
+          if (data?.type === "like") {
+            window.location.href = `/postComments/${data.postId}`;
+          }
 
-            if (data?.type === "system") {
-              window.location.href = `/notifications`;
-            }
-          },
-        );
+          if (data?.type === "system") {
+            window.location.href = `/notifications`;
+          }
+        },
+      );
 
-        // ========================
-        // REGISTER LAST (IMPORTANT FIX)
-        // ========================
-        await PushNotifications.register();
+      console.log("🟢 REGISTERING PUSH...");
+      await PushNotifications.register();
+      console.log("🟢 REGISTER CALLED");
+    } catch (err) {
+      console.error("❌ PUSH INIT ERROR:", err);
+    }
+  };
 
-        console.log("✅ PUSH READY");
-      } catch (err) {
-        console.error("❌ PUSH INIT ERROR:", err);
-      }
-    };
+  initPush();
 
-    initPush();
-
-    return () => {
-      regListener?.remove?.();
-      receivedListener?.remove?.();
-      actionListener?.remove?.();
-    };
-  }, [user?.token]);
+  return () => {
+    regListener?.remove?.();
+    receivedListener?.remove?.();
+    actionListener?.remove?.();
+    errorListener?.remove?.();
+  };
+}, []);
 
   /* ================= UI HIDE LOGIC ================= */
   const hideLayout =
