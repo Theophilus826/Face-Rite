@@ -472,6 +472,9 @@ export default function AdminLayout() {
               <NavLink to="/admin/transactions" className={linkClass}>
                 📜 Transactions
               </NavLink>
+              <NavLink to="/admin/adminuploadapk" className={linkClass}>
+                📜 Admin Upload APK
+              </NavLink>
             </nav>
             <button
               onClick={() => dispatch(logout())}

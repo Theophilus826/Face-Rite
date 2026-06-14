@@ -43,7 +43,8 @@ import AdminDeposit from "./pages/AdminDeposit";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
 import ChatContant from "./pages/ChatContant";
 import AboutPage from "./pages/AboutPage";
-
+import DownloadPage from "./pages/Download";
+import AdminUploadApk from "./component/AdminUploadApk";
 // Components
 import Navbar from "./component/Navbar";
 import CardGrid from "./component/CardGrid";
@@ -119,137 +120,135 @@ function AppContent() {
   }, [dispatch]);
 
   useEffect(() => {
-  if (!Capacitor.isNativePlatform()) return;
+    if (!Capacitor.isNativePlatform()) return;
 
-  if (pushInitializedRef.current) return;
-  pushInitializedRef.current = true;
+    if (pushInitializedRef.current) return;
+    pushInitializedRef.current = true;
 
-  let regListener;
-  let receivedListener;
-  let actionListener;
-  let errorListener;
+    let regListener;
+    let receivedListener;
+    let actionListener;
+    let errorListener;
 
-  const initPush = async () => {
-    try {
-      console.log("🔵 PUSH INIT START");
+    const initPush = async () => {
+      try {
+        console.log("🔵 PUSH INIT START");
 
-      const perm = await PushNotifications.requestPermissions();
+        const perm = await PushNotifications.requestPermissions();
 
-      console.log("🔵 PUSH PERMISSION:", JSON.stringify(perm));
+        console.log("🔵 PUSH PERMISSION:", JSON.stringify(perm));
 
-      if (perm.receive !== "granted") {
-        console.log("❌ Permission denied");
-        return;
-      }
+        if (perm.receive !== "granted") {
+          console.log("❌ Permission denied");
+          return;
+        }
 
-      // LISTENERS FIRST
-      errorListener = await PushNotifications.addListener(
-        "registrationError",
-        (error) => {
-          console.error("❌ REGISTRATION ERROR:", error);
-        },
-      );
+        // LISTENERS FIRST
+        errorListener = await PushNotifications.addListener(
+          "registrationError",
+          (error) => {
+            console.error("❌ REGISTRATION ERROR:", error);
+          },
+        );
 
-      regListener = await PushNotifications.addListener(
-        "registration",
-        async (token) => {
-          try {
-            console.log("🔥 DEVICE TOKEN:", token.value);
-
-            const storedUser = JSON.parse(
-              localStorage.getItem("user") || "null",
-            );
-
-            const userToken = storedUser?.token;
-
-            console.log("👤 USER FOUND:", !!storedUser);
-            console.log("🔑 AUTH TOKEN FOUND:", !!userToken);
-
-            if (!userToken) {
-              console.log(
-                "⚠️ user not logged in, skipping token save",
-              );
-              return;
-            }
-
-            // TEMPORARY: use real API directly
-            const url =
-              "https://swordgame-5.onrender.com/api/notifications/fcm-token";
-
-            console.log("📤 SAVING FCM TOKEN TO:", url);
-
-            const response = await fetch(url, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${userToken}`,
-              },
-              body: JSON.stringify({
-                token: token.value,
-              }),
-            });
-
-            const text = await response.text();
-
-            console.log("✅ FCM SAVE STATUS:", response.status);
-            console.log("✅ FCM SAVE RESPONSE:", text);
-
+        regListener = await PushNotifications.addListener(
+          "registration",
+          async (token) => {
             try {
-              console.log("✅ FCM JSON:", JSON.parse(text));
-            } catch {
-              console.log("⚠️ RESPONSE NOT JSON");
+              console.log("🔥 DEVICE TOKEN:", token.value);
+
+              const storedUser = JSON.parse(
+                localStorage.getItem("user") || "null",
+              );
+
+              const userToken = storedUser?.token;
+
+              console.log("👤 USER FOUND:", !!storedUser);
+              console.log("🔑 AUTH TOKEN FOUND:", !!userToken);
+
+              if (!userToken) {
+                console.log("⚠️ user not logged in, skipping token save");
+                return;
+              }
+
+              // TEMPORARY: use real API directly
+              const url =
+                "https://swordgame-5.onrender.com/api/notifications/fcm-token";
+
+              console.log("📤 SAVING FCM TOKEN TO:", url);
+
+              const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${userToken}`,
+                },
+                body: JSON.stringify({
+                  token: token.value,
+                }),
+              });
+
+              const text = await response.text();
+
+              console.log("✅ FCM SAVE STATUS:", response.status);
+              console.log("✅ FCM SAVE RESPONSE:", text);
+
+              try {
+                console.log("✅ FCM JSON:", JSON.parse(text));
+              } catch {
+                console.log("⚠️ RESPONSE NOT JSON");
+              }
+            } catch (err) {
+              console.error("❌ FCM SAVE ERROR:", err);
             }
-          } catch (err) {
-            console.error("❌ FCM SAVE ERROR:", err);
-          }
-        },
-      );
+          },
+        );
 
-      receivedListener = await PushNotifications.addListener(
-        "pushNotificationReceived",
-        (notification) => {
-          console.log("📩 PUSH RECEIVED:", notification);
-        },
-      );
+        receivedListener = await PushNotifications.addListener(
+          "pushNotificationReceived",
+          (notification) => {
+            console.log("📩 PUSH RECEIVED:", notification);
+          },
+        );
 
-      actionListener = await PushNotifications.addListener(
-        "pushNotificationActionPerformed",
-        (action) => {
-          console.log("👆 PUSH CLICKED:", action);
+        actionListener = await PushNotifications.addListener(
+          "pushNotificationActionPerformed",
+          (action) => {
+            console.log("👆 PUSH CLICKED:", action);
 
-          const data = action.notification.data;
+            const data = action.notification.data;
 
-          if (data?.type === "chat") {
-            window.location.href = `/chat/${data.chatUserId}`;
-          }
+            if (data?.type === "chat") {
+              window.location.href = `/chat/${data.chatUserId}`;
+            }
 
-          if (data?.type === "like") {
-            window.location.href = `/postComments/${data.postId}`;
-          }
+            if (data?.type === "like") {
+              window.location.href = `/postComments/${data.postId}`;
+            }
 
-          if (data?.type === "system") {
-            window.location.href = `/notifications`;
-          }
-        },
-      );
+            if (data?.type === "system") {
+              window.location.href = `/notifications`;
+            }
+          },
+        );
 
-      console.log("🟢 REGISTERING PUSH...");
-      await PushNotifications.register();
-      console.log("🟢 REGISTER CALLED");
-    } catch (err) {
-      console.error("❌ PUSH INIT ERROR:", err);
-    }
-  };
+        console.log("🟢 REGISTERING PUSH...");
+        await PushNotifications.register();
+        console.log("🟢 REGISTER CALLED");
+      } catch (err) {
+        console.error("❌ PUSH INIT ERROR:", err);
+      }
+    };
 
-  initPush();
+    initPush();
 
-  return () => {
-    regListener?.remove?.();
-    receivedListener?.remove?.();
-    actionListener?.remove?.();
-    errorListener?.remove?.();
-  };
-}, []);
+    return () => {
+      regListener?.remove?.();
+      receivedListener?.remove?.();
+      actionListener?.remove?.();
+      errorListener?.remove?.();
+    };
+  }, []);
 
   /* ================= UI HIDE LOGIC ================= */
   const hideLayout =
@@ -283,6 +282,7 @@ function AppContent() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/download" element={<DownloadPage />} />
 
           <Route path="/host-game" element={<HostGame />} />
 
@@ -314,6 +314,7 @@ function AppContent() {
               <Route path="carousel-upload" element={<CarouselUploader />} />
               <Route path="deposits" element={<AdminDeposit />} />
               <Route path="withdraw" element={<AdminWithdrawals />} />
+              <Route path="adminuploadapk" element={<AdminUploadApk />} />
 
               <Route path="host-game" element={<HostGame />} />
 

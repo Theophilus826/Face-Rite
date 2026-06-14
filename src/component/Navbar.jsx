@@ -7,7 +7,8 @@ import { toast } from "react-toastify";
 
 import Welcome from "../pages/Welcome";
 import Share from "./Share";
-import usePWAInstall from "./usePWAInstall";
+import DownloadPage from "../pages/Download";
+
 import { FaDownload } from "react-icons/fa";
 
 function Navbar() {
@@ -17,9 +18,6 @@ function Navbar() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const { isInstallable, installApp } = usePWAInstall();
-  const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-  const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
   const notifRef = useRef(null);
   const prevIdsRef = useRef(new Set());
 
@@ -115,38 +113,11 @@ function Navbar() {
 
                     {/* ✅ ALWAYS VISIBLE INSTALL BUTTON */}
                     <button
-                      onClick={async () => {
-                        const isIOS = /iphone|ipad|ipod/i.test(
-                          window.navigator.userAgent,
-                        );
-                        const isStandalone = window.matchMedia(
-                          "(display-mode: standalone)",
-                        ).matches;
-
-                        // ✅ iOS (no beforeinstallprompt support)
-                        if (isIOS && !isStandalone) {
-                          alert("📲 Tap Share → Add to Home Screen");
-                          return;
-                        }
-
-                        // ✅ Android / Chrome
-                        if (window.deferredPrompt) {
-                          window.deferredPrompt.prompt();
-                          const choice = await window.deferredPrompt.userChoice;
-
-                          if (choice && choice.outcome === "accepted") {
-                            console.log("App installed");
-                          }
-
-                          window.deferredPrompt = null;
-                        } else {
-                          alert("📲 Install option available in browser menu");
-                        }
-                      }}
+                      onClick={() => navigate("/download")}
                       className="flex items-center gap-1 text-yellow-400 border border-yellow-400 px-2 py-1 rounded hover:bg-yellow-400 hover:text-black transition text-xs md:text-sm animate-pulse"
                     >
                       <FaDownload />
-                      <span className="inline">Install</span>
+                      <span className="inline">Download</span>
                     </button>
                   </div>
 
