@@ -12,28 +12,31 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
 
   const prevIds = useRef(new Set());
-  const eventSourceRef = useRef(null);
+  const intervalRef = useRef(null);
 
   const API_BASE =
     process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
 
   /* ================= FETCH ================= */
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (silent = false) => {
     if (!token) return;
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
       const res = await axios.get(`${API_BASE}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = res.data.notifications || res.data;
+      const data = res.data.notifications || [];
 
-      // toast only new ones
+      // detect new notifications
       const newOnes = data.filter((n) => !prevIds.current.has(n._id));
-      newOnes.forEach((n) => toast.info(`🔔 ${n.message}`));
+
+      newOnes.forEach((n) => {
+        toast.info(`🔔 ${n.message}`);
+      });
 
       prevIds.current = new Set(data.map((n) => n._id));
       setNotifications(data);
@@ -41,82 +44,82 @@ export default function Notifications() {
       console.error(err);
       toast.error("Failed to load notifications");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  /* ================= REAL-TIME SSE ================= */
+  /* ================= POLLING (REAL-TIME REPLACEMENT) ================= */
 
   useEffect(() => {
-    if (!user || !token) return;
-
-    // close old connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
-    // ⚠️ IMPORTANT: NO userId in URL
-    const es = new EventSource(
-      `${API_BASE}/api/notifications/stream?token=${token}`,
-    );
-
-    eventSourceRef.current = es;
-
-    es.onopen = () => {
-      console.log("✅ SSE connected");
-    };
-
-    es.onerror = () => {
-      console.error("❌ SSE error");
-
-      es.close();
-
-      setTimeout(() => {
-        if (user && token) {
-          fetchNotifications();
-        }
-      }, 3000);
-    };
-
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-
-        if (!data) return;
-
-        // ignore keep-alive
-        if (data.type === "ping" || data.type === "connected") return;
-
-        // ✅ INITIAL LOAD (FIXES YOUR ERROR)
-        if (data.type === "init") {
-          const list = data.notifications || [];
-
-          prevIds.current = new Set(list.map((n) => n._id));
-          setNotifications(list);
-          return;
-        }
-
-        // ✅ NEW NOTIFICATION
-        if (data.type === "notification") {
-          const notif = data.notification;
-
-          if (!notif || prevIds.current.has(notif._id)) return;
-
-          prevIds.current.add(notif._id);
-
-          setNotifications((prev) => [notif, ...prev]);
-
-          toast.info(`🔔 ${notif?.message || "New notification"}`);
-        }
-      } catch (err) {
-        console.error("SSE PARSE ERROR:", err);
+      if (!user || !token) return;
+  
+      // close old connection
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
       }
-    };
-
-    return () => {
-      es.close();
-    };
-  }, [user, token]);
+  
+      // ⚠️ IMPORTANT: NO userId in URL
+      const es = new EventSource(
+        `${API_BASE}/api/notifications/stream?token=${token}`,
+      );
+  
+      eventSourceRef.current = es;
+  
+      es.onopen = () => {
+        console.log("✅ SSE connected");
+      };
+  
+      es.onerror = () => {
+        console.error("❌ SSE error");
+  
+        es.close();
+  
+        setTimeout(() => {
+          if (user && token) {
+            fetchNotifications();
+          }
+        }, 3000);
+      };
+  
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+  
+          if (!data) return;
+  
+          // ignore keep-alive
+          if (data.type === "ping" || data.type === "connected") return;
+  
+          // ✅ INITIAL LOAD (FIXES YOUR ERROR)
+          if (data.type === "init") {
+            const list = data.notifications || [];
+  
+            prevIds.current = new Set(list.map((n) => n._id));
+            setNotifications(list);
+            return;
+          }
+  
+          // ✅ NEW NOTIFICATION
+          if (data.type === "notification") {
+            const notif = data.notification;
+  
+            if (!notif || prevIds.current.has(notif._id)) return;
+  
+            prevIds.current.add(notif._id);
+  
+            setNotifications((prev) => [notif, ...prev]);
+  
+            toast.info(`🔔 ${notif?.message || "New notification"}`);
+          }
+        } catch (err) {
+          console.error("SSE PARSE ERROR:", err);
+        }
+      };
+  
+      return () => {
+        es.close();
+      };
+    }, [user, token]);
 
   /* ================= MARK READ ================= */
 
@@ -128,11 +131,13 @@ export default function Notifications() {
           {},
           {
             headers: { Authorization: `Bearer ${token}` },
-          },
+          }
         );
 
         setNotifications((prev) =>
-          prev.map((n) => (n._id === notif._id ? { ...n, read: true } : n)),
+          prev.map((n) =>
+            n._id === notif._id ? { ...n, read: true } : n
+          )
         );
       } catch {
         toast.error("Failed to mark as read");
@@ -149,7 +154,6 @@ export default function Notifications() {
       });
 
       setNotifications((prev) => prev.filter((n) => n._id !== id));
-
       prevIds.current.delete(id);
 
       toast.success("Deleted");
@@ -159,14 +163,6 @@ export default function Notifications() {
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
-
-  /* ================= INIT ================= */
-
-  useEffect(() => {
-    if (token && user) {
-      fetchNotifications();
-    }
-  }, [token, user]);
 
   /* ================= UI ================= */
 
@@ -179,7 +175,9 @@ export default function Notifications() {
       {loading ? (
         <p className="text-center text-gray-500">Loading...</p>
       ) : notifications.length === 0 ? (
-        <p className="text-center text-gray-500">You have no notifications.</p>
+        <p className="text-center text-gray-500">
+          You have no notifications.
+        </p>
       ) : (
         <div className="space-y-2">
           {notifications.map((notif) => (

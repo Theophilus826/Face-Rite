@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { Upload, Trash2, Download, Smartphone } from "lucide-react";
+import {
+  Upload,
+  Trash2,
+  Download,
+  Smartphone,
+} from "lucide-react";
 import { API } from "../features/Api";
 
 export default function AdminUploadApk() {
-  const [apk, setApk] = useState(null);
   const [version, setVersion] = useState("");
-  const [description, setDescription] = useState("");
+  const [versionCode, setVersionCode] = useState("");
+  const [changelog, setChangelog] = useState("");
   const [loading, setLoading] = useState(false);
   const [apks, setApks] = useState([]);
 
@@ -25,42 +30,34 @@ export default function AdminUploadApk() {
 
   const uploadApk = async () => {
     try {
-      if (!apk) {
-        return alert("Select APK file");
+      if (!version || !versionCode) {
+        return alert("Version and Version Code are required");
       }
-
-      const formData = new FormData();
-
-      formData.append("apk", apk);
-      formData.append("version", version);
-      formData.append("description", description);
 
       setLoading(true);
 
-      await API.post(
-        "/admin/apk/upload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const { data } = await API.post("/admin/apk/upload", {
+        version,
+        versionCode: Number(versionCode),
+        changelog,
+        forceUpdate: false,
+      });
 
-      setApk(null);
+      console.log(data);
+
       setVersion("");
-      setDescription("");
-
-      document.getElementById("apkFile").value = "";
+      setVersionCode("");
+      setChangelog("");
 
       await loadApks();
 
-      alert("APK uploaded successfully");
+      alert("Version added successfully");
     } catch (err) {
-      console.error(err);
+      console.error("Create version error:", err);
+
       alert(
         err?.response?.data?.message ||
-          "Upload failed"
+        "Failed to create version"
       );
     } finally {
       setLoading(false);
@@ -69,51 +66,37 @@ export default function AdminUploadApk() {
 
   const deleteApk = async (id) => {
     try {
-      if (
-        !window.confirm(
-          "Delete this APK?"
-        )
-      ) {
+      if (!window.confirm("Delete this version?")) {
         return;
       }
 
-      await API.delete(
-        `/admin/apk/${id}`
-      );
+      await API.delete(`/admin/apk/${id}`);
 
-      await loadApks();
+      setApks((prev) =>
+        prev.filter((apk) => apk._id !== id)
+      );
     } catch (err) {
       console.error(err);
+
+      alert(
+        err?.response?.data?.message ||
+        "Delete failed"
+      );
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-
       <div className="bg-white rounded-3xl shadow p-6 mb-6">
-
         <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
           <Smartphone />
-          Android APK Manager
+          App Version Manager
         </h1>
 
         <div className="space-y-4">
-
-          <input
-            id="apkFile"
-            type="file"
-            accept=".apk"
-            onChange={(e) =>
-              setApk(
-                e.target.files?.[0] || null
-              )
-            }
-            className="w-full border p-3 rounded-xl"
-          />
-
           <input
             type="text"
-            placeholder="Version (e.g 1.0.5)"
+            placeholder="Version (e.g. 1.0.5)"
             value={version}
             onChange={(e) =>
               setVersion(e.target.value)
@@ -121,14 +104,22 @@ export default function AdminUploadApk() {
             className="w-full border p-3 rounded-xl"
           />
 
+          <input
+            type="number"
+            placeholder="Version Code (e.g. 105)"
+            value={versionCode}
+            onChange={(e) =>
+              setVersionCode(e.target.value)
+            }
+            className="w-full border p-3 rounded-xl"
+          />
+
           <textarea
             rows={4}
-            placeholder="Update description"
-            value={description}
+            placeholder="Changelog"
+            value={changelog}
             onChange={(e) =>
-              setDescription(
-                e.target.value
-              )
+              setChangelog(e.target.value)
             }
             className="w-full border p-3 rounded-xl"
           />
@@ -141,39 +132,39 @@ export default function AdminUploadApk() {
             <Upload size={18} />
 
             {loading
-              ? "Uploading..."
-              : "Upload APK"}
+              ? "Saving..."
+              : "Create Version"}
           </button>
-
         </div>
       </div>
 
       <div className="bg-white rounded-3xl shadow p-6">
-
         <h2 className="font-bold text-xl mb-4">
-          Uploaded APKs
+          App Versions
         </h2>
 
         {apks.length === 0 ? (
           <p className="text-gray-500">
-            No APK uploaded
+            No versions found
           </p>
         ) : (
           <div className="space-y-3">
-
             {apks.map((apk) => (
               <div
                 key={apk._id}
                 className="border rounded-2xl p-4 flex justify-between items-center"
               >
                 <div>
-
                   <h3 className="font-semibold">
                     Version {apk.version}
                   </h3>
 
                   <p className="text-sm text-gray-500">
-                    {apk.description}
+                    Version Code: {apk.versionCode}
+                  </p>
+
+                  <p className="text-sm text-gray-500">
+                    {apk.changelog}
                   </p>
 
                   <p className="text-xs text-gray-400 mt-1">
@@ -181,11 +172,9 @@ export default function AdminUploadApk() {
                       apk.createdAt
                     ).toLocaleString()}
                   </p>
-
                 </div>
 
                 <div className="flex gap-2">
-
                   <a
                     href={apk.apkUrl}
                     target="_blank"
@@ -193,7 +182,7 @@ export default function AdminUploadApk() {
                     className="bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2"
                   >
                     <Download size={16} />
-                    Download
+                    APK
                   </a>
 
                   <button
@@ -205,15 +194,12 @@ export default function AdminUploadApk() {
                     <Trash2 size={16} />
                     Delete
                   </button>
-
                 </div>
               </div>
             ))}
-
           </div>
         )}
       </div>
-
     </div>
   );
 }
