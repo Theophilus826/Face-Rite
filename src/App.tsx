@@ -207,28 +207,20 @@ function AppContent() {
         receivedListener = await PushNotifications.addListener(
           "pushNotificationReceived",
           (notification) => {
-            console.log("📩 PUSH RECEIVED:", notification);
+            console.log("=================================");
+            console.log("📩 PUSH RECEIVED");
+            console.log(JSON.stringify(notification, null, 2));
+            console.log("=================================");
           },
         );
 
         actionListener = await PushNotifications.addListener(
           "pushNotificationActionPerformed",
           (action) => {
-            console.log("👆 PUSH CLICKED:", action);
-
-            const data = action.notification.data;
-
-            if (data?.type === "chat") {
-              window.location.href = `/chat/${data.chatUserId}`;
-            }
-
-            if (data?.type === "like") {
-              window.location.href = `/postComments/${data.postId}`;
-            }
-
-            if (data?.type === "system") {
-              window.location.href = `/notifications`;
-            }
+            console.log("=================================");
+            console.log("👆 PUSH CLICKED");
+            console.log(JSON.stringify(action, null, 2));
+            console.log("=================================");
           },
         );
 
