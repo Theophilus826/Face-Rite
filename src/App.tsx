@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense, useRef } from "react";
+import { useEffect, lazy, Suspense,} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   BrowserRouter,
@@ -8,8 +8,7 @@ import {
   useLocation,
   useParams,
 } from "react-router-dom";
-import { PushNotifications } from "@capacitor/push-notifications";
-import { Capacitor } from "@capacitor/core";
+
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import globle from "/globle.png";
@@ -113,134 +112,12 @@ function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
   const user = useSelector((state: RootState) => state.auth.user);
-  const pushInitializedRef = useRef(false);
 
   useEffect(() => {
     dispatch(fetchCoins());
   }, [dispatch]);
 
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-
-    if (pushInitializedRef.current) return;
-    pushInitializedRef.current = true;
-
-    let regListener;
-    let receivedListener;
-    let actionListener;
-    let errorListener;
-
-    const initPush = async () => {
-      try {
-        console.log("🔵 PUSH INIT START");
-
-        const perm = await PushNotifications.requestPermissions();
-
-        console.log("🔵 PUSH PERMISSION:", JSON.stringify(perm));
-
-        if (perm.receive !== "granted") {
-          console.log("❌ Permission denied");
-          return;
-        }
-
-        // LISTENERS FIRST
-        errorListener = await PushNotifications.addListener(
-          "registrationError",
-          (error) => {
-            console.error("❌ REGISTRATION ERROR:", error);
-          },
-        );
-
-        regListener = await PushNotifications.addListener(
-          "registration",
-          async (token) => {
-            try {
-              console.log("🔥 DEVICE TOKEN:", token.value);
-
-              const storedUser = JSON.parse(
-                localStorage.getItem("user") || "null",
-              );
-
-              const userToken = storedUser?.token;
-
-              console.log("👤 USER FOUND:", !!storedUser);
-              console.log("🔑 AUTH TOKEN FOUND:", !!userToken);
-
-              if (!userToken) {
-                console.log("⚠️ user not logged in, skipping token save");
-                return;
-              }
-
-              // TEMPORARY: use real API directly
-              const url =
-                "https://swordgame-5.onrender.com/api/notifications/fcm-token";
-
-              console.log("📤 SAVING FCM TOKEN TO:", url);
-
-              const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${userToken}`,
-                },
-                body: JSON.stringify({
-                  token: token.value,
-                }),
-              });
-
-              const text = await response.text();
-
-              console.log("✅ FCM SAVE STATUS:", response.status);
-              console.log("✅ FCM SAVE RESPONSE:", text);
-
-              try {
-                console.log("✅ FCM JSON:", JSON.parse(text));
-              } catch {
-                console.log("⚠️ RESPONSE NOT JSON");
-              }
-            } catch (err) {
-              console.error("❌ FCM SAVE ERROR:", err);
-            }
-          },
-        );
-
-        receivedListener = await PushNotifications.addListener(
-          "pushNotificationReceived",
-          (notification) => {
-            console.log("=================================");
-            console.log("📩 PUSH RECEIVED");
-            console.log(JSON.stringify(notification, null, 2));
-            console.log("=================================");
-          },
-        );
-
-        actionListener = await PushNotifications.addListener(
-          "pushNotificationActionPerformed",
-          (action) => {
-            console.log("=================================");
-            console.log("👆 PUSH CLICKED");
-            console.log(JSON.stringify(action, null, 2));
-            console.log("=================================");
-          },
-        );
-
-        console.log("🟢 REGISTERING PUSH...");
-        await PushNotifications.register();
-        console.log("🟢 REGISTER CALLED");
-      } catch (err) {
-        console.error("❌ PUSH INIT ERROR:", err);
-      }
-    };
-
-    initPush();
-
-    return () => {
-      regListener?.remove?.();
-      receivedListener?.remove?.();
-      actionListener?.remove?.();
-      errorListener?.remove?.();
-    };
-  }, []);
+  
 
   /* ================= UI HIDE LOGIC ================= */
   const hideLayout =
