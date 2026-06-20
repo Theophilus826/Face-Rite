@@ -26,6 +26,11 @@ function Home() {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [creatingPost, setCreatingPost] = useState(false);
 
+  useEffect(() => {
+    if (user?.token) {
+      console.log("🔥 JWT TOKEN (COPY FOR POSTMAN):", user.token);
+    }
+  }, [user?.token]);
   // ================= LOAD POSTS =================
   const loadPosts = async () => {
     try {
