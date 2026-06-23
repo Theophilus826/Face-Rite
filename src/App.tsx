@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense,} from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   BrowserRouter,
@@ -54,6 +54,10 @@ import AdminRoute from "./component/AdminRoute";
 import CarouselUploader from "./component/CarouselUploader";
 import PostGalleryWithUpload from "./component/PostGallery";
 import Profile from "./component/UserProfile";
+import {
+  initializePushNotifications,
+  resetPushNotifications,
+} from "./features/PushNotifications";
 
 // Lazy
 const HostGame = lazy(() => import("./component/HostGame"));
@@ -111,14 +115,24 @@ export default function App() {
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const location = useLocation();
+
   const user = useSelector((state: RootState) => state.auth.user);
+
+  const API_BASE =
+    import.meta.env.VITE_API_URL || "https://swordgame-5.onrender.com";
 
   useEffect(() => {
     dispatch(fetchCoins());
   }, [dispatch]);
 
-  
+  useEffect(() => {
+    if (!user?.token) {
+      resetPushNotifications();
+      return;
+    }
 
+    initializePushNotifications(user.token, API_BASE);
+  }, [user?.token, API_BASE]);
   /* ================= UI HIDE LOGIC ================= */
   const hideLayout =
     location.pathname.startsWith("/host-game") ||

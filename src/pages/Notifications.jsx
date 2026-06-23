@@ -4,8 +4,7 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
-import { Capacitor } from "@capacitor/core";
-import { PushNotifications } from "@capacitor/push-notifications";
+
 
 export default function Notifications() {
   const { token, user } = useSelector((state) => state.auth);
@@ -15,7 +14,7 @@ export default function Notifications() {
 
   const prevIds = useRef(new Set());
   const eventSourceRef = useRef(null);
-  const pushInitializedRef = useRef(false);
+  
 
   const API_BASE =
     process.env.REACT_APP_API_URL || "https://swordgame-5.onrender.com";
@@ -127,72 +126,6 @@ export default function Notifications() {
       }
     };
 
-    /* ================= PUSH (CAPACITOR) ================= */
-
-    const initPush = async () => {
-      try {
-        if (!Capacitor.isNativePlatform()) return;
-        if (!Capacitor.isPluginAvailable("PushNotifications")) return;
-        if (pushInitializedRef.current) return;
-
-        const perm = await PushNotifications.requestPermissions();
-        if (perm.receive !== "granted") return;
-
-        PushNotifications.removeAllListeners();
-
-        /* TOKEN */
-        PushNotifications.addListener("registration", async (token) => {
-          try {
-            await fetch(`${API_BASE}/api/notifications/fcm-token`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${authToken}`,
-              },
-              body: JSON.stringify({
-                fcmToken: token.value, // FIXED
-              }),
-            });
-          } catch (err) {
-            console.error("FCM SAVE ERROR:", err);
-          }
-        });
-
-        /* FOREGROUND */
-        PushNotifications.addListener(
-          "pushNotificationReceived",
-          (notification) => {
-            if (!isActive) return;
-
-            if (notification?.body) {
-              toast.info(notification.body);
-              fetchNotifications(true);
-            }
-          }
-        );
-
-        /* CLICK */
-        PushNotifications.addListener(
-          "pushNotificationActionPerformed",
-          (action) => {
-            const data = action?.notification?.data;
-
-            if (data?.postId) {
-              window.location.href = `/post/${data.postId}`;
-            } else if (data?.chatUserId) {
-              window.location.href = `/chat/${data.chatUserId}`;
-            }
-          }
-        );
-
-        await PushNotifications.register();
-        pushInitializedRef.current = true;
-      } catch (err) {
-        console.error("❌ PUSH INIT ERROR:", err);
-      }
-    };
-
-    initPush();
 
     /* ================= CLEANUP ================= */
     return () => {
@@ -203,9 +136,7 @@ export default function Notifications() {
         eventSourceRef.current = null;
       }
 
-      if (Capacitor.isPluginAvailable("PushNotifications")) {
-        PushNotifications.removeAllListeners();
-      }
+      
     };
   }, [user, authToken]);
 

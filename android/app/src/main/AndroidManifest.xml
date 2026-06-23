@@ -12,13 +12,26 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- Default notification icon -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/ic_launcher" />
 
+        <!-- Must match MessagingService CHANNEL_ID -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="default" />
+            android:value="tinkreward_notifications" />
+
+        <!-- Custom FCM Service -->
+        <service
+            android:name=".MessagingService"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+
+        </service>
 
         <activity
             android:name="com.tinkreward.app.MainActivity"
