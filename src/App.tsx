@@ -58,7 +58,7 @@ import {
   initializePushNotifications,
   resetPushNotifications,
 } from "./features/PushNotifications";
-
+import { Preferences } from "@capacitor/preferences";
 // Lazy
 const HostGame = lazy(() => import("./component/HostGame"));
 
@@ -124,6 +124,27 @@ function AppContent() {
   useEffect(() => {
     dispatch(fetchCoins());
   }, [dispatch]);
+
+  useEffect(() => {
+  const restoreToken = async () => {
+    try {
+      const { value } = await Preferences.get({
+        key: "token",
+      });
+
+      if (!value) return;
+
+      console.log("Restored token:", value);
+
+      // Call your existing profile/current-user endpoint
+      // and restore Redux user state here.
+    } catch (err) {
+      console.error("Restore token failed:", err);
+    }
+  };
+
+  restoreToken();
+}, []);
 
   useEffect(() => {
     if (!user?.token) {

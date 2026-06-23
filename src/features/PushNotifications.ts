@@ -2,21 +2,21 @@ import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { toast } from "react-toastify";
 
-let activeAuthToken: string | null = null;
+let activeToken: string | null = null;
 
 export async function initializePushNotifications(
-  authToken: string,
+  token: string,
   apiBase: string
 ): Promise<void> {
   try {
-    if (!authToken) return;
+    if (!token) return;
 
     // Prevent duplicate initialization for same user
-    if (activeAuthToken === authToken) {
+    if (activeToken === token) {
       return;
     }
 
-    activeAuthToken = authToken;
+    activeToken = token;
 
     // Only run on native Android/iOS
     if (!Capacitor.isNativePlatform()) {
@@ -49,7 +49,7 @@ export async function initializePushNotifications(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             fcmToken: value,
@@ -120,7 +120,7 @@ export async function initializePushNotifications(
  */
 export async function resetPushNotifications(): Promise<void> {
   try {
-    activeAuthToken = null;
+    activeToken = null;
     await PushNotifications.removeAllListeners();
   } catch (error) {
     console.error("Failed to reset push notifications:", error);
