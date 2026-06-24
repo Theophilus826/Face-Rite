@@ -1,13 +1,12 @@
-import { useState, useEffect, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import * as BABYLON from "@babylonjs/core";
+import { useEffect, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { io } from "socket.io-client";
 
 import { buyItem } from "../features/coins/CoinSlice.js";
 import { hostGame } from "../features/gameSlice/gameSlice";
 import gameScene from "../scenes/gameScene.js";
-
 
 export default function HostGame() {
   const dispatch = useDispatch();
@@ -28,66 +27,69 @@ export default function HostGame() {
   /* =========================================================
      CREATE GAME
   ========================================================= */
+  const getGameConfig = (amount) => {
+    let pot = amount;
+    let numEnemies = 1;
+
+    if (amount >= 50 && amount < 100) {
+      pot = 150;
+      numEnemies = 2;
+    } else if (amount >= 100 && amount < 150) {
+      pot = 250;
+      numEnemies = 3;
+    }
+
+    return { pot, numEnemies };
+  };
+
+  const { pot: previewPot, numEnemies: previewEnemies } = getGameConfig(amount);
+
   const handlePlaySolo = async () => {
-if (!user?._id) {
-return toast.error("User session error");
-}
+    if (!user?._id) {
+      return toast.error("User session error");
+    }
 
-if (amount <= 0) {
-return toast.error("Invalid amount");
-}
+    if (amount <= 0) {
+      return toast.error("Invalid amount");
+    }
 
-if (coins < amount) {
-return toast.error("Not enough coins");
-}
+    if (coins < amount) {
+      return toast.error("Not enough coins");
+    }
 
-let pot = amount;
-let numEnemies = 1;
+    const { pot, numEnemies } = getGameConfig(amount);
 
-if (amount >= 50 && amount < 100) {
-pot = 150;
-numEnemies = 2;
-} else if (amount >= 100 && amount < 150) {
-pot = 250;
-numEnemies = 3;
-}
+    try {
+      setLoading(true);
 
-try {
-setLoading(true);
+      await dispatch(
+        buyItem({
+          itemName: "Play Game",
+          cost: amount,
+        }),
+      );
 
+      const action = await dispatch(
+        hostGame({
+          hostId: user._id,
+          username: user.username,
+          amount,
+          pot,
+          numEnemies,
+        }),
+      );
 
-await dispatch(
-  buyItem({
-    itemName: "Play Game",
-    cost: amount,
-  })
-);
+      setGame(action.payload);
 
-const action = dispatch(
-  hostGame({
-    hostId: user._id,
-    username: user.username,
-    amount,
-    pot,
-    numEnemies,
-  })
-);
-
-setGame(action.payload);
-
-toast.success(
-  `⚔️ ${user.username} entered battle | Pot: ${pot} | Enemies: ${numEnemies}`
-);
-
-
-} catch (err) {
-toast.error(err?.message || "Failed to create game");
-} finally {
-setLoading(false);
-}
-};
-
-
+      toast.success(
+        `⚔️ ${user.username} entered battle | Pot: ${pot} | Enemies: ${numEnemies}`,
+      );
+    } catch (err) {
+      toast.error(err?.message || "Failed to create game");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /* =========================================================
      SOCKET LISTENER (NO WINNER LOGIC)
@@ -193,7 +195,7 @@ setLoading(false);
           null,
           dispatch,
           game,
-          user
+          user,
         );
 
         sceneRef.current = scene;
@@ -201,7 +203,6 @@ setLoading(false);
         engine.runRenderLoop(() => {
           if (scene && !scene.isDisposed) scene.render();
         });
-
       } catch (err) {
         console.error("Scene crash:", err);
       }
@@ -223,27 +224,22 @@ setLoading(false);
      WAITING SCREEN
   ========================================================= */
   if (game && !gameStarted) {
-return ( <div className="h-screen flex flex-col justify-center items-center text-white"> <div className="animate-pulse text-xl mb-4">
-⌛ Preparing battlefield... </div>
-
-
-  <div className="mt-6 text-yellow-400">
-    Current Pot: {game?.pot || 0} coins
-  </div>
-
-  <div className="mt-2 text-red-400">
-    Enemies: {game?.numEnemies || 1}
-  </div>
-
-  <div className="mt-2 text-cyan-400">
-    Player: {game?.username}
-  </div>
-</div>
-
-
-);
-}
-
+    return (
+      <div className="h-screen flex flex-col justify-center items-center text-white">
+        {" "}
+        <div className="animate-pulse text-xl mb-4">
+          ⌛ Preparing battlefield...{" "}
+        </div>
+        <div className="mt-6 text-yellow-400">
+          Current Pot: {game?.pot || 0} coins
+        </div>
+        <div className="mt-2 text-red-400">
+          Enemies: {game?.numEnemies || 1}
+        </div>
+        <div className="mt-2 text-cyan-400">Player: {game?.username}</div>
+      </div>
+    );
+  }
 
   /* =========================================================
      GAME VIEW
@@ -278,50 +274,63 @@ return ( <div className="h-screen flex flex-col justify-center items-center text
   /* ========================================================= 
    HOST UI (PROFESSIONAL + AI STYLE)
 ========================================================= */
-return (
-  <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center px-4">
-    
-    <div className="w-full max-w-md bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl shadow-xl p-6 text-white">
-      
-      {/* Header / Logo */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 font-bold text-lg shadow-lg">
-          AI
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl shadow-xl p-6 text-white">
+        {/* Header / Logo */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 font-bold text-lg shadow-lg">
+            AI
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Spirit Sword</h2>
+            <p className="text-xs text-gray-400">AI Powered Game</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-semibold">Spirit Sword</h2>
-          <p className="text-xs text-gray-400">AI Powered Game</p>
+
+        {/* Input Section */}
+        <div className="mb-5">
+          <label className="block text-sm text-gray-400 mb-2">
+            Enter Amount
+          </label>
+
+          <input
+            type="number"
+            min={1}
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white"
+          />
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+              <p className="text-xs text-gray-400">Pot</p>
+              <p className="text-xl font-bold text-yellow-400">
+                {previewPot} Coins
+              </p>
+            </div>
+
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              <p className="text-xs text-gray-400">Enemies</p>
+              <p className="text-xl font-bold text-red-400">{previewEnemies}</p>
+            </div>
+          </div>
         </div>
+
+        {/* Action Button */}
+        <button
+          onClick={handlePlaySolo}
+          disabled={loading}
+          className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 transition-all font-medium shadow-md disabled:opacity-50"
+        >
+          {loading ? "Creating Game..." : "Play Game 🎮"}
+        </button>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-gray-500 mt-4">
+          Powered by AI • Fast • Secure
+        </p>
       </div>
-
-      {/* Input Section */}
-      <div className="mb-5">
-        <label className="block text-sm text-gray-400 mb-2">
-          Enter Amount
-        </label>
-        <input
-          type="number"
-          min={1}
-          value={amount}
-          onChange={(e) => setAmount(+e.target.value)}
-          className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white"
-        />
-      </div>
-
-      {/* Action Button */}
-      <button
-        onClick={handlePlaySolo}
-        disabled={loading}
-        className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 transition-all font-medium shadow-md disabled:opacity-50"
-      >
-        {loading ? "Creating Game..." : "Play Game 🎮"}
-      </button>
-
-      {/* Footer */}
-      <p className="text-center text-xs text-gray-500 mt-4">
-        Powered by AI • Fast • Secure
-      </p>
     </div>
-  </div>
-);
+  );
 }
