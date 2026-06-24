@@ -7,7 +7,7 @@ import { io } from "socket.io-client";
 import { buyItem } from "../features/coins/CoinSlice.js";
 import { hostGame } from "../features/gameSlice/gameSlice";
 import gameScene from "../scenes/gameScene.js";
-import Adsense from "./Adsense.jsx";
+
 
 export default function HostGame() {
   const dispatch = useDispatch();
@@ -29,28 +29,65 @@ export default function HostGame() {
      CREATE GAME
   ========================================================= */
   const handlePlaySolo = async () => {
-    if (!user?._id) return toast.error("User session error");
-    if (amount <= 0) return toast.error("Invalid amount");
-    if (coins < amount) return toast.error("Not enough coins");
+if (!user?._id) {
+return toast.error("User session error");
+}
 
-    try {
-      setLoading(true);
+if (amount <= 0) {
+return toast.error("Invalid amount");
+}
 
-      await dispatch(buyItem({ itemName: "Play Game", cost: amount }));
+if (coins < amount) {
+return toast.error("Not enough coins");
+}
 
-      const action = await dispatch(
-        hostGame({ hostId: user._id, amount })
-      );
+let pot = amount;
+let numEnemies = 1;
 
-      setGame(action.payload);
+if (amount >= 50 && amount < 100) {
+pot = 150;
+numEnemies = 2;
+} else if (amount >= 100 && amount < 150) {
+pot = 250;
+numEnemies = 3;
+}
 
-      toast.info("⌛ Waiting for admin to start the battle...");
-    } catch (err) {
-      toast.error(err?.message || "Failed to create game");
-    } finally {
-      setLoading(false);
-    }
-  };
+try {
+setLoading(true);
+
+
+await dispatch(
+  buyItem({
+    itemName: "Play Game",
+    cost: amount,
+  })
+);
+
+const action = dispatch(
+  hostGame({
+    hostId: user._id,
+    username: user.username,
+    amount,
+    pot,
+    numEnemies,
+  })
+);
+
+setGame(action.payload);
+
+toast.success(
+  `⚔️ ${user.username} entered battle | Pot: ${pot} | Enemies: ${numEnemies}`
+);
+
+
+} catch (err) {
+toast.error(err?.message || "Failed to create game");
+} finally {
+setLoading(false);
+}
+};
+
+
 
   /* =========================================================
      SOCKET LISTENER (NO WINNER LOGIC)
@@ -186,18 +223,27 @@ export default function HostGame() {
      WAITING SCREEN
   ========================================================= */
   if (game && !gameStarted) {
-    return (
-      <div className="h-screen flex flex-col justify-center items-center text-white">
-        <div className="animate-pulse text-xl mb-4">
-          ⌛ Preparing battlefield...
-        </div>
+return ( <div className="h-screen flex flex-col justify-center items-center text-white"> <div className="animate-pulse text-xl mb-4">
+⌛ Preparing battlefield... </div>
 
-        <div className="mt-6 text-yellow-400">
-          Current Pot: {game?.pot || 0} coins
-        </div>
-      </div>
-    );
-  }
+
+  <div className="mt-6 text-yellow-400">
+    Current Pot: {game?.pot || 0} coins
+  </div>
+
+  <div className="mt-2 text-red-400">
+    Enemies: {game?.numEnemies || 1}
+  </div>
+
+  <div className="mt-2 text-cyan-400">
+    Player: {game?.username}
+  </div>
+</div>
+
+
+);
+}
+
 
   /* =========================================================
      GAME VIEW
@@ -268,7 +314,6 @@ return (
         disabled={loading}
         className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 transition-all font-medium shadow-md disabled:opacity-50"
       >
-        <Adsense slot="5548515776" />
         {loading ? "Creating Game..." : "Play Game 🎮"}
       </button>
 

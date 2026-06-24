@@ -105,17 +105,43 @@ async function gameScene(
   // ---------------- ENEMIES ----------------
   scene.enemies = [];
 
-  for (const pos of enemyPositions) {
-    const enemy = await CreateEnemy(scene, BABYLON, pos, player.characterBox);
+  for (
+    let i = 0;
+    i < Math.min(game.enemies.length, enemyPositions.length);
+    i++
+  ) {
+    const enemyData = game.enemies[i];
+
+    const enemy = await CreateEnemy(
+      scene,
+      BABYLON,
+      enemyPositions[i],
+      player.characterBox,
+      enemyData.id,
+    );
+
+    // Store the Redux enemy ID on the mesh
+    enemy.enemyBox.metadata = {
+      ...(enemy.enemyBox.metadata || {}),
+      enemyId: enemyData.id,
+    };
 
     enemy.enemyBox.checkCollisions = true;
     enemy.enemyBox.ellipsoid = new Vector3(0.5, 1.5, 0.5);
-    enemy.currentHealth = 100;
+
+    enemy.currentHealth = enemyData.health ?? 100;
     enemy.territoryRadius = ENEMY_TERRITORY_RADIUS;
 
-    const ai = new EnemyController({ enemy, player, BABYLON });
+    const ai = new EnemyController({
+      enemy,
+      player,
+      BABYLON,
+    });
 
-    scene.enemies.push({ enemy, ai });
+    scene.enemies.push({
+      enemy,
+      ai,
+    });
   }
 
   loaded++;
@@ -123,11 +149,11 @@ async function gameScene(
 
   // ---------------- UI CONTROLS ----------------
   if (!scene.cameraControl) {
-  scene.cameraControl = {
-    rotationY: 0,
-    offsetY: 0,
-  };
-}
+    scene.cameraControl = {
+      rotationY: 0,
+      offsetY: 0,
+    };
+  }
   setupAttackControls(
     scene,
     player,
