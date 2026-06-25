@@ -219,8 +219,10 @@ export default function HostGame() {
         sceneRef.current = scene;
 
         engine.runRenderLoop(() => {
-          if (!scene._isDisposed) {
+          try {
             scene.render();
+          } catch (err) {
+            console.error("Render error", err);
           }
         });
       } catch (err) {
