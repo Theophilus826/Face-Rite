@@ -44,10 +44,7 @@ export default function HostGame() {
     };
   };
 
-  const {
-    pot: previewPot,
-    numEnemies: previewEnemies,
-  } = getGameConfig(amount);
+  const { pot: previewPot, numEnemies: previewEnemies } = getGameConfig(amount);
 
   /* =========================================================
      GAME CREATION
@@ -99,10 +96,10 @@ export default function HostGame() {
               });
 
               socket.emit("host:startGame", { gameId });
-            }
+            },
           );
         });
-      }
+      },
     );
   };
 
@@ -124,7 +121,7 @@ export default function HostGame() {
         buyItem({
           itemName: "Play Game",
           cost: amount,
-        })
+        }),
       );
 
       createServerGame({
@@ -216,13 +213,13 @@ export default function HostGame() {
           null,
           dispatch,
           game,
-          user
+          user,
         );
 
         sceneRef.current = scene;
 
         engine.runRenderLoop(() => {
-          if (scene && !scene.isDisposed()) {
+          if (!scene._isDisposed) {
             scene.render();
           }
         });
@@ -263,9 +260,7 @@ export default function HostGame() {
           Enemies: {game?.enemies?.length || 1}
         </div>
 
-        <div className="mt-2 text-cyan-400">
-          Player: {game?.username}
-        </div>
+        <div className="mt-2 text-cyan-400">Player: {game?.username}</div>
       </div>
     );
   }
@@ -310,7 +305,6 @@ export default function HostGame() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl shadow-xl p-6 text-white">
-
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 font-bold text-lg shadow-lg">
@@ -319,9 +313,7 @@ export default function HostGame() {
 
           <div>
             <h2 className="text-xl font-semibold">Spirit Sword</h2>
-            <p className="text-xs text-gray-400">
-              AI Powered Game
-            </p>
+            <p className="text-xs text-gray-400">AI Powered Game</p>
           </div>
         </div>
 
@@ -349,9 +341,7 @@ export default function HostGame() {
 
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
               <p className="text-xs text-gray-400">Enemies</p>
-              <p className="text-xl font-bold text-red-400">
-                {previewEnemies}
-              </p>
+              <p className="text-xl font-bold text-red-400">{previewEnemies}</p>
             </div>
           </div>
         </div>
