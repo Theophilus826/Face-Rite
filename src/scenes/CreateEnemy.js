@@ -77,7 +77,7 @@ console.error(`Enemy model missing for ${enemyId}`);
 } else {
 modelRoot.parent = enemyBox;
 
-```
+
 modelRoot.position.set(
   0,
   -BOX_HEIGHT / 2,
@@ -95,7 +95,7 @@ modelRoot.scaling.set(
   1.5,
   1
 );
-```
+
 
 }
 
