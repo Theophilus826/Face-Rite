@@ -1,134 +1,176 @@
-import { createSlice, nanoid } from "@reduxjs/toolkit";
+const User = require("../models/User");
+const { creditCoins } = require("./AccountController");
 
-const initialState = {
-games: [],
-};
+const {
+getGame,
+finishGame: finishStoredGame,
+} = require("../gameStore");
 
-const gameSlice = createSlice({
-name: "games",
-initialState,
+const { emitGameEvent } = require("../socket/gameEvents");
 
-reducers: {
-/* =====================================================
-HOST GAME
-===================================================== */
-hostGame: {
-reducer(state, action) {
-state.games.unshift(action.payload);
-},
+const finishGame = async (req, res) => {
+try {
+const { gameId, result } = req.body;
 
-
-  prepare({
-    hostId,
-    username,
-    amount,
-    pot,
-    numEnemies,
-  }) {
-    return {
-      payload: {
-        id: nanoid(),
-
-        hostId,
-        username,
-
-        amount,
-        pot,
-
-        numEnemies,
-
-        maxPlayers: 1,
-        players: [hostId],
-
-        status: "waiting",
-
-        winner: null,
-        result: null,
-
-        startedAt: null,
-        finishedAt: null,
-
-        enemies: Array.from(
-          { length: numEnemies },
-          (_, index) => ({
-            id: `enemy_${index + 1}`, // ← matches Babylon
-            name: `Enemy ${index + 1}`,
-            health: 100,
-            alive: true,
-          })
-        ),
-
-        createdAt: Date.now(),
-      },
-    };
-  },
-},
 
 /* =====================================================
-   START GAME
+   VALIDATION
 ===================================================== */
-startGame(state, action) {
-  const { gameId } = action.payload;
+if (!gameId) {
+  return res.status(400).json({
+    success: false,
+    message: "Missing gameId",
+  });
+}
 
-  state.games = state.games.map((game) =>
-    game.id === gameId
-      ? {
-          ...game,
-          status: "started",
-          startedAt: Date.now(),
-        }
-      : game
-  );
-},
+if (!result) {
+  return res.status(400).json({
+    success: false,
+    message: "Missing result",
+  });
+}
+
+const allowedResults = [
+  "won",
+  "lost",
+  "cancelled",
+];
+
+if (!allowedResults.includes(result)) {
+  return res.status(400).json({
+    success: false,
+    message:
+      "Result must be 'won', 'lost', or 'cancelled'",
+  });
+}
 
 /* =====================================================
-   ADD TO POT
+   FIND GAME
 ===================================================== */
-addToPot(state, action) {
-  const { gameId, amount } = action.payload;
+const game = getGame(gameId);
 
-  state.games = state.games.map((game) =>
-    game.id === gameId
-      ? {
-          ...game,
-          pot: game.pot + amount,
-        }
-      : game
-  );
-},
+if (!game) {
+  return res.status(404).json({
+    success: false,
+    message: "Game not found",
+  });
+}
+
+if (game.status === "finished") {
+  return res.status(400).json({
+    success: false,
+    message: "Game already finished",
+  });
+}
+
+let creditedCoins = 0;
+let creditedTo = null;
+let winner = null;
 
 /* =====================================================
-   FINISH GAME
+   PLAYER WON
 ===================================================== */
-finishGame(state, action) {
-  const {
-    gameId,
-    winnerId,
-    result,
-  } = action.payload;
+if (result === "won") {
+  await creditCoins({
+    userId: game.hostId,
+    coins: game.pot,
+  });
 
-  state.games = state.games.map((game) =>
-    game.id === gameId
-      ? {
-          ...game,
-          status: "finished",
-          winner: winnerId,
-          result,
-          finishedAt: Date.now(),
-        }
-      : game
-  );
-},
+  creditedCoins = game.pot;
+  creditedTo = game.hostId;
+  winner = game.hostId;
+}
 
+/* =====================================================
+   PLAYER LOST / CANCELLED
+===================================================== */
+else {
+  const admin = await User.findOne({
+    isAdmin: true,
+  });
 
-},
+  if (!admin) {
+    return res.status(500).json({
+      success: false,
+      message: "Admin account not found",
+    });
+  }
+
+  admin.coins += Number(game.pot || 0);
+
+  await admin.save();
+
+  creditedCoins = game.pot;
+  creditedTo = admin._id;
+}
+
+/* =====================================================
+   FINALIZE GAME
+===================================================== */
+const finishedGame = finishStoredGame(
+  gameId,
+  result,
+  winner
+);
+
+/* =====================================================
+   SOCKET EVENT
+===================================================== */
+emitGameEvent(req, {
+  type: "GAME_RESULT",
+
+  gameId,
+
+  result,
+  winner,
+
+  pot: finishedGame.pot,
+
+  creditedCoins,
+  creditedTo,
+
+  finishedAt: finishedGame.finishedAt,
 });
 
-export const {
-hostGame,
-startGame,
-addToPot,
-finishGame,
-} = gameSlice.actions;
+/* =====================================================
+   RESPONSE
+===================================================== */
+return res.status(200).json({
+  success: true,
 
-export default gameSlice.reducer;
+  gameId,
+
+  result,
+  winner,
+
+  status: finishedGame.status,
+
+  pot: finishedGame.pot,
+
+  creditedCoins,
+  creditedTo,
+
+  finishedAt: finishedGame.finishedAt,
+});
+
+
+} catch (error) {
+console.error(
+"[finishGame] Error:",
+error
+);
+
+
+return res.status(500).json({
+  success: false,
+  message: "Failed to finish game",
+  error: error.message,
+});
+
+
+}
+};
+
+module.exports = {
+finishGame,
+};
