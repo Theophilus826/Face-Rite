@@ -1,176 +1,167 @@
-const User = require("../models/User");
-const { creditCoins } = require("./AccountController");
+import { createSlice, nanoid } from "@reduxjs/toolkit";
 
-const {
-getGame,
-finishGame: finishStoredGame,
-} = require("../gameStore");
+const initialState = {
+games: [],
+};
 
-const { emitGameEvent } = require("../socket/gameEvents");
+const gameSlice = createSlice({
+name: "games",
+initialState,
 
-const finishGame = async (req, res) => {
-try {
-const { gameId, result } = req.body;
+reducers: {
+/* =====================================================
+HOST GAME
+===================================================== */
+hostGame: {
+reducer(state, action) {
+state.games.unshift(action.payload);
+},
 
+
+  prepare({
+    hostId,
+    username,
+    amount,
+    pot,
+    numEnemies,
+  }) {
+    return {
+      payload: {
+        id: nanoid(),
+
+        hostId,
+        username,
+
+        amount,
+        pot,
+
+        numEnemies,
+
+        maxPlayers: 1,
+        players: [hostId],
+
+        status: "waiting",
+
+        winner: null,
+        result: null,
+
+        startedAt: null,
+        finishedAt: null,
+
+        enemies: Array.from(
+          { length: numEnemies },
+          (_, index) => ({
+            id: `enemy_${index + 1}`,
+            name: `Enemy ${index + 1}`,
+            health: 100,
+            alive: true,
+          })
+        ),
+
+        createdAt: Date.now(),
+      },
+    };
+  },
+},
 
 /* =====================================================
-   VALIDATION
+   START GAME
 ===================================================== */
-if (!gameId) {
-  return res.status(400).json({
-    success: false,
-    message: "Missing gameId",
-  });
-}
+startGame(state, action) {
+  const { gameId } = action.payload;
 
-if (!result) {
-  return res.status(400).json({
-    success: false,
-    message: "Missing result",
-  });
-}
+  const game = state.games.find(
+    (g) => g.id === gameId
+  );
 
-const allowedResults = [
-  "won",
-  "lost",
-  "cancelled",
-];
-
-if (!allowedResults.includes(result)) {
-  return res.status(400).json({
-    success: false,
-    message:
-      "Result must be 'won', 'lost', or 'cancelled'",
-  });
-}
-
-/* =====================================================
-   FIND GAME
-===================================================== */
-const game = getGame(gameId);
-
-if (!game) {
-  return res.status(404).json({
-    success: false,
-    message: "Game not found",
-  });
-}
-
-if (game.status === "finished") {
-  return res.status(400).json({
-    success: false,
-    message: "Game already finished",
-  });
-}
-
-let creditedCoins = 0;
-let creditedTo = null;
-let winner = null;
-
-/* =====================================================
-   PLAYER WON
-===================================================== */
-if (result === "won") {
-  await creditCoins({
-    userId: game.hostId,
-    coins: game.pot,
-  });
-
-  creditedCoins = game.pot;
-  creditedTo = game.hostId;
-  winner = game.hostId;
-}
-
-/* =====================================================
-   PLAYER LOST / CANCELLED
-===================================================== */
-else {
-  const admin = await User.findOne({
-    isAdmin: true,
-  });
-
-  if (!admin) {
-    return res.status(500).json({
-      success: false,
-      message: "Admin account not found",
-    });
+  if (game) {
+    game.status = "started";
+    game.startedAt = Date.now();
   }
-
-  admin.coins += Number(game.pot || 0);
-
-  await admin.save();
-
-  creditedCoins = game.pot;
-  creditedTo = admin._id;
-}
+},
 
 /* =====================================================
-   FINALIZE GAME
+   ADD TO POT
 ===================================================== */
-const finishedGame = finishStoredGame(
-  gameId,
-  result,
-  winner
-);
+addToPot(state, action) {
+  const { gameId, amount } = action.payload;
+
+  const game = state.games.find(
+    (g) => g.id === gameId
+  );
+
+  if (game) {
+    game.pot += amount;
+  }
+},
 
 /* =====================================================
-   SOCKET EVENT
+   FINISH GAME
+   result = won | lost | cancelled
 ===================================================== */
-emitGameEvent(req, {
-  type: "GAME_RESULT",
+finishGame(state, action) {
+  const {
+    gameId,
+    result,
+  } = action.payload;
 
-  gameId,
+  const game = state.games.find(
+    (g) => g.id === gameId
+  );
 
-  result,
-  winner,
+  if (!game) return;
 
-  pot: finishedGame.pot,
+  game.status = "finished";
+  game.result = result;
+  game.finishedAt = Date.now();
 
-  creditedCoins,
-  creditedTo,
-
-  finishedAt: finishedGame.finishedAt,
-});
+  if (result === "won") {
+    game.winner = game.hostId;
+  } else {
+    game.winner = null;
+  }
+},
 
 /* =====================================================
-   RESPONSE
+   CANCEL GAME
 ===================================================== */
-return res.status(200).json({
-  success: true,
+cancelGame(state, action) {
+  const { gameId } = action.payload;
 
-  gameId,
+  const game = state.games.find(
+    (g) => g.id === gameId
+  );
 
-  result,
-  winner,
+  if (!game) return;
 
-  status: finishedGame.status,
+  game.status = "finished";
+  game.result = "cancelled";
+  game.winner = null;
+  game.finishedAt = Date.now();
+},
 
-  pot: finishedGame.pot,
+/* =====================================================
+   REMOVE GAME
+===================================================== */
+removeGame(state, action) {
+  const { gameId } = action.payload;
 
-  creditedCoins,
-  creditedTo,
+  state.games = state.games.filter(
+    (game) => game.id !== gameId
+  );
+},
 
-  finishedAt: finishedGame.finishedAt,
+
+},
 });
 
-
-} catch (error) {
-console.error(
-"[finishGame] Error:",
-error
-);
-
-
-return res.status(500).json({
-  success: false,
-  message: "Failed to finish game",
-  error: error.message,
-});
-
-
-}
-};
-
-module.exports = {
+export const {
+hostGame,
+startGame,
+addToPot,
 finishGame,
-};
+cancelGame,
+removeGame,
+} = gameSlice.actions;
+
+export default gameSlice.reducer;
