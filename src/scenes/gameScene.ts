@@ -117,13 +117,13 @@ async function gameScene(
       BABYLON,
       enemyPositions[i],
       player.characterBox,
-      enemyData.id,
+      enemyData.enemyId,
     );
 
     // Store the Redux enemy ID on the mesh
     enemy.enemyBox.metadata = {
       ...(enemy.enemyBox.metadata || {}),
-      enemyId: enemyData.id,
+      enemyId: enemyData.enemyId,
     };
 
     enemy.enemyBox.checkCollisions = true;
