@@ -28,16 +28,11 @@ export default function HostGame() {
      CREATE GAME
   ========================================================= */
   const getGameConfig = (amount) => {
-    let pot = amount;
-    let numEnemies = 1;
+    const safeAmount = Number(amount) || 0;
 
-    if (amount >= 50 && amount < 100) {
-      pot = 150;
-      numEnemies = 2;
-    } else if (amount >= 100 && amount < 150) {
-      pot = 250;
-      numEnemies = 3;
-    }
+    const pot = safeAmount * 2;
+
+    let numEnemies = Math.max(1, Math.ceil(safeAmount / 50));
 
     return { pot, numEnemies };
   };
