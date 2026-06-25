@@ -5,7 +5,6 @@ import { toast } from "react-toastify";
 import { io } from "socket.io-client";
 
 import { buyItem } from "../features/coins/CoinSlice.js";
-import { hostGame } from "../features/gameSlice/gameSlice";
 import gameScene from "../scenes/gameScene.js";
 
 export default function HostGame() {
@@ -44,10 +43,6 @@ export default function HostGame() {
       return toast.error("User session error");
     }
 
-    if (amount <= 0) {
-      return toast.error("Invalid amount");
-    }
-
     if (coins < amount) {
       return toast.error("Not enough coins");
     }
@@ -64,78 +59,93 @@ export default function HostGame() {
         }),
       );
 
-      const action = await dispatch(
-        hostGame({
-          hostId: user._id,
-          username: user.username,
-          amount,
-          pot,
-          numEnemies,
-        }),
-      );
-
-      setGame(action.payload);
-
-      toast.success(
-        `⚔️ ${user.username} entered battle | Pot: ${pot} | Enemies: ${numEnemies}`,
-      );
+      createServerGame({
+        amount,
+        pot,
+        numEnemies,
+      });
     } catch (err) {
-      toast.error(err?.message || "Failed to create game");
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const createServerGame = ({ amount, pot, numEnemies }) => {
+    const socket = socketRef.current;
+
+    if (!socket?.connected) {
+      return toast.error("Server connection not ready");
+    }
+
+    const gameId = crypto.randomUUID();
+
+    socket.emit(
+      "game:create",
+      {
+        gameId,
+        hostId: user._id,
+        betAmount: amount,
+      },
+      (createAck) => {
+        if (!createAck?.success) {
+          return toast.error(createAck?.message || "Failed to create game");
+        }
+
+        socket.emit("joinRoom", gameId, (joinAck) => {
+          if (!joinAck?.joined) {
+            return toast.error("Failed to join room");
+          }
+
+          socket.emit(
+            "host:configureEnemies",
+            {
+              gameId,
+              numEnemies,
+            },
+            (enemyAck) => {
+              if (!enemyAck?.success) {
+                return toast.error(enemyAck.message);
+              }
+
+              setGame({
+                id: gameId,
+                hostId: user._id,
+                username: user.username,
+                amount,
+                pot,
+                enemies: enemyAck.enemies,
+              });
+
+              socket.emit("host:startGame", { gameId });
+            },
+          );
+        });
+      },
+    );
   };
 
   /* =========================================================
      SOCKET LISTENER (NO WINNER LOGIC)
   ========================================================= */
   useEffect(() => {
-    if (!game) return;
-
     const token = localStorage.getItem("token");
 
     const socket = io("https://swordgame-5.onrender.com", {
-      path: "/socket.io",
-      transports: ["websocket", "polling"],
       auth: { token },
-      reconnection: true,
+      transports: ["websocket"],
     });
 
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      socket.emit("joinRoom", game.id, (ack) => {
-        if (ack?.joined && ack.gameStatus === "started") {
-          setGameStarted(true);
-          setGame((prev) => ({
-            ...prev,
-            pot: ack.pot,
-            numEnemies: ack.enemies,
-          }));
-        }
-      });
+      console.log("connected");
     });
 
     socket.on("game:event", (data) => {
-      if (!game || data.gameId !== game.id) return;
-
       switch (data.type) {
-        case "ENEMIES_CONFIGURED":
-          toast.info("⚔️ Enemies deployed!");
-          setGame((prev) => ({
-            ...prev,
-            numEnemies: data.enemies,
-          }));
-          break;
-
         case "GAME_STARTED":
-          toast.success("🚀 Battle started!");
           setGameStarted(true);
-          setGame((prev) => ({
-            ...prev,
-            pot: data.pot,
-            numEnemies: data.enemies,
-          }));
           break;
 
         case "ADMIN_ADD_POT":
@@ -145,17 +155,19 @@ export default function HostGame() {
           }));
           break;
 
+        case "GAME_RESULT":
+          toast.success(`Game ${data.result}`);
+          break;
+
         default:
           break;
       }
     });
 
     return () => {
-      socket.removeAllListeners();
       socket.disconnect();
-      socketRef.current = null;
     };
-  }, [game?.id]);
+  }, []);
 
   /* =========================================================
      ADD TO POT
