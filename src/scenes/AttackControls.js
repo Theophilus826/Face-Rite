@@ -18,6 +18,7 @@ export function setupAttackControls(scene, player, enemies, camera) {
     ui = AdvancedDynamicTexture.CreateFullscreenUI("UI", true, scene);
     ui.idealWidth = 1920;
     ui.renderAtIdealSize = true;
+    ui.useInvalidateRect = true;
     scene.__attackUI = ui;
   }
 
@@ -40,9 +41,11 @@ export function setupAttackControls(scene, player, enemies, camera) {
   container.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
   container.spacing = isMobile ? Math.max(8, Math.round(10 * mobileScale)) : 10;
 
-  // ✅ Always visible spacing
   container.paddingBottom = isMobile ? "12px" : "10px";
-  if (isMobile) container.paddingRight = "10px";
+  if (isMobile) {
+    container.paddingRight = "10px";
+    container.paddingLeft = "10px";
+  }
 
   container.zIndex = 1000;
 
@@ -150,6 +153,7 @@ export function setupAttackControls(scene, player, enemies, camera) {
     arrowContainer.paddingLeft = "8px";
     arrowContainer.paddingBottom = "84px";
     arrowContainer.zIndex = 1000;
+    arrowContainer.alpha = 1;
     ui.addControl(arrowContainer);
 
     const createArrow = (text) => {
