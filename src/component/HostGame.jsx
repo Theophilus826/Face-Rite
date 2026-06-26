@@ -179,13 +179,21 @@ export default function HostGame() {
       console.log("Connected:", socket.id);
     });
 
-    socket.on("disconnect", (reason) => {
-      console.log("Disconnected:", reason);
+    socket.on("game:cancel", ({ gameId }) => {
+      const game = getGame(gameId);
 
-      if (gameStartedRef.current) {
-        toast.warning("Connection lost. Game cancelled.");
-        cleanupGame();
-      }
+      if (!game || game.status === "finished") return;
+
+      updateGame(gameId, {
+        status: "cancelled",
+      });
+
+      emitGameEvent(io, adminNamespace, gameId, {
+        type: "GAME_CANCELLED",
+        reason: "PLAYER_LEFT",
+      });
+
+      deleteGame(gameId);
     });
 
     socket.on("game:event", (data) => {
