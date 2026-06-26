@@ -255,7 +255,8 @@ async function gameScene(
         player.characterBox.position,
       );
 
-      if (dist <= 2.5 && enemy.currentHealth > 0 && player.currentHealth > 0) {
+      const playerHealth = player?.currentHealth ?? 0;
+      if (dist <= 2.5 && enemy.currentHealth > 0 && playerHealth > 0) {
         const dmg = player.controller.receiveDamage(5, false);
         player.takeDamage?.(dmg);
       }

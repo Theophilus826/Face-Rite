@@ -37,7 +37,7 @@ export async function CreatePlayer(scene, BABYLON) {
 
   if (modelRoot) {
     modelRoot.rotation.x = Math.PI;
-    modelRoot.position.y = -1; // adjust to match box center
+    modelRoot.position.y = -0.2;
     modelRoot.scaling.set(1.5, 1.5, 1.5);
   }
 

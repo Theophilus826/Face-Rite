@@ -80,7 +80,7 @@ modelRoot.parent = enemyBox;
 
 modelRoot.position.set(
   0,
-  -BOX_HEIGHT / 2,
+  -BOX_HEIGHT / 2 + 0.2,
   0
 );
 

@@ -145,14 +145,17 @@ export function CreateCharacterController(
       const toTarget = targetPosition.subtract(characterBox.position);
       toTarget.y = 0;
 
-      if (toTarget.length() < 0.3) {
+      const speed = state === "Running" ? SPEEDS.run : SPEEDS.walk;
+      const step = speed * delta;
+
+      if (toTarget.length() <= step) {
+        characterBox.position.copyFrom(targetPosition);
         stop();
         return;
       }
 
       toTarget.normalize();
-      const speed = state === "Running" ? SPEEDS.run : SPEEDS.walk;
-      characterBox.position.addInPlace(toTarget.scale(speed * delta));
+      characterBox.position.addInPlace(toTarget.scale(step));
 
       if (characterBox.modelRoot) {
         characterBox.modelRoot.rotation.y = Math.atan2(toTarget.x, toTarget.z);
@@ -168,15 +171,17 @@ if (!targetPosition || isAttacking || isBlocking) return;
 const toTarget = targetPosition.subtract(characterBox.position);
 toTarget.y = 0;
 
-if (toTarget.length() < 0.3) {
+const speed = state === "Running" ? SPEEDS.run : SPEEDS.walk;
+const step = speed * delta;
+
+if (toTarget.length() <= step) {
+  characterBox.position.copyFrom(targetPosition);
   stop();
   return;
 }
 
 toTarget.normalize();
-const speed = state === "Running" ? SPEEDS.run : SPEEDS.walk;
-
-characterBox.position.addInPlace(toTarget.scale(speed * delta));
+characterBox.position.addInPlace(toTarget.scale(step));
 
 if (characterBox.modelRoot) {
   characterBox.modelRoot.rotation.y = Math.atan2(toTarget.x, toTarget.z);
