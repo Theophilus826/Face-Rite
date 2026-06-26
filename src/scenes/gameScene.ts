@@ -6,6 +6,7 @@ async function gameScene(
   dispatch,
   game,
   user,
+  socket,
 ) {
   const [
     { CreateEnvironment },
@@ -17,7 +18,6 @@ async function gameScene(
     { GameState },
     { showEndScreen },
     { EnemyController },
-    { finishGame },
   ] = await Promise.all([
     import("../scenes/CreateEnvironment"),
     import("../scenes/CreatePlayer"),
@@ -271,8 +271,6 @@ async function gameScene(
     ) {
       endGame(user._id);
     }
-
-    
   });
 
   // ---------------- RESIZE ----------------
@@ -297,21 +295,22 @@ async function gameScene(
     if (gameEnded) return;
     gameEnded = true;
 
-    try {
-      dispatch(finishGame({ gameId: game.id, winnerId }));
+    const reason = winnerId === user._id ? "allEnemiesDead" : "playerDied";
 
-      showEndScreen(
-        scene,
-        winnerId === user._id ? "YOU WIN" : "GAME OVER",
-        winnerId,
-        goToMainMenu,
-        game,
-        user,
-        dispatch,
-      );
-    } catch (err) {
-      console.error("Game end error:", err);
-    }
+    socket?.emit("game:finished", {
+      gameId: game.id,
+      reason,
+    });
+
+    showEndScreen(
+      scene,
+      reason === "allEnemiesDead" ? "YOU WIN" : "GAME OVER",
+      winnerId,
+      goToMainMenu,
+      game,
+      user,
+      dispatch,
+    );
   }
 
   function restartGame() {

@@ -214,6 +214,7 @@ export default function HostGame() {
           dispatch,
           game,
           user,
+          socketRef.current,
         );
 
         sceneRef.current = scene;
