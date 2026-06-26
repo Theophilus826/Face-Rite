@@ -158,12 +158,34 @@ export default function HostGame() {
     const socket = io("https://swordgame-5.onrender.com", {
       auth: { token },
       transports: ["websocket"],
+      reconnection: true,
     });
 
     socketRef.current = socket;
 
+    const cleanupGame = () => {
+      sceneRef.current?.dispose();
+      sceneRef.current = null;
+
+      engineRef.current?.stopRenderLoop();
+      engineRef.current?.dispose();
+      engineRef.current = null;
+
+      setGameStarted(false);
+      setGame(null);
+    };
+
     socket.on("connect", () => {
-      console.log("connected");
+      console.log("Connected:", socket.id);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("Disconnected:", reason);
+
+      if (gameStartedRef.current) {
+        toast.warning("Connection lost. Game cancelled.");
+        cleanupGame();
+      }
     });
 
     socket.on("game:event", (data) => {
@@ -173,14 +195,32 @@ export default function HostGame() {
           break;
 
         case "ADMIN_ADD_POT":
-          setGame((prev) => ({
-            ...prev,
-            pot: data.newPot,
-          }));
+          setGame((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  pot: data.newPot,
+                }
+              : prev,
+          );
           break;
 
         case "GAME_RESULT":
-          toast.success(`Game ${data.result}`);
+          toast.success(
+            data.result === "won"
+              ? `🎉 You won ${data.pot} coins!`
+              : "Game Over",
+          );
+          break;
+
+        case "GAME_CANCELLED":
+          toast.info(
+            data.reason === "PLAYER_DISCONNECTED"
+              ? "Game cancelled because the player disconnected."
+              : "Game cancelled.",
+          );
+
+          cleanupGame();
           break;
 
         default:
@@ -189,6 +229,9 @@ export default function HostGame() {
     });
 
     return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("game:event");
       socket.disconnect();
     };
   }, []);
