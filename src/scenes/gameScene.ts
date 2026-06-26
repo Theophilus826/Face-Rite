@@ -102,6 +102,10 @@ async function gameScene(
   playerTerritory.parent = player.characterBox;
   scene.player = player;
 
+  player.modelRoot.onDeath = () => {
+    console.log("PLAYER DIED");
+    endGame("AI");
+  };
   // ---------------- ENEMIES ----------------
   scene.enemies = [];
 
@@ -268,9 +272,7 @@ async function gameScene(
       endGame(user._id);
     }
 
-    player.modelRoot.onDeath = () => {
-      endGame("AI");
-    };
+    
   });
 
   // ---------------- RESIZE ----------------
