@@ -56,25 +56,25 @@ export async function CreatePlayer(scene, BABYLON) {
 
   // --- OVERRIDE takeDamage TO UPDATE UI AND HANDLE DEATH ---
   const originalTakeDamage = modelRoot.takeDamage || (() => {});
-  modelRoot.takeDamage = (amount) => {
+
+modelRoot.takeDamage = (amount) => {
   originalTakeDamage(amount);
   healthUI.update();
 
-  if (modelRoot.currentHealth <= 0) {
+  if (modelRoot.currentHealth <= 0 && !modelRoot.isDead) {
     modelRoot.currentHealth = 0;
-
-    console.log("Player defeated");
-
-    // 🛑 PAUSE GAME
-    GameState.pause(scene);
+    modelRoot.isDead = true;
 
     controller.stop();
-    characterBox.setEnabled(false);
+
     healthUI.container.isVisible = false;
 
-    // 🟥 SHOW GAME OVER
-    
-  }
+    if (modelRoot.onDeath) {
+        modelRoot.onDeath();
+    }
+
+    characterBox.setEnabled(false);
+}
 };
 
 

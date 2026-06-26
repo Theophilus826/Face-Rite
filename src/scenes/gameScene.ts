@@ -40,7 +40,7 @@ async function gameScene(
 
   // ---------------- FORCE LANDSCAPE (TS SAFE) ----------------
   if (isMobile && "orientation" in screen) {
-    const orientation = screen.orientation as any;
+    const orientation = screen.orientation;
 
     if (orientation?.lock) {
       orientation.lock("landscape").catch(() => {});
@@ -50,7 +50,7 @@ async function gameScene(
   // ✅ Fallback: trigger on user interaction (better support)
   const lockOnInteraction = () => {
     if ("orientation" in screen) {
-      const orientation = screen.orientation as any;
+      const orientation = screen.orientation;
       orientation?.lock?.("landscape").catch(() => {});
     }
     window.removeEventListener("click", lockOnInteraction);
@@ -268,10 +268,9 @@ async function gameScene(
       endGame(user._id);
     }
 
-    if (player.currentHealth <= 0 && !gameEnded) {
-      player.controller.stop?.();
+    player.modelRoot.onDeath = () => {
       endGame("AI");
-    }
+    };
   });
 
   // ---------------- RESIZE ----------------
