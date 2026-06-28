@@ -5,6 +5,7 @@ export function useChatSocket({
   userId,
   chatUserId,
   setMessages,
+  onStatus,
 }) {
   const ref = useRef(null);
 
@@ -85,6 +86,12 @@ export function useChatSocket({
               (m) => m._id !== data.messageId
             )
           );
+          return;
+        }
+
+        if (data.type === "status") {
+          onStatus?.(data.status, data.userId);
+          return;
         }
       } catch (err) {
         console.error(

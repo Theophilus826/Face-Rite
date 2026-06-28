@@ -18,6 +18,7 @@ export default function ChatPage() {
 
   /* ================= LOCAL STATE ================= */
   const [typingUser, setTypingUser] = useState(null);
+  const [chatStatus, setChatStatus] = useState(null);
 
   /* ================= CHAT ================= */
   const { messages, setMessages } = useMessages(chatUserId);
@@ -47,6 +48,11 @@ export default function ChatPage() {
     },
 
     setTypingUser,
+    onStatus: (status, eventUserId) => {
+      if (eventUserId === chatUserId) {
+        setChatStatus(status);
+      }
+    },
   });
 
   /* ================= SEND MESSAGE ================= */
@@ -211,7 +217,7 @@ export default function ChatPage() {
   return (
     <div className="h-screen flex flex-col bg-transparent">
       {/* ================= HEADER ================= */}
-      <ChatHeader chatUserId={chatUserId} />
+      <ChatHeader chatUserId={chatUserId} status={chatStatus} />
 
       {/* ================= MESSAGES ================= */}
       <div

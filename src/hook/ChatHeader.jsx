@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { API } from "../features/Api";
 
-export default function ChatHeader({ users = [], chatUserId }) {
+export default function ChatHeader({ users = [], chatUserId, status }) {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
@@ -37,6 +37,13 @@ export default function ChatHeader({ users = [], chatUserId }) {
 
     loadUser();
   }, [chatUserId, selectedUser]);
+
+  useEffect(() => {
+    if (!status) return;
+    setChatUser((prev) =>
+      prev ? { ...prev, status } : prev
+    );
+  }, [status]);
 
   if (!chatUserId) return null;
 
@@ -92,7 +99,7 @@ export default function ChatHeader({ users = [], chatUserId }) {
             {chatUser?.name || "Loading..."}
           </h2>
 
-          {chatUser?.status === "online" ? (
+          {(status || chatUser?.status) === "online" ? (
             <p className="text-xs text-green-500">Online</p>
           ) : (
             <p className="text-xs text-gray-500">Last seen {formatTimeAgo(chatUser?.lastActive)}</p>
