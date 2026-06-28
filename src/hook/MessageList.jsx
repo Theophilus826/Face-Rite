@@ -104,7 +104,7 @@ export default function MessageList({
 
                 {/* ================= AUDIO ================= */}
 
-                {type === "audio" && (
+                {(type === "audio" || type === "voice") && (
                   <div className="p-3">
                     <audio
                       controls
@@ -112,6 +112,7 @@ export default function MessageList({
                     >
                       <source
                         src={
+                          msg.audio ||
                           msg.audioUrl ||
                           msg.file ||
                           msg.media
