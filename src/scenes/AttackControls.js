@@ -36,8 +36,8 @@ export function setupAttackControls(scene, player, enemies, camera) {
   if (isMobile) {
     // Use Container for mobile to allow absolute positioning
     container = new Container();
-    container.widthInPixels = 340;
-    container.heightInPixels = 340;
+    container.widthInPixels = 280;
+    container.heightInPixels = 280;
   } else {
     // Use StackPanel for desktop
     container = new StackPanel();
@@ -51,11 +51,11 @@ export function setupAttackControls(scene, player, enemies, camera) {
     ? Control.HORIZONTAL_ALIGNMENT_RIGHT
     : Control.HORIZONTAL_ALIGNMENT_CENTER;
 
-  container.verticalAlignment = isMobile ? Control.VERTICAL_ALIGNMENT_TOP : Control.VERTICAL_ALIGNMENT_BOTTOM;
+  container.verticalAlignment = isMobile ? Control.VERTICAL_ALIGNMENT_CENTER : Control.VERTICAL_ALIGNMENT_BOTTOM;
 
-  container.paddingBottom = isMobile ? "0px" : "10px";
-  container.paddingRight = isMobile ? "15px" : "0px";
-  container.paddingTop = isMobile ? "80px" : "0px";
+  container.paddingBottom = isMobile ? "20px" : "10px";
+  container.paddingRight = isMobile ? "20px" : "0px";
+  container.paddingTop = isMobile ? "0px" : "0px";
   container.paddingLeft = isMobile ? "0px" : "10px";
 
   container.zIndex = 1000;
@@ -71,17 +71,17 @@ export function setupAttackControls(scene, player, enemies, camera) {
     // Circular layout for mobile using StackPanel positioning
     lightBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     lightBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    lightBtn.top = "20px";
+    lightBtn.top = "10px";
 
     heavyBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
     heavyBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    heavyBtn.left = "25px";
-    heavyBtn.bottom = "30px";
+    heavyBtn.left = "20px";
+    heavyBtn.bottom = "20px";
 
     blockBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
     blockBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    blockBtn.right = "25px";
-    blockBtn.bottom = "30px";
+    blockBtn.right = "20px";
+    blockBtn.bottom = "20px";
   }
 
   container.addControl(lightBtn);
@@ -201,30 +201,30 @@ export function setupAttackControls(scene, player, enemies, camera) {
 
   if (isMobile && camera) {
     const arrowContainer = new StackPanel();
-    arrowContainer.width = "150px";
-    arrowContainer.height = "150px";
+    arrowContainer.width = "180px";
+    arrowContainer.height = "180px";
     arrowContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    arrowContainer.paddingLeft = "8px";
-    arrowContainer.paddingBottom = "84px";
+    arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    arrowContainer.paddingLeft = "15px";
+    arrowContainer.paddingTop = "100px";
     arrowContainer.zIndex = 1000;
     arrowContainer.alpha = 1;
     ui.addControl(arrowContainer);
 
     const createArrow = (text) => {
       const btn = new Rectangle();
-      btn.width = `${Math.max(56, Math.min(70, Math.round(64 * mobileScale)))}px`;
-      btn.height = `${Math.max(56, Math.min(70, Math.round(64 * mobileScale)))}px`;
+      btn.width = `${Math.max(70, Math.min(85, Math.round(72 * mobileScale)))}px`;
+      btn.height = `${Math.max(70, Math.min(85, Math.round(72 * mobileScale)))}px`;
 
-      btn.background = "rgba(255,255,255,0.08)";
-      btn.color = "white";
+      btn.background = "rgba(0,0,0,0.6)";
+      btn.color = "rgba(100,200,255,0.8)";
       btn.thickness = 2;
-      btn.cornerRadius = 30;
+      btn.cornerRadius = 12;
 
       const label = new TextBlock();
       label.text = text;
-      label.color = "white";
-      label.fontSize = Math.max(18, Math.min(24, Math.round(22 * mobileScale)));
+      label.color = "rgba(100,200,255,1)";
+      label.fontSize = Math.max(22, Math.min(28, Math.round(26 * mobileScale)));
 
       label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
       label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -240,26 +240,28 @@ export function setupAttackControls(scene, player, enemies, camera) {
 
     const rowContainer = new StackPanel();
     rowContainer.isVertical = true;
-    rowContainer.height = "140px";
-    rowContainer.width = "140px";
+    rowContainer.height = "170px";
+    rowContainer.width = "170px";
+    rowContainer.spacing = 4;
 
     const topRow = new StackPanel();
     topRow.isVertical = false;
-    topRow.height = "42px";
-    up.marginLeft = "40px";
+    topRow.height = "50px";
+    up.marginLeft = "45px";
     topRow.addControl(up);
 
     const middleRow = new StackPanel();
     middleRow.isVertical = false;
-    middleRow.height = "42px";
-    left.marginRight = "6px";
+    middleRow.height = "50px";
+    middleRow.spacing = 4;
+    left.marginRight = "2px";
     middleRow.addControl(left);
     middleRow.addControl(right);
 
     const bottomRow = new StackPanel();
     bottomRow.isVertical = false;
-    bottomRow.height = "42px";
-    down.marginLeft = "40px";
+    bottomRow.height = "50px";
+    down.marginLeft = "45px";
     bottomRow.addControl(down);
 
     rowContainer.addControl(topRow);
@@ -365,8 +367,8 @@ export function setupAttackControls(scene, player, enemies, camera) {
 function createButton(text, color, isMobile) {
   const btn = new Rectangle();
 
-  btn.width = isMobile ? `${Math.max(100, Math.min(130, Math.round(window.innerWidth * 0.26)))}px` : "100px";
-  btn.height = isMobile ? `${Math.max(100, Math.min(130, Math.round(window.innerHeight * 0.14)))}px` : "55px";
+  btn.width = isMobile ? `${Math.max(80, Math.min(100, Math.round(window.innerWidth * 0.2)))}px` : "100px";
+  btn.height = isMobile ? `${Math.max(70, Math.min(85, Math.round(window.innerHeight * 0.09)))}px` : "55px";
   btn.cornerRadius = 10;
   btn.color = color;
   btn.thickness = 2;
@@ -381,7 +383,7 @@ function createButton(text, color, isMobile) {
   const label = new TextBlock();
   label.text = text;
   label.color = color;
-  label.fontSize = isMobile ? Math.max(22, Math.min(28, Math.round(window.innerWidth * 0.055))) : 18;
+  label.fontSize = isMobile ? Math.max(18, Math.min(22, Math.round(window.innerWidth * 0.045))) : 18;
 
   label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
   label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
