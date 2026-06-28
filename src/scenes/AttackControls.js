@@ -31,19 +31,20 @@ export function setupAttackControls(scene, player, enemies, camera) {
 
   // ================= ATTACK BUTTON CONTAINER =================
   const container = new StackPanel();
-  container.isVertical = false;
-  container.height = isMobile ? "90px" : "70px";
+  container.isVertical = isMobile ? false : false;
+  container.height = isMobile ? "280px" : "70px";
+  container.width = isMobile ? "280px" : "auto";
 
   container.horizontalAlignment = isMobile
     ? Control.HORIZONTAL_ALIGNMENT_RIGHT
     : Control.HORIZONTAL_ALIGNMENT_CENTER;
 
-  container.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-  container.spacing = isMobile ? Math.max(8, Math.round(10 * mobileScale)) : 10;
+  container.verticalAlignment = isMobile ? Control.VERTICAL_ALIGNMENT_CENTER : Control.VERTICAL_ALIGNMENT_BOTTOM;
+  container.spacing = isMobile ? 0 : 10;
 
-  container.paddingBottom = isMobile ? "12px" : "10px";
-  if (isMobile) {
-    container.paddingRight = "10px";
+  container.paddingBottom = isMobile ? "20px" : "10px";
+  container.paddingRight = isMobile ? "20px" : "0px";
+  if (!isMobile) {
     container.paddingLeft = "10px";
   }
 
@@ -55,6 +56,27 @@ export function setupAttackControls(scene, player, enemies, camera) {
   const lightBtn = createButton("J\nLight", "orange", isMobile);
   const heavyBtn = createButton("K\nHeavy", "red", isMobile);
   const blockBtn = createButton("L\nBlock", "cyan", isMobile);
+
+  if (isMobile) {
+    // Circular layout for mobile
+    const radius = 80;
+    const centerX = 0;
+    const centerY = 0;
+
+    // Position buttons in a circle (top, bottom-left, bottom-right)
+    const positions = [
+      { x: centerX, y: centerY - radius, angle: 0 }, // Top
+      { x: centerX - radius * Math.sin(Math.PI / 6), y: centerY + radius * Math.cos(Math.PI / 6), angle: Math.PI / 3 }, // Bottom-left
+      { x: centerX + radius * Math.sin(Math.PI / 6), y: centerY + radius * Math.cos(Math.PI / 6), angle: -Math.PI / 3 }, // Bottom-right
+    ];
+
+    const buttons = [lightBtn, heavyBtn, blockBtn];
+    buttons.forEach((btn, idx) => {
+      const pos = positions[idx];
+      btn.left = `${pos.x}px`;
+      btn.top = `${pos.y}px`;
+    });
+  }
 
   container.addControl(lightBtn);
   container.addControl(heavyBtn);
@@ -131,14 +153,41 @@ export function setupAttackControls(scene, player, enemies, camera) {
       return;
     }
 
-    const direction = new Vector3(directionX, 0, directionZ);
-    if (direction.lengthSquared() > 1) {
-      direction.normalize();
-    }
-
-    const moveTarget = player.characterBox.position.clone().add(
-      direction.scale(1.2),
+    // Find target enemy
+    const targetEnemy = enemies.find(
+      (enemy) => enemy.currentHealth > 0,
     );
+
+    let moveTarget;
+    if (targetEnemy) {
+      // Move towards target enemy
+      const directionToTarget = targetEnemy.enemyBox.position
+        .subtract(player.characterBox.position)
+        .normalize();
+
+      // Apply player input to modulate movement towards target
+      const inputDirection = new Vector3(directionX, 0, directionZ).normalize();
+      
+      // Blend target direction with input (70% target, 30% input for control)
+      const blendedDirection = directionToTarget
+        .scale(0.7)
+        .add(inputDirection.scale(0.3))
+        .normalize();
+
+      moveTarget = player.characterBox.position.clone().add(
+        blendedDirection.scale(1.2),
+      );
+    } else {
+      // Fallback: move in direction if no target
+      const direction = new Vector3(directionX, 0, directionZ);
+      if (direction.lengthSquared() > 1) {
+        direction.normalize();
+      }
+
+      moveTarget = player.characterBox.position.clone().add(
+        direction.scale(1.2),
+      );
+    }
 
     player.controller.moveTo(moveTarget, true);
     isMoving = true;
@@ -310,15 +359,15 @@ export function setupAttackControls(scene, player, enemies, camera) {
 function createButton(text, color, isMobile) {
   const btn = new Rectangle();
 
-  btn.width = isMobile ? `${Math.max(70, Math.min(92, Math.round(window.innerWidth * 0.18)))}px` : "100px";
-  btn.height = isMobile ? `${Math.max(54, Math.min(70, Math.round(window.innerHeight * 0.08)))}px` : "55px";
+  btn.width = isMobile ? `${Math.max(80, Math.min(100, Math.round(window.innerWidth * 0.2)))}px` : "100px";
+  btn.height = isMobile ? `${Math.max(70, Math.min(85, Math.round(window.innerHeight * 0.09)))}px` : "55px";
   btn.cornerRadius = 10;
   btn.color = color;
   btn.thickness = 2;
 
   // ✅ Better visibility
-  btn.background = "rgba(0,0,0,0.7)";
-  btn.alpha = 0.95;
+  btn.background = "rgba(0,0,0,0.85)";
+  btn.alpha = 1;
   btn.zIndex = 1000;
 
   btn.isPointerBlocker = true;
@@ -326,7 +375,7 @@ function createButton(text, color, isMobile) {
   const label = new TextBlock();
   label.text = text;
   label.color = color;
-  label.fontSize = isMobile ? Math.max(16, Math.min(20, Math.round(window.innerWidth * 0.04))) : 18;
+  label.fontSize = isMobile ? Math.max(18, Math.min(22, Math.round(window.innerWidth * 0.045))) : 18;
 
   label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
   label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
