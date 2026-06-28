@@ -36,8 +36,8 @@ export function setupAttackControls(scene, player, enemies, camera) {
   if (isMobile) {
     // Use Container for mobile to allow absolute positioning
     container = new Container();
-    container.widthInPixels = 280;
-    container.heightInPixels = 280;
+    container.widthInPixels = 340;
+    container.heightInPixels = 340;
   } else {
     // Use StackPanel for desktop
     container = new StackPanel();
@@ -51,11 +51,11 @@ export function setupAttackControls(scene, player, enemies, camera) {
     ? Control.HORIZONTAL_ALIGNMENT_RIGHT
     : Control.HORIZONTAL_ALIGNMENT_CENTER;
 
-  container.verticalAlignment = isMobile ? Control.VERTICAL_ALIGNMENT_CENTER : Control.VERTICAL_ALIGNMENT_BOTTOM;
+  container.verticalAlignment = isMobile ? Control.VERTICAL_ALIGNMENT_TOP : Control.VERTICAL_ALIGNMENT_BOTTOM;
 
-  container.paddingBottom = isMobile ? "20px" : "10px";
-  container.paddingRight = isMobile ? "20px" : "0px";
-  container.paddingTop = isMobile ? "0px" : "0px";
+  container.paddingBottom = isMobile ? "0px" : "10px";
+  container.paddingRight = isMobile ? "15px" : "0px";
+  container.paddingTop = isMobile ? "80px" : "0px";
   container.paddingLeft = isMobile ? "0px" : "10px";
 
   container.zIndex = 1000;
@@ -71,17 +71,17 @@ export function setupAttackControls(scene, player, enemies, camera) {
     // Circular layout for mobile using StackPanel positioning
     lightBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
     lightBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    lightBtn.top = "10px";
+    lightBtn.top = "20px";
 
     heavyBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
     heavyBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    heavyBtn.left = "20px";
-    heavyBtn.bottom = "20px";
+    heavyBtn.left = "25px";
+    heavyBtn.bottom = "30px";
 
     blockBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
     blockBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    blockBtn.right = "20px";
-    blockBtn.bottom = "20px";
+    blockBtn.right = "25px";
+    blockBtn.bottom = "30px";
   }
 
   container.addControl(lightBtn);
@@ -365,8 +365,8 @@ export function setupAttackControls(scene, player, enemies, camera) {
 function createButton(text, color, isMobile) {
   const btn = new Rectangle();
 
-  btn.width = isMobile ? `${Math.max(80, Math.min(100, Math.round(window.innerWidth * 0.2)))}px` : "100px";
-  btn.height = isMobile ? `${Math.max(70, Math.min(85, Math.round(window.innerHeight * 0.09)))}px` : "55px";
+  btn.width = isMobile ? `${Math.max(100, Math.min(130, Math.round(window.innerWidth * 0.26)))}px` : "100px";
+  btn.height = isMobile ? `${Math.max(100, Math.min(130, Math.round(window.innerHeight * 0.14)))}px` : "55px";
   btn.cornerRadius = 10;
   btn.color = color;
   btn.thickness = 2;
@@ -381,7 +381,7 @@ function createButton(text, color, isMobile) {
   const label = new TextBlock();
   label.text = text;
   label.color = color;
-  label.fontSize = isMobile ? Math.max(18, Math.min(22, Math.round(window.innerWidth * 0.045))) : 18;
+  label.fontSize = isMobile ? Math.max(22, Math.min(28, Math.round(window.innerWidth * 0.055))) : 18;
 
   label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
   label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
