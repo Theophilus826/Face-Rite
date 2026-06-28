@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import Spinner from "../component/Spinner";
 
 export default function ForgotPassword() {
-    const [email, setEmail] = useState("");
+    const [identifier, setIdentifier] = useState("");
     const dispatch = useDispatch();
 
     const { isLoading, isError, isSuccess, message } = useSelector(
@@ -21,11 +21,11 @@ export default function ForgotPassword() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!email) {
-            toast.error("Please enter your email");
+        if (!identifier) {
+            toast.error("Please enter your email or phone number");
             return;
         }
-        dispatch(forgotPassword(email));
+        dispatch(forgotPassword(identifier));
     };
 
     if (isLoading) return <Spinner />;
@@ -35,10 +35,10 @@ export default function ForgotPassword() {
             <h2 className="text-2xl font-bold mb-6 text-center">Forgot Password</h2>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="text"
+                    placeholder="Email or Phone"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                 />

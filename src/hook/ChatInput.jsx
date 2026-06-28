@@ -23,6 +23,7 @@ export default function ChatInput({ onSend }) {
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const streamRef = useRef(null);
 
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
@@ -85,6 +86,7 @@ export default function ChatInput({ onSend }) {
       const mediaRecorder = new MediaRecorder(stream);
 
       mediaRecorderRef.current = mediaRecorder;
+      streamRef.current = stream;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
@@ -114,8 +116,18 @@ export default function ChatInput({ onSend }) {
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setRecording(false);
+    try {
+      mediaRecorderRef.current?.stop();
+
+      // stop all tracks from the stream to release the microphone
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    } finally {
+      mediaRecorderRef.current = null;
+      streamRef.current = null;
+      setRecording(false);
+    }
   };
 
   /* ================= MENU ================= */
@@ -218,13 +230,43 @@ export default function ChatInput({ onSend }) {
       {/* INPUT */}
 
       <div className="flex items-center gap-3 rounded-full px-4 py-3 backdrop-blur-2xl bg-white/10 border border-white/10 shadow-xl">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Message"
-          className="flex-1 bg-transparent text-white placeholder:text-gray-300 outline-none text-base"
-        />
+        <div className="flex items-center flex-1">
+          {recording && (
+            <div className="mr-3 flex items-center">
+              <svg width="36" height="20" viewBox="0 0 36 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="4" width="4" height="12" rx="1" fill="#fff" opacity="0.9">
+                  <animate attributeName="height" values="6;14;6" dur="0.6s" repeatCount="indefinite" />
+                  <animate attributeName="y" values="7;3;7" dur="0.6s" repeatCount="indefinite" />
+                </rect>
+                <rect x="9" y="3" width="4" height="14" rx="1" fill="#fff" opacity="0.8">
+                  <animate attributeName="height" values="8;12;8" dur="0.6s" begin="0.08s" repeatCount="indefinite" />
+                  <animate attributeName="y" values="6;4;6" dur="0.6s" begin="0.08s" repeatCount="indefinite" />
+                </rect>
+                <rect x="17" y="1" width="4" height="18" rx="1" fill="#fff" opacity="0.7">
+                  <animate attributeName="height" values="4;16;4" dur="0.6s" begin="0.16s" repeatCount="indefinite" />
+                  <animate attributeName="y" values="9;2;9" dur="0.6s" begin="0.16s" repeatCount="indefinite" />
+                </rect>
+                <rect x="25" y="3" width="4" height="14" rx="1" fill="#fff" opacity="0.8">
+                  <animate attributeName="height" values="8;12;8" dur="0.6s" begin="0.08s" repeatCount="indefinite" />
+                  <animate attributeName="y" values="6;4;6" dur="0.6s" begin="0.08s" repeatCount="indefinite" />
+                </rect>
+                <rect x="33" y="4" width="4" height="12" rx="1" fill="#fff" opacity="0.9">
+                  <animate attributeName="height" values="6;14;6" dur="0.6s" repeatCount="indefinite" />
+                  <animate attributeName="y" values="7;3;7" dur="0.6s" repeatCount="indefinite" />
+                </rect>
+              </svg>
+            </div>
+          )}
+
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder={recording ? "Recording..." : "Message"}
+            disabled={recording}
+            className="flex-1 bg-transparent text-white placeholder:text-gray-300 outline-none text-base"
+          />
+        </div>
 
         {/* ATTACH */}
 

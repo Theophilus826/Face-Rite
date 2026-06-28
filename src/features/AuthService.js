@@ -78,6 +78,21 @@ const forgotPassword = async (
   return res.data;
 };
 
+/* ================= VERIFY PHONE ================= */
+const verifyPhone = async ({ userId, code }) => {
+  const res = await API.post(
+    API_URL + "verify-phone",
+    {
+      userId,
+      code,
+    }
+  );
+
+  saveAuth(res.data);
+
+  return res.data;
+};
+
 /* ================= RESET PASSWORD ================= */
 
 const resetPassword = async (
@@ -184,6 +199,7 @@ export default {
   logout,
 
   forgotPassword,
+  verifyPhone,
   resetPassword,
 
   getMe,

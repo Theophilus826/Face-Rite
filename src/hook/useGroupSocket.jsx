@@ -94,6 +94,12 @@ export default function useGroupSocket({
         if (data.type === "group_event") {
           console.log("GROUP EVENT:", data);
         }
+
+        if (data.type === "group_message_deleted") {
+          setMessages((prev) =>
+            prev.filter((m) => m._id !== data.messageId),
+          );
+        }
       } catch (err) {
         console.error("SSE PARSE ERROR:", err);
       }

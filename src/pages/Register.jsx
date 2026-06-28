@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { registerUser, loginUser, reset } from "../features/AuthSlice";
+import {
+  registerUser,
+  loginUser,
+  verifyPhone,
+  reset,
+} from "../features/AuthSlice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Spinner from "../component/Spinner";
@@ -11,14 +16,20 @@ export default function Register() {
     identifier: "", // email OR phone
     password: "",
     confirmPassword: "",
+    code: "",
   });
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { user, isLoading, isError, isSuccess, message } = useSelector(
-    (state) => state.auth
-  );
+  const {
+    user,
+    isLoading,
+    isError,
+    isSuccess,
+    message,
+    verificationRequired,
+  } = useSelector((state) => state.auth);
 
   // ================= EFFECT =================
   useEffect(() => {
@@ -27,19 +38,16 @@ export default function Register() {
     }
 
     if (isSuccess) {
-      toast.success("Account created successfully");
-
-      const isEmail = formData.identifier.includes("@");
-
-      dispatch(
-        loginUser({
-          identifier: formData.identifier,
-          password: formData.password,
-        })
-      );
+      if (verificationRequired) {
+        toast.success(
+          "Phone registered. Enter the verification code."
+        );
+      } else if (user?.token) {
+        toast.success("Account created successfully");
+      }
     }
 
-    if (user) {
+    if (user && user.token) {
       navigate("/welcome");
     }
 
@@ -70,6 +78,20 @@ export default function Register() {
 
   const onSubmit = (e) => {
     e.preventDefault();
+
+    if (verificationRequired) {
+      if (!formData.code) {
+        return toast.error("Verification code is required");
+      }
+
+      dispatch(
+        verifyPhone({
+          userId: user._id,
+          code: formData.code,
+        })
+      );
+      return;
+    }
 
     if (!formData.name || !formData.identifier) {
       return toast.error("Name and email/phone are required");
@@ -134,35 +156,63 @@ export default function Register() {
             required
           />
 
-          {/* Password */}
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            required
-          />
+          {verificationRequired ? (
+            <>
+              <p className="text-sm text-gray-600">
+                Enter the verification code sent to your phone.
+              </p>
 
-          {/* Confirm Password */}
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            required
-          />
+              <input
+                type="text"
+                name="code"
+                placeholder="Verification Code"
+                value={formData.code}
+                onChange={onChange}
+                className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                required
+              />
 
-          <button
-            type="submit"
-            className="py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition disabled:bg-gray-400"
-            disabled={isLoading}
-          >
-            {isLoading ? "Creating Account..." : "Register"}
-          </button>
+              <button
+                type="submit"
+                className="py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition disabled:bg-gray-400"
+                disabled={isLoading}
+              >
+                {isLoading ? "Verifying..." : "Verify Phone"}
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Password */}
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={onChange}
+                className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                required
+              />
+
+              {/* Confirm Password */}
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                value={formData.confirmPassword}
+                onChange={onChange}
+                className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                required
+              />
+
+              <button
+                type="submit"
+                className="py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition disabled:bg-gray-400"
+                disabled={isLoading}
+              >
+                {isLoading ? "Creating Account..." : "Register"}
+              </button>
+            </>
+          )}
         </form>
 
         <p className="text-center text-sm mt-6 text-gray-700">

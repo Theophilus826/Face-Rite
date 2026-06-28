@@ -227,14 +227,20 @@ function ChatContant() {
                     className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
-                        {u.avatar ? (
-                          <img
-                            src={u.avatar}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          u.name?.charAt(0)
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
+                          {u.avatar ? (
+                            <img
+                              src={u.avatar}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            u.name?.charAt(0)
+                          )}
+                        </div>
+
+                        {(u.online || u.status === "online") && (
+                          <span className="absolute right-0 bottom-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
                         )}
                       </div>
 
@@ -271,16 +277,22 @@ function ChatContant() {
                 onClick={() => navigate(`/chat/${u._id}`)}
                 className="flex items-center gap-3 bg-white hover:bg-gray-50 p-3 rounded-2xl cursor-pointer shadow-sm"
               >
-                <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
-                  {u.avatar ? (
-                    <img
-                      src={u.avatar}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    u.name?.charAt(0)
-                  )}
-                </div>
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
+                          {u.avatar ? (
+                            <img
+                              src={u.avatar}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            u.name?.charAt(0)
+                          )}
+                        </div>
+
+                        {(u.online || u.status === "online") && (
+                          <span className="absolute right-0 bottom-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+                        )}
+                      </div>
 
                 <div>
                   <p className="font-medium text-sm">{u.name}</p>
@@ -357,14 +369,20 @@ function ChatContant() {
                   >
                     <input type="checkbox" checked={checked} readOnly />
 
-                    <div className="w-10 h-10 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white">
-                      {u.avatar ? (
-                        <img
-                          src={u.avatar}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        u.name?.charAt(0)
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white">
+                        {u.avatar ? (
+                          <img
+                            src={u.avatar}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          u.name?.charAt(0)
+                        )}
+                      </div>
+
+                      {(u.online || u.status === "online") && (
+                        <span className="absolute right-0 bottom-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
                       )}
                     </div>
 

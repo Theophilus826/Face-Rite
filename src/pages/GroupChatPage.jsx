@@ -395,6 +395,27 @@ export default function GroupChatPage() {
         <MessageList
           messages={messages}
           userId={user?._id}
+          onDelete={async (messageId) => {
+            try {
+              await API.delete(
+                `/group/${groupId}/messages/${messageId}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                },
+              );
+
+              setMessages((prev) =>
+                prev.filter((m) => m._id !== messageId),
+              );
+            } catch (err) {
+              console.error(
+                "Group delete failed:",
+                err.response?.data || err.message,
+              );
+            }
+          }}
         />
       </div>
 

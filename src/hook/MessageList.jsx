@@ -1,6 +1,7 @@
 export default function MessageList({
   messages = [],
   userId,
+  onDelete,
 }) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -54,12 +55,22 @@ export default function MessageList({
               {/* MESSAGE BUBBLE */}
 
               <div
-                className={`rounded-2xl overflow-hidden backdrop-blur-xl border shadow-lg ${
+                className={`relative rounded-2xl overflow-hidden backdrop-blur-xl border shadow-lg ${
                   mine
                     ? "bg-blue-500/80 border-blue-400/20 text-white"
                     : "bg-white/10 border-white/10 text-white"
                 }`}
               >
+
+                {/* delete control for own text messages */}
+                {mine && onDelete && type === "text" && (
+                  <button
+                    onClick={() => onDelete(msg._id)}
+                    className="absolute -right-2 -top-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full shadow-lg"
+                  >
+                    Delete
+                  </button>
+                )}
 
                 {/* ================= TEXT ================= */}
 

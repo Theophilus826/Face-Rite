@@ -30,6 +30,8 @@ const initialState = {
   isLoading: false,
 
   message: "",
+  verificationRequired: false,
+  verificationUserId: null,
 };
 
 /* ================= HELPERS ================= */
@@ -120,6 +122,28 @@ export const resetPassword =
           token,
           password
         );
+      } catch (error) {
+        return thunkAPI.rejectWithValue(
+          error.response?.data
+            ?.message ||
+            error.message
+        );
+      }
+    }
+  );
+
+export const verifyPhone =
+  createAsyncThunk(
+    "auth/verifyPhone",
+    async (
+      { userId, code },
+      thunkAPI
+    ) => {
+      try {
+        return await authService.verifyPhone({
+          userId,
+          code,
+        });
       } catch (error) {
         return thunkAPI.rejectWithValue(
           error.response?.data
@@ -230,6 +254,8 @@ const authSlice = createSlice({
       state.token = null;
       state.contacts = [];
       state.mood = null;
+      state.verificationRequired = false;
+      state.verificationUserId = null;
 
       localStorage.removeItem(
         "token"
@@ -269,9 +295,15 @@ const authSlice = createSlice({
           state.isSuccess = true;
 
           state.user = action.payload;
-
           state.token =
-            action.payload.token;
+            action.payload.token || null;
+          state.verificationRequired =
+            !action.payload.token &&
+            Boolean(action.payload.phone);
+          state.verificationUserId =
+            state.verificationRequired
+              ? action.payload._id
+              : null;
         }
       )
 
@@ -326,6 +358,27 @@ const authSlice = createSlice({
 
       .addCase(
         forgotPassword.rejected,
+        setRejected
+      )
+
+      /* VERIFY PHONE */
+      .addCase(
+        verifyPhone.pending,
+        setPending
+      )
+      .addCase(
+        verifyPhone.fulfilled,
+        (state, action) => {
+          state.isLoading = false;
+          state.isSuccess = true;
+          state.user = action.payload;
+          state.token = action.payload.token;
+          state.verificationRequired = false;
+          state.verificationUserId = null;
+        }
+      )
+      .addCase(
+        verifyPhone.rejected,
         setRejected
       )
 

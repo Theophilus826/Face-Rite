@@ -5,6 +5,7 @@ import {
   TextBlock,
   Control,
   StackPanel,
+  Container,
 } from "@babylonjs/gui";
 
 /**
@@ -30,23 +31,32 @@ export function setupAttackControls(scene, player, enemies, camera) {
   const mobileScale = isMobile ? Math.min(window.innerWidth, window.innerHeight) / 390 : 1;
 
   // ================= ATTACK BUTTON CONTAINER =================
-  const container = new StackPanel();
-  container.isVertical = isMobile ? false : false;
-  container.height = isMobile ? "280px" : "70px";
-  container.width = isMobile ? "280px" : "auto";
+  let container;
+  
+  if (isMobile) {
+    // Use Container for mobile to allow absolute positioning
+    container = new Container();
+    container.widthInPixels = 280;
+    container.heightInPixels = 280;
+  } else {
+    // Use StackPanel for desktop
+    container = new StackPanel();
+    container.isVertical = false;
+    container.width = "auto";
+    container.height = "70px";
+    container.spacing = 10;
+  }
 
   container.horizontalAlignment = isMobile
     ? Control.HORIZONTAL_ALIGNMENT_RIGHT
     : Control.HORIZONTAL_ALIGNMENT_CENTER;
 
   container.verticalAlignment = isMobile ? Control.VERTICAL_ALIGNMENT_CENTER : Control.VERTICAL_ALIGNMENT_BOTTOM;
-  container.spacing = isMobile ? 0 : 10;
 
   container.paddingBottom = isMobile ? "20px" : "10px";
   container.paddingRight = isMobile ? "20px" : "0px";
-  if (!isMobile) {
-    container.paddingLeft = "10px";
-  }
+  container.paddingTop = isMobile ? "0px" : "0px";
+  container.paddingLeft = isMobile ? "0px" : "10px";
 
   container.zIndex = 1000;
 
@@ -58,24 +68,20 @@ export function setupAttackControls(scene, player, enemies, camera) {
   const blockBtn = createButton("L\nBlock", "cyan", isMobile);
 
   if (isMobile) {
-    // Circular layout for mobile
-    const radius = 80;
-    const centerX = 0;
-    const centerY = 0;
+    // Circular layout for mobile using StackPanel positioning
+    lightBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    lightBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    lightBtn.top = "10px";
 
-    // Position buttons in a circle (top, bottom-left, bottom-right)
-    const positions = [
-      { x: centerX, y: centerY - radius, angle: 0 }, // Top
-      { x: centerX - radius * Math.sin(Math.PI / 6), y: centerY + radius * Math.cos(Math.PI / 6), angle: Math.PI / 3 }, // Bottom-left
-      { x: centerX + radius * Math.sin(Math.PI / 6), y: centerY + radius * Math.cos(Math.PI / 6), angle: -Math.PI / 3 }, // Bottom-right
-    ];
+    heavyBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    heavyBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    heavyBtn.left = "20px";
+    heavyBtn.bottom = "20px";
 
-    const buttons = [lightBtn, heavyBtn, blockBtn];
-    buttons.forEach((btn, idx) => {
-      const pos = positions[idx];
-      btn.left = `${pos.x}px`;
-      btn.top = `${pos.y}px`;
-    });
+    blockBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    blockBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    blockBtn.right = "20px";
+    blockBtn.bottom = "20px";
   }
 
   container.addControl(lightBtn);

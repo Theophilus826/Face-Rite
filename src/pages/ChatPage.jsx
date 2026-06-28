@@ -218,7 +218,15 @@ export default function ChatPage() {
         id="chat-scroll"
         className="flex-1 overflow-y-auto bg-transparent px-2 pb-2"
       >
-        <MessageList messages={messages} userId={user?._id} />
+        <MessageList messages={messages} userId={user?._id} onDelete={async (messageId) => {
+          try {
+            await API.delete(`/chat/messages/${messageId}`);
+
+            setMessages((prev) => prev.filter((m) => m._id !== messageId));
+          } catch (err) {
+            console.error("Delete failed:", err.response?.data || err.message);
+          }
+        }} />
 
         {/* typing */}
         {typingUser && (

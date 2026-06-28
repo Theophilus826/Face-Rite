@@ -9,6 +9,7 @@ import Spinner from "../component/Spinner";
 export default function ResetPassword() {
     const { token } = useParams();
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
@@ -33,6 +34,11 @@ export default function ResetPassword() {
             return;
         }
 
+        if (password !== confirmPassword) {
+            toast.error("Passwords do not match");
+            return;
+        }
+
         dispatch(resetPassword({ token, password }));
     };
 
@@ -47,6 +53,14 @@ export default function ResetPassword() {
                     placeholder="New Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                />
+                <input
+                    type="password"
+                    placeholder="Confirm New Password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     className="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                 />

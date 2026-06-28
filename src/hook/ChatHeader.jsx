@@ -40,6 +40,24 @@ export default function ChatHeader({ users = [], chatUserId }) {
 
   if (!chatUserId) return null;
 
+  const formatTimeAgo = (date) => {
+    if (!date) return "";
+
+    const d = new Date(date);
+    const diff = Date.now() - d.getTime();
+
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return "just now";
+
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+
+    return d.toLocaleString();
+  };
+
   return (
     <div className="px-6 py-4 bg-white border-b flex items-center justify-between">
       {/* LEFT */}
@@ -74,7 +92,11 @@ export default function ChatHeader({ users = [], chatUserId }) {
             {chatUser?.name || "Loading..."}
           </h2>
 
-          <p className="text-xs text-green-500">Online</p>
+          {chatUser?.status === "online" ? (
+            <p className="text-xs text-green-500">Online</p>
+          ) : (
+            <p className="text-xs text-gray-500">Last seen {formatTimeAgo(chatUser?.lastActive)}</p>
+          )}
         </div>
       </div>
 
