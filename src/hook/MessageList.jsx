@@ -86,8 +86,13 @@ export default function MessageList({
               onPointerLeave={handleCancelPress}
               onTouchStart={() => startPress(msg._id)}
               onTouchEnd={handleCancelPress}
+              onClick={() => {
+                if (onDelete && mine) {
+                  setSelectedMessageId(msg._id);
+                }
+              }}
               onContextMenu={(e) => {
-                if (onDelete) {
+                if (onDelete && mine) {
                   e.preventDefault();
                   setSelectedMessageId(msg._id);
                 }
@@ -116,8 +121,8 @@ export default function MessageList({
                 }`}
               >
 
-                {/* delete control for own text messages */}
-                {selectedMessageId === msg._id && onDelete && type === "text" && (
+                {/* delete control for own messages */}
+                {selectedMessageId === msg._id && onDelete && mine && (
                   <button
                     onClick={() => handleDelete(msg._id)}
                     className="absolute -right-2 -top-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full shadow-lg"

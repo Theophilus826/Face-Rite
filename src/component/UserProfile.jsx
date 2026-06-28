@@ -1,15 +1,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { API } from "../features/Api";
 import PostGalleryWithUpload from "../component/PostGallery";
 import { setUser } from "../features/AuthSlice"; // Redux action to update user
 
 /* ================= PROFILE HEADER ================= */
-function ProfileHeader({ image, isUploading, onUpload }) {
+function ProfileHeader({ image, isUploading, onUpload, editable }) {
   const DEFAULT_AVATAR = "https://swordgame-5.onrender.com/default-avatar.jpg";
 
   const handleSelectFile = async (e) => {
+    if (!editable) return;
+
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -20,7 +23,6 @@ function ProfileHeader({ image, isUploading, onUpload }) {
       img.src = src;
       await new Promise((resolve) => (img.onload = resolve));
 
-      // Crop image to square
       const size = Math.min(img.width, img.height);
       const crop = {
         x: (img.width - size) / 2,
@@ -59,11 +61,20 @@ function ProfileHeader({ image, isUploading, onUpload }) {
         alt="Profile"
         className="w-32 h-32 rounded-full object-cover border border-theme shadow-sm"
       />
-      <label className="mt-3 cursor-pointer text-sm text-blue-600 hover:underline">
-        {isUploading ? "Uploading..." : "Change Profile Image"}
+      <label
+        className={`mt-3 text-sm ${
+          editable ? "cursor-pointer text-blue-600 hover:underline" : "text-gray-400"
+        }`}
+      >
+        {isUploading
+          ? "Uploading..."
+          : editable
+          ? "Change Profile Image"
+          : "View-only profile"}
         <input
           type="file"
           accept="image/*"
+          disabled={!editable}
           onChange={handleSelectFile}
           className="hidden"
         />
@@ -105,33 +116,42 @@ function ProfilePosts({ posts, isLoading, user }) {
 export default function Profile() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { profileUserId } = useParams();
 
+  const [profileUser, setProfileUser] = useState(user || null);
   const [posts, setPosts] = useState([]);
   const [preview, setPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  /* ================= LOAD POSTS ================= */
-  const loadPosts = useCallback(async () => {
-    if (!user?._id || !user?.token) return;
+  const isOwnProfile = !profileUserId || profileUserId === user?._id;
+
+  /* ================= LOAD PROFILE AND POSTS ================= */
+  const loadProfile = useCallback(async () => {
+    if (!user?.token) return;
 
     try {
       setIsLoading(true);
-      const { data } = await API.get(`/users/${user._id}/posts`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      setPosts(data?.posts || []);
+      const targetUserId = profileUserId || user._id;
+
+      const [{ data: userData }, { data: postsData }] = await Promise.all([
+        API.get(`/users/${targetUserId}`),
+        API.get(`/users/${targetUserId}/posts`),
+      ]);
+
+      setProfileUser(userData?.user || null);
+      setPosts(postsData?.posts || []);
     } catch (err) {
-      console.error("Failed to load posts:", err);
-      toast.error("Failed to load posts");
+      console.error("Failed to load profile:", err);
+      toast.error("Unable to load profile");
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [profileUserId, user]);
 
   /* ================= UPLOAD AVATAR ================= */
   const uploadAvatar = async (blob, previewURL) => {
-    if (!user?._id || !user?.token) return;
+    if (!isOwnProfile || !user?._id || !user?.token) return;
 
     setPreview(previewURL);
 
@@ -145,8 +165,11 @@ export default function Profile() {
       });
 
       if (data?.avatar) {
-        // Update Redux & persist to localStorage
         dispatch(setUser({ avatar: data.avatar }));
+        setProfileUser((prev) => ({
+          ...prev,
+          avatar: data.avatar,
+        }));
         toast.success("Avatar updated successfully!");
       }
     } catch (err) {
@@ -159,29 +182,54 @@ export default function Profile() {
   };
 
   useEffect(() => {
-    loadPosts();
-  }, [loadPosts]);
+    loadProfile();
+  }, [loadProfile]);
 
   if (!user)
     return (
       <div className="text-center mt-10 text-muted">
-        Please log in to view your profile.
+        Please log in to view profiles.
+      </div>
+    );
+
+  if (isLoading)
+    return (
+      <div className="text-center mt-10 text-muted">
+        Loading profile...
+      </div>
+    );
+
+  if (!profileUser)
+    return (
+      <div className="text-center mt-10 text-muted">
+        User not found.
       </div>
     );
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold text-center my-6">
-        {user.name}&apos;s Profile
+        {profileUser.name}&apos;s Profile
       </h1>
 
       <ProfileHeader
-        image={preview || user.avatar}
+        image={preview || profileUser.avatar}
         isUploading={isUploading}
         onUpload={uploadAvatar}
+        editable={isOwnProfile}
       />
 
-      <ProfilePosts posts={posts} isLoading={isLoading} user={user} />
+      <div className="mb-6 text-center text-sm text-gray-300">
+        Status: {profileUser.status || "offline"}
+        {profileUser.lastActive && (
+          <span>
+            {" • Last active "}
+            {new Date(profileUser.lastActive).toLocaleString()}
+          </span>
+        )}
+      </div>
+
+      <ProfilePosts posts={posts} isLoading={isLoading} user={profileUser} />
     </div>
   );
 }

@@ -294,20 +294,42 @@ function Home() {
 
               <div className="p-4 bg-white/30 rounded-xl">
                 {/* USER HEADER */}
-                <div className="flex gap-3 items-center mb-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white overflow-hidden">
-                    {postUser?.avatar ? (
-                      <img
-                        src={postUser.avatar}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      getInitials(postUser?.name || "U")
-                    )}
-                  </div>
-
-                  <p className="font-semibold">{postUser?.name}</p>
+                <div
+                className="flex gap-3 items-center mb-3 cursor-pointer"
+                onClick={() => {
+                  if (!postUser?._id) return;
+                  navigate(
+                    postUser._id === user?._id
+                      ? "/profile"
+                      : `/profile/${postUser._id}`,
+                  );
+                }}
+              >
+                <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white overflow-hidden">
+                  {postUser?.avatar ? (
+                    <img
+                      src={postUser.avatar}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    getInitials(postUser?.name || "U")
+                  )}
                 </div>
+
+                <div>
+                  <p className="font-semibold">{postUser?.name}</p>
+                  <p className="text-xs text-gray-500 flex items-center gap-2">
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full ${
+                        postUser?.status === "online"
+                          ? "bg-green-500"
+                          : "bg-gray-400"
+                      }`}
+                    />
+                    {postUser?.status === "online" ? "Online" : "Offline"}
+                  </p>
+                </div>
+              </div>
 
                 {/* MEDIA */}
                 <PostGalleryWithUpload
