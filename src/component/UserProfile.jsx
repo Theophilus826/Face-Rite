@@ -185,6 +185,50 @@ export default function Profile() {
     loadProfile();
   }, [loadProfile]);
 
+  useEffect(() => {
+    const base = API.defaults.baseURL?.replace(/\/$/, "");
+    const url = `${base}/chat/notifications/stream`;
+
+    let es;
+
+    try {
+      es = new EventSource(url);
+
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+
+          if (data.type === "status") {
+            const { userId, status } = data;
+
+            const targetId = profileUserId || user?._id;
+            if (String(userId) === String(targetId)) {
+              setProfileUser((prev) => ({
+                ...prev,
+                status,
+                ...(status === "offline" ? { lastActive: Date.now() } : {}),
+              }));
+            }
+          }
+        } catch (err) {
+          console.error("PROFILE SSE PARSE ERROR:", err);
+        }
+      };
+
+      es.onerror = (err) => {
+        console.error("PROFILE SSE ERROR:", err);
+      };
+    } catch (err) {
+      console.error("Failed to open profile notifications SSE:", err);
+    }
+
+    return () => {
+      try {
+        es?.close();
+      } catch {}
+    };
+  }, [profileUserId, user?._id]);
+
   if (!user)
     return (
       <div className="text-center mt-10 text-muted">

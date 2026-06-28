@@ -224,15 +224,29 @@ export default function ChatPage() {
         id="chat-scroll"
         className="flex-1 overflow-y-auto bg-transparent px-2 pb-2"
       >
-        <MessageList messages={messages} userId={user?._id} onDelete={async (messageId) => {
-          try {
-            await API.delete(`/chat/messages/${messageId}`);
+        <MessageList
+          messages={messages}
+          userId={user?._id}
+          onDelete={async (messageId) => {
+            try {
+              // find message locally
+              const msg = messages.find((m) => String(m._id) === String(messageId));
 
-            setMessages((prev) => prev.filter((m) => m._id !== messageId));
-          } catch (err) {
-            console.error("Delete failed:", err.response?.data || err.message);
-          }
-        }} />
+              // if message is pending or temp id (not a 24-char hex ObjectId), just remove locally
+              const isTemp = !messageId || String(messageId).length !== 24;
+              if (msg?.pending || isTemp) {
+                setMessages((prev) => prev.filter((m) => String(m._id) !== String(messageId)));
+                return;
+              }
+
+              await API.delete(`/chat/messages/${messageId}`);
+
+              setMessages((prev) => prev.filter((m) => m._id !== messageId));
+            } catch (err) {
+              console.error("Delete failed:", err.response?.data || err.message);
+            }
+          }}
+        />
 
         {/* typing */}
         {typingUser && (

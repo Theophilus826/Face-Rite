@@ -41,6 +41,65 @@ function ChatContant() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const base = API.defaults.baseURL?.replace(/\/$/, "");
+    const url = `${base}/chat/notifications/stream`;
+
+    let es;
+
+    try {
+      es = new EventSource(url);
+
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+
+          if (data.type === "status") {
+            const { userId, status } = data;
+
+            setContacts((prev) =>
+              prev.map((u) =>
+                u._id === userId
+                  ? {
+                      ...u,
+                      status,
+                      ...(status === "offline" ? { lastActive: Date.now() } : {}),
+                    }
+                  : u,
+              ),
+            );
+
+            setSearchUsers((prev) =>
+              prev.map((u) =>
+                u._id === userId
+                  ? {
+                      ...u,
+                      status,
+                      ...(status === "offline" ? { lastActive: Date.now() } : {}),
+                    }
+                  : u,
+              ),
+            );
+          }
+        } catch (err) {
+          console.error("NOTIF SSE PARSE ERROR:", err);
+        }
+      };
+
+      es.onerror = (err) => {
+        console.error("NOTIF SSE ERROR:", err);
+      };
+    } catch (err) {
+      console.error("Failed to open notifications SSE:", err);
+    }
+
+    return () => {
+      try {
+        es?.close();
+      } catch {}
+    };
+  }, []);
+
   const loadData = async () => {
     try {
       const [contactsRes, groupsRes] = await Promise.all([

@@ -31,7 +31,7 @@ export function useChatSocket({
     /* ================= CONNECTED ================= */
 
     es.onopen = () => {
-      console.log("CHAT SSE CONNECTED");
+      
     };
 
     /* ================= MESSAGE ================= */

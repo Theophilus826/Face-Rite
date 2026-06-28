@@ -69,6 +69,59 @@ function Home() {
     return () => clearInterval(interval);
   }, [user?.token]);
 
+  useEffect(() => {
+    const base = API.defaults.baseURL?.replace(/\/$/, "");
+    const url = `${base}/chat/notifications/stream`;
+
+    let es;
+
+    try {
+      es = new EventSource(url);
+
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+
+          if (data.type === "status") {
+            const { userId, status } = data;
+
+            setPosts((prev) =>
+              prev.map((p) => {
+                const pu = p.user || {};
+                if (String(pu._id) === String(userId)) {
+                  return {
+                    ...p,
+                    user: {
+                      ...pu,
+                      status,
+                      ...(status === "offline" ? { lastActive: Date.now() } : {}),
+                    },
+                  };
+                }
+
+                return p;
+              }),
+            );
+          }
+        } catch (err) {
+          console.error("HOME SSE PARSE ERROR:", err);
+        }
+      };
+
+      es.onerror = (err) => {
+        console.error("HOME SSE ERROR:", err);
+      };
+    } catch (err) {
+      console.error("Failed to open home notifications SSE:", err);
+    }
+
+    return () => {
+      try {
+        es?.close();
+      } catch {}
+    };
+  }, []);
+
   // ================= CREATE POST =================
   const createPost = async () => {
     if (!newPostText.trim() && selectedFiles.length === 0) {
