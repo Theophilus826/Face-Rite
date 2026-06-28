@@ -1,8 +1,45 @@
+import { useEffect, useRef, useState } from "react";
+
 export default function MessageList({
   messages = [],
   userId,
   onDelete,
 }) {
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const pressTimerRef = useRef(null);
+
+  const clearPressTimer = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+
+  const startPress = (messageId) => {
+    if (!onDelete) return;
+
+    clearPressTimer();
+
+    pressTimerRef.current = setTimeout(() => {
+      setSelectedMessageId(messageId);
+      pressTimerRef.current = null;
+    }, 600);
+  };
+
+  useEffect(() => {
+    return () => clearPressTimer();
+  }, []);
+
+  const handleCancelPress = () => {
+    clearPressTimer();
+  };
+
+  const handleDelete = async (messageId) => {
+    if (!onDelete) return;
+    await onDelete(messageId);
+    setSelectedMessageId(null);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
       {messages.map((msg, index) => {
@@ -42,7 +79,20 @@ export default function MessageList({
                 : "justify-start"
             }`}
           >
-            <div className="max-w-xs md:max-w-sm">
+            <div
+              className="max-w-xs md:max-w-sm"
+              onPointerDown={() => startPress(msg._id)}
+              onPointerUp={handleCancelPress}
+              onPointerLeave={handleCancelPress}
+              onTouchStart={() => startPress(msg._id)}
+              onTouchEnd={handleCancelPress}
+              onContextMenu={(e) => {
+                if (onDelete) {
+                  e.preventDefault();
+                  setSelectedMessageId(msg._id);
+                }
+              }}
+            >
 
               {/* NAME */}
 
@@ -59,13 +109,17 @@ export default function MessageList({
                   mine
                     ? "bg-blue-500/80 border-blue-400/20 text-white"
                     : "bg-white/10 border-white/10 text-white"
+                } ${
+                  selectedMessageId === msg._id
+                    ? "ring-2 ring-red-400"
+                    : ""
                 }`}
               >
 
                 {/* delete control for own text messages */}
-                {mine && onDelete && type === "text" && (
+                {selectedMessageId === msg._id && onDelete && type === "text" && (
                   <button
-                    onClick={() => onDelete(msg._id)}
+                    onClick={() => handleDelete(msg._id)}
                     className="absolute -right-2 -top-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full shadow-lg"
                   >
                     Delete
