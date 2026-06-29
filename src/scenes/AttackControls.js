@@ -28,11 +28,13 @@ export function setupAttackControls(scene, player, enemies, camera) {
   scene.__attackControlsCreated = true;
 
   const isMobile = window.innerWidth < 768;
-  const mobileScale = isMobile ? Math.min(window.innerWidth, window.innerHeight) / 390 : 1;
+  const mobileScale = isMobile
+    ? Math.min(window.innerWidth, window.innerHeight) / 390
+    : 1;
 
   // ================= ATTACK BUTTON CONTAINER =================
   let container;
-  
+
   if (isMobile) {
     // Use Container for mobile to allow absolute positioning
     container = new Container();
@@ -51,7 +53,9 @@ export function setupAttackControls(scene, player, enemies, camera) {
     ? Control.HORIZONTAL_ALIGNMENT_RIGHT
     : Control.HORIZONTAL_ALIGNMENT_CENTER;
 
-  container.verticalAlignment = isMobile ? Control.VERTICAL_ALIGNMENT_CENTER : Control.VERTICAL_ALIGNMENT_BOTTOM;
+  container.verticalAlignment = isMobile
+    ? Control.VERTICAL_ALIGNMENT_CENTER
+    : Control.VERTICAL_ALIGNMENT_BOTTOM;
 
   container.paddingBottom = isMobile ? "20px" : "10px";
   container.paddingRight = isMobile ? "20px" : "0px";
@@ -160,9 +164,7 @@ export function setupAttackControls(scene, player, enemies, camera) {
     }
 
     // Find target enemy
-    const targetEnemy = enemies.find(
-      (enemy) => enemy.currentHealth > 0,
-    );
+    const targetEnemy = enemies.find((enemy) => enemy.currentHealth > 0);
 
     let moveTarget;
     if (targetEnemy) {
@@ -173,16 +175,16 @@ export function setupAttackControls(scene, player, enemies, camera) {
 
       // Apply player input to modulate movement towards target
       const inputDirection = new Vector3(directionX, 0, directionZ).normalize();
-      
+
       // Blend target direction with input (70% target, 30% input for control)
       const blendedDirection = directionToTarget
         .scale(0.7)
         .add(inputDirection.scale(0.3))
         .normalize();
 
-      moveTarget = player.characterBox.position.clone().add(
-        blendedDirection.scale(1.2),
-      );
+      moveTarget = player.characterBox.position
+        .clone()
+        .add(blendedDirection.scale(1.2));
     } else {
       // Fallback: move in direction if no target
       const direction = new Vector3(directionX, 0, directionZ);
@@ -190,9 +192,9 @@ export function setupAttackControls(scene, player, enemies, camera) {
         direction.normalize();
       }
 
-      moveTarget = player.characterBox.position.clone().add(
-        direction.scale(1.2),
-      );
+      moveTarget = player.characterBox.position
+        .clone()
+        .add(direction.scale(1.2));
     }
 
     player.controller.moveTo(moveTarget, true);
@@ -200,36 +202,55 @@ export function setupAttackControls(scene, player, enemies, camera) {
   };
 
   if (isMobile && camera) {
-    const arrowContainer = new StackPanel();
-    arrowContainer.width = "180px";
-    arrowContainer.height = "180px";
+    const isPortrait = window.innerHeight > window.innerWidth;
+
+    // Responsive D-Pad size
+    const dpadSize = Math.min(
+      window.innerWidth * (isPortrait ? 0.36 : 0.24),
+      170,
+    );
+
+    const buttonSize = dpadSize * 0.38;
+    const offset = dpadSize * 0.32;
+
+    // ================= D-PAD CONTAINER =================
+    const arrowContainer = new Container();
+
+    arrowContainer.width = `${dpadSize}px`;
+    arrowContainer.height = `${dpadSize}px`;
+
     arrowContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    arrowContainer.paddingLeft = "15px";
-    arrowContainer.paddingTop = "100px";
+    arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+
+    // Keep away from screen edges
+    arrowContainer.left = "20px";
+    arrowContainer.top = isPortrait ? "-35px" : "-20px";
+
     arrowContainer.zIndex = 1000;
-    arrowContainer.alpha = 1;
+    arrowContainer.isPointerBlocker = true;
+
     ui.addControl(arrowContainer);
 
+    // ================= CREATE BUTTON =================
     const createArrow = (text) => {
       const btn = new Rectangle();
-      btn.width = `${Math.max(70, Math.min(85, Math.round(72 * mobileScale)))}px`;
-      btn.height = `${Math.max(70, Math.min(85, Math.round(72 * mobileScale)))}px`;
 
-      btn.background = "rgba(0,0,0,0.6)";
-      btn.color = "rgba(100,200,255,0.8)";
+      btn.width = `${buttonSize}px`;
+      btn.height = `${buttonSize}px`;
+
+      btn.background = "rgba(0,0,0,0.75)";
+      btn.color = "#64C8FF";
       btn.thickness = 2;
-      btn.cornerRadius = 12;
+      btn.cornerRadius = 14;
+      btn.isPointerBlocker = true;
 
       const label = new TextBlock();
       label.text = text;
-      label.color = "rgba(100,200,255,1)";
-      label.fontSize = Math.max(22, Math.min(28, Math.round(26 * mobileScale)));
-
-      label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
-      label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+      label.color = "white";
+      label.fontSize = buttonSize * 0.45;
 
       btn.addControl(label);
+
       return btn;
     };
 
@@ -238,45 +259,43 @@ export function setupAttackControls(scene, player, enemies, camera) {
     const left = createArrow("←");
     const right = createArrow("→");
 
-    const rowContainer = new StackPanel();
-    rowContainer.isVertical = true;
-    rowContainer.height = "170px";
-    rowContainer.width = "170px";
-    rowContainer.spacing = 4;
+    // ================= POSITION BUTTONS =================
+    up.top = `${-offset}px`;
 
-    const topRow = new StackPanel();
-    topRow.isVertical = false;
-    topRow.height = "50px";
-    up.marginLeft = "45px";
-    topRow.addControl(up);
+    down.top = `${offset}px`;
 
-    const middleRow = new StackPanel();
-    middleRow.isVertical = false;
-    middleRow.height = "50px";
-    middleRow.spacing = 4;
-    left.marginRight = "2px";
-    middleRow.addControl(left);
-    middleRow.addControl(right);
+    left.left = `${-offset}px`;
 
-    const bottomRow = new StackPanel();
-    bottomRow.isVertical = false;
-    bottomRow.height = "50px";
-    down.marginLeft = "45px";
-    bottomRow.addControl(down);
+    right.left = `${offset}px`;
 
-    rowContainer.addControl(topRow);
-    rowContainer.addControl(middleRow);
-    rowContainer.addControl(bottomRow);
-    arrowContainer.addControl(rowContainer);
+    arrowContainer.addControl(up);
+    arrowContainer.addControl(down);
+    arrowContainer.addControl(left);
+    arrowContainer.addControl(right);
 
-    up.onPointerDownObservable.add(() => (moveState.up = true));
-    up.onPointerUpObservable.add(() => (moveState.up = false));
-    down.onPointerDownObservable.add(() => (moveState.down = true));
-    down.onPointerUpObservable.add(() => (moveState.down = false));
-    left.onPointerDownObservable.add(() => (moveState.left = true));
-    left.onPointerUpObservable.add(() => (moveState.left = false));
-    right.onPointerDownObservable.add(() => (moveState.right = true));
-    right.onPointerUpObservable.add(() => (moveState.right = false));
+    // ================= TOUCH EVENTS =================
+
+    const bindMove = (button, direction) => {
+      button.onPointerDownObservable.add(() => {
+        moveState[direction] = true;
+        updatePlayerMovement();
+      });
+
+      button.onPointerUpObservable.add(() => {
+        moveState[direction] = false;
+        updatePlayerMovement();
+      });
+
+      button.onPointerOutObservable.add(() => {
+        moveState[direction] = false;
+        updatePlayerMovement();
+      });
+    };
+
+    bindMove(up, "up");
+    bindMove(down, "down");
+    bindMove(left, "left");
+    bindMove(right, "right");
   }
 
   scene.onBeforeRenderObservable.add(updatePlayerMovement);
@@ -367,8 +386,12 @@ export function setupAttackControls(scene, player, enemies, camera) {
 function createButton(text, color, isMobile) {
   const btn = new Rectangle();
 
-  btn.width = isMobile ? `${Math.max(80, Math.min(100, Math.round(window.innerWidth * 0.2)))}px` : "100px";
-  btn.height = isMobile ? `${Math.max(70, Math.min(85, Math.round(window.innerHeight * 0.09)))}px` : "55px";
+  btn.width = isMobile
+    ? `${Math.max(80, Math.min(100, Math.round(window.innerWidth * 0.2)))}px`
+    : "100px";
+  btn.height = isMobile
+    ? `${Math.max(70, Math.min(85, Math.round(window.innerHeight * 0.09)))}px`
+    : "55px";
   btn.cornerRadius = 10;
   btn.color = color;
   btn.thickness = 2;
@@ -383,7 +406,9 @@ function createButton(text, color, isMobile) {
   const label = new TextBlock();
   label.text = text;
   label.color = color;
-  label.fontSize = isMobile ? Math.max(18, Math.min(22, Math.round(window.innerWidth * 0.045))) : 18;
+  label.fontSize = isMobile
+    ? Math.max(18, Math.min(22, Math.round(window.innerWidth * 0.045)))
+    : 18;
 
   label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
   label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
