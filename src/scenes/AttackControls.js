@@ -202,103 +202,103 @@ export function setupAttackControls(scene, player, enemies, camera) {
   };
 
   if (isMobile && camera) {
-    const isPortrait = window.innerHeight > window.innerWidth;
+  const isPortrait = window.innerHeight > window.innerWidth;
 
-    // Responsive D-Pad size
-    const dpadSize = Math.min(
-      window.innerWidth * (isPortrait ? 0.36 : 0.24),
-      170,
-    );
+  // Responsive D-Pad size
+  const dpadSize = Math.min(
+    window.innerWidth * (isPortrait ? 0.36 : 0.24),
+    170
+  );
 
-    const buttonSize = dpadSize * 0.38;
-    const offset = dpadSize * 0.32;
+  const buttonSize = dpadSize * 0.38;
+  const offset = dpadSize * 0.32;
 
-    // ================= D-PAD CONTAINER =================
-    const arrowContainer = new Container();
+  // ================= D-PAD CONTAINER =================
+  const arrowContainer = new Container();
 
-    arrowContainer.width = `${dpadSize}px`;
-    arrowContainer.height = `${dpadSize}px`;
+  arrowContainer.width = `${dpadSize}px`;
+  arrowContainer.height = `${dpadSize}px`;
 
-    arrowContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+  arrowContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+  arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
 
-    // Responsive margins
-    const bottomOffset = Math.max(20, window.innerHeight * 0.06);
-    const leftOffset = Math.max(15, window.innerWidth * 0.03);
+  // Responsive margins
+  const bottomOffset = Math.max(20, window.innerHeight * 0.06);
+  const leftOffset = Math.max(15, window.innerWidth * 0.03);
 
-    arrowContainer.left = `${leftOffset}px`;
-    arrowContainer.top = `-${bottomOffset}px`;
+  arrowContainer.left = `${leftOffset}px`;
+  arrowContainer.top = `-${bottomOffset}px`;
 
-    arrowContainer.zIndex = 1000;
-    arrowContainer.isPointerBlocker = true;
+  arrowContainer.zIndex = 1000;
+  arrowContainer.isPointerBlocker = true;
 
-    ui.addControl(arrowContainer);
+  ui.addControl(arrowContainer);
 
-    // ================= CREATE BUTTON =================
-    const createArrow = (text) => {
-      const btn = new Rectangle();
+  // ================= CREATE BUTTON =================
+  const createArrow = (text) => {
+    const btn = new Rectangle();
 
-      btn.width = `${buttonSize}px`;
-      btn.height = `${buttonSize}px`;
+    btn.width = `${buttonSize}px`;
+    btn.height = `${buttonSize}px`;
 
-      btn.background = "rgba(0,0,0,0.75)";
-      btn.color = "#64C8FF";
-      btn.thickness = 2;
-      btn.cornerRadius = 14;
-      btn.isPointerBlocker = true;
+    btn.background = "rgba(0,0,0,0.75)";
+    btn.color = "#64C8FF";
+    btn.thickness = 2;
+    btn.cornerRadius = 14;
+    btn.isPointerBlocker = true;
 
-      const label = new TextBlock();
-      label.text = text;
-      label.color = "white";
-      label.fontSize = buttonSize * 0.45;
+    const label = new TextBlock();
+    label.text = text;
+    label.color = "white";
+    label.fontSize = buttonSize * 0.45;
 
-      label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
-      label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+    label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
 
-      btn.addControl(label);
+    btn.addControl(label);
 
-      return btn;
+    return btn;
+  };
+
+  const up = createArrow("↑");
+  const down = createArrow("↓");
+  const left = createArrow("←");
+  const right = createArrow("→");
+
+  // ================= POSITION BUTTONS =================
+  up.top = `${-offset}px`;
+  down.top = `${offset}px`;
+
+  left.left = `${-offset}px`;
+  right.left = `${offset}px`;
+
+  arrowContainer.addControl(up);
+  arrowContainer.addControl(down);
+  arrowContainer.addControl(left);
+  arrowContainer.addControl(right);
+
+  // ================= TOUCH EVENTS =================
+  const bindMove = (button, direction) => {
+    const start = () => {
+      moveState[direction] = true;
+      updatePlayerMovement();
     };
 
-    const up = createArrow("↑");
-    const down = createArrow("↓");
-    const left = createArrow("←");
-    const right = createArrow("→");
-
-    // ================= POSITION BUTTONS =================
-    up.top = `${-offset}px`;
-    down.top = `${offset}px`;
-
-    left.left = `${-offset}px`;
-    right.left = `${offset}px`;
-
-    arrowContainer.addControl(up);
-    arrowContainer.addControl(down);
-    arrowContainer.addControl(left);
-    arrowContainer.addControl(right);
-
-    // ================= TOUCH EVENTS =================
-    const bindMove = (button, direction) => {
-      const start = () => {
-        moveState[direction] = true;
-        updatePlayerMovement();
-      };
-
-      const stop = () => {
-        moveState[direction] = false;
-        updatePlayerMovement();
-      };
-
-      button.onPointerDownObservable.add(start);
-      button.onPointerUpObservable.add(stop);
-      button.onPointerOutObservable.add(stop);
+    const stop = () => {
+      moveState[direction] = false;
+      updatePlayerMovement();
     };
 
-    bindMove(up, "up");
-    bindMove(down, "down");
-    bindMove(left, "left");
-    bindMove(right, "right");
-  }
+    button.onPointerDownObservable.add(start);
+    button.onPointerUpObservable.add(stop);
+    button.onPointerOutObservable.add(stop);
+  };
+
+  bindMove(up, "up");
+  bindMove(down, "down");
+  bindMove(left, "left");
+  bindMove(right, "right");
+}
 
   scene.onBeforeRenderObservable.add(updatePlayerMovement);
 
