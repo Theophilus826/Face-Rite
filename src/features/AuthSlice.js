@@ -1,9 +1,6 @@
 // src/auth/AuthSlice.js
 
-import {
-  createSlice,
-  createAsyncThunk,
-} from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 import authService from "./AuthService";
 
@@ -12,14 +9,9 @@ import API from "../features/Api";
 /* ================= INITIAL STATE ================= */
 
 const initialState = {
-  user:
-    JSON.parse(
-      localStorage.getItem("user")
-    ) || null,
+  user: JSON.parse(localStorage.getItem("user")) || null,
 
-  token:
-    localStorage.getItem("token") ||
-    null,
+  token: localStorage.getItem("token") || null,
 
   contacts: [],
 
@@ -30,8 +22,6 @@ const initialState = {
   isLoading: false,
 
   message: "",
-  verificationRequired: false,
-  verificationUserId: null,
 };
 
 /* ================= HELPERS ================= */
@@ -43,196 +33,125 @@ const setPending = (state) => {
   state.message = "";
 };
 
-const setRejected = (
-  state,
-  action
-) => {
+const setRejected = (state, action) => {
   state.isLoading = false;
   state.isError = true;
-  state.message =
-    action.payload ||
-    "Something went wrong";
+  state.message = action.payload || "Something went wrong";
 };
 
 /* ================= AUTH ================= */
 
-export const registerUser =
-  createAsyncThunk(
-    "auth/register",
-    async (userData, thunkAPI) => {
-      try {
-        return await authService.register(
-          userData
-        );
-      } catch (error) {
-        return thunkAPI.rejectWithValue(
-          error.response?.data
-            ?.message ||
-            error.message
-        );
-      }
+export const registerUser = createAsyncThunk(
+  "auth/register",
+  async (userData, thunkAPI) => {
+    try {
+      return await authService.register(userData);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
     }
-  );
+  },
+);
 
-export const loginUser =
-  createAsyncThunk(
-    "auth/login",
-    async (userData, thunkAPI) => {
-      try {
-        return await authService.login(
-          userData
-        );
-      } catch (error) {
-        return thunkAPI.rejectWithValue(
-          error.response?.data
-            ?.message ||
-            error.message
-        );
-      }
+export const loginUser = createAsyncThunk(
+  "auth/login",
+  async (userData, thunkAPI) => {
+    try {
+      return await authService.login(userData);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
     }
-  );
+  },
+);
 
-export const forgotPassword =
-  createAsyncThunk(
-    "auth/forgotPassword",
-    async (identifier, thunkAPI) => {
-      try {
-        return await authService.forgotPassword(
-          identifier
-        );
-      } catch (error) {
-        return thunkAPI.rejectWithValue(
-          error.response?.data
-            ?.message ||
-            error.message
-        );
-      }
+export const forgotPassword = createAsyncThunk(
+  "auth/forgotPassword",
+  async (identifier, thunkAPI) => {
+    try {
+      return await authService.forgotPassword(identifier);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
     }
-  );
+  },
+);
 
-export const resetPassword =
-  createAsyncThunk(
-    "auth/resetPassword",
-    async (
-      { token, password },
-      thunkAPI
-    ) => {
-      try {
-        return await authService.resetPassword(
-          token,
-          password
-        );
-      } catch (error) {
-        return thunkAPI.rejectWithValue(
-          error.response?.data
-            ?.message ||
-            error.message
-        );
-      }
+export const resetPassword = createAsyncThunk(
+  "auth/resetPassword",
+  async ({ token, password }, thunkAPI) => {
+    try {
+      return await authService.resetPassword(token, password);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
     }
-  );
-
-export const verifyPhone =
-  createAsyncThunk(
-    "auth/verifyPhone",
-    async (
-      { userId, code },
-      thunkAPI
-    ) => {
-      try {
-        return await authService.verifyPhone({
-          userId,
-          code,
-        });
-      } catch (error) {
-        return thunkAPI.rejectWithValue(
-          error.response?.data
-            ?.message ||
-            error.message
-        );
-      }
-    }
-  );
+  },
+);
 
 /* ================= CONTACTS ================= */
 
-export const fetchContacts =
-  createAsyncThunk(
-    "auth/fetchContacts",
-    async (_, thunkAPI) => {
-      try {
-        return await authService.getContacts();
-      } catch (error) {
-        return thunkAPI.rejectWithValue(
-          error.response?.data
-            ?.message ||
-            error.message
-        );
-      }
+export const fetchContacts = createAsyncThunk(
+  "auth/fetchContacts",
+  async (_, thunkAPI) => {
+    try {
+      return await authService.getContacts();
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
     }
-  );
+  },
+);
 
-export const addContact =
-  createAsyncThunk(
-    "auth/addContact",
-    async (userId, thunkAPI) => {
-      try {
-        return await authService.addContact(
-          userId
-        );
-      } catch (error) {
-        return thunkAPI.rejectWithValue(
-          error.response?.data
-            ?.message ||
-            error.message
-        );
-      }
+export const addContact = createAsyncThunk(
+  "auth/addContact",
+  async (userId, thunkAPI) => {
+    try {
+      return await authService.addContact(userId);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
     }
-  );
+  },
+);
 
 /* ================= SEARCH ================= */
 
-export const searchUsers =
-  createAsyncThunk(
-    "auth/searchUsers",
-    async (query, thunkAPI) => {
-      try {
-        return await authService.searchUsers(
-          query
-        );
-      } catch (error) {
-        return thunkAPI.rejectWithValue(
-          error.response?.data
-            ?.message ||
-            error.message
-        );
-      }
+export const searchUsers = createAsyncThunk(
+  "auth/searchUsers",
+  async (query, thunkAPI) => {
+    try {
+      return await authService.searchUsers(query);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
     }
-  );
+  },
+);
 
 /* ================= MOOD ================= */
 
-export const sendMood =
-  createAsyncThunk(
-    "auth/sendMood",
-    async (mood, thunkAPI) => {
-      try {
-        const { data } =
-          await API.post(
-            "/users/mood",
-            { mood }
-          );
+export const sendMood = createAsyncThunk(
+  "auth/sendMood",
+  async (mood, thunkAPI) => {
+    try {
+      const { data } = await API.post("/users/mood", { mood });
 
-        return data.mood || mood;
-      } catch (error) {
-        return thunkAPI.rejectWithValue(
-          error.response?.data
-            ?.message ||
-            error.message
-        );
-      }
+      return data.mood || mood;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message,
+      );
     }
-  );
+  },
+);
 
 /* ================= SLICE ================= */
 
@@ -254,16 +173,9 @@ const authSlice = createSlice({
       state.token = null;
       state.contacts = [];
       state.mood = null;
-      state.verificationRequired = false;
-      state.verificationUserId = null;
 
-      localStorage.removeItem(
-        "token"
-      );
-
-      localStorage.removeItem(
-        "user"
-      );
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
     },
 
     setUser: (state, action) => {
@@ -272,10 +184,7 @@ const authSlice = createSlice({
         ...action.payload,
       };
 
-      localStorage.setItem(
-        "user",
-        JSON.stringify(state.user)
-      );
+      localStorage.setItem("user", JSON.stringify(state.user));
     },
   },
 
@@ -283,204 +192,108 @@ const authSlice = createSlice({
     builder
 
       /* REGISTER */
-      .addCase(
-        registerUser.pending,
-        setPending
-      )
+      .addCase(registerUser.pending, setPending)
 
-      .addCase(
-        registerUser.fulfilled,
-        (state, action) => {
-          state.isLoading = false;
-          state.isSuccess = true;
+      .addCase(registerUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
 
-          state.user = action.payload;
-          state.token =
-            action.payload.token || null;
-          state.verificationRequired =
-            !action.payload.token &&
-            Boolean(action.payload.phone);
-          state.verificationUserId =
-            state.verificationRequired
-              ? action.payload._id
-              : null;
-        }
-      )
+        state.user = action.payload;
+        state.token = action.payload.token;
 
-      .addCase(
-        registerUser.rejected,
-        setRejected
-      )
+        localStorage.setItem("user", JSON.stringify(action.payload));
+
+        localStorage.setItem("token", action.payload.token);
+      })
+
+      .addCase(registerUser.rejected, setRejected)
 
       /* LOGIN */
-      .addCase(
-        loginUser.pending,
-        setPending
-      )
+      .addCase(loginUser.pending, setPending)
 
-      .addCase(
-        loginUser.fulfilled,
-        (state, action) => {
-          state.isLoading = false;
+      .addCase(loginUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
 
-          state.isSuccess = true;
+        state.user = action.payload;
+        state.token = action.payload.token;
 
-          state.user = action.payload;
+        localStorage.setItem("user", JSON.stringify(action.payload));
 
-          state.token =
-            action.payload.token;
-        }
-      )
+        localStorage.setItem("token", action.payload.token);
+      })
 
-      .addCase(
-        loginUser.rejected,
-        setRejected
-      )
+      .addCase(loginUser.rejected, setRejected)
 
       /* FORGOT PASSWORD */
-      .addCase(
-        forgotPassword.pending,
-        setPending
-      )
+      .addCase(forgotPassword.pending, setPending)
 
-      .addCase(
-        forgotPassword.fulfilled,
-        (state, action) => {
-          state.isLoading = false;
+      .addCase(forgotPassword.fulfilled, (state, action) => {
+        state.isLoading = false;
 
-          state.isSuccess = true;
+        state.isSuccess = true;
 
-          state.message =
-            action.payload?.message ||
-            "Reset instructions sent";
-        }
-      )
+        state.message = action.payload?.message || "Reset instructions sent";
+      })
 
-      .addCase(
-        forgotPassword.rejected,
-        setRejected
-      )
+      .addCase(forgotPassword.rejected, setRejected)
 
       /* VERIFY PHONE */
-      .addCase(
-        verifyPhone.pending,
-        setPending
-      )
-      .addCase(
-        verifyPhone.fulfilled,
-        (state, action) => {
-          state.isLoading = false;
-          state.isSuccess = true;
-          state.user = action.payload;
-          state.token = action.payload.token;
-          state.verificationRequired = false;
-          state.verificationUserId = null;
-        }
-      )
-      .addCase(
-        verifyPhone.rejected,
-        setRejected
-      )
 
       /* RESET PASSWORD */
-      .addCase(
-        resetPassword.pending,
-        setPending
-      )
+      .addCase(resetPassword.pending, setPending)
 
-      .addCase(
-        resetPassword.fulfilled,
-        (state, action) => {
-          state.isLoading = false;
+      .addCase(resetPassword.fulfilled, (state, action) => {
+        state.isLoading = false;
 
-          state.isSuccess = true;
+        state.isSuccess = true;
 
-          state.message =
-            action.payload?.message ||
-            "Password reset successful";
-        }
-      )
+        state.message = action.payload?.message || "Password reset successful";
+      })
 
-      .addCase(
-        resetPassword.rejected,
-        setRejected
-      )
+      .addCase(resetPassword.rejected, setRejected)
 
       /* CONTACTS */
-      .addCase(
-        fetchContacts.pending,
-        setPending
-      )
+      .addCase(fetchContacts.pending, setPending)
 
-      .addCase(
-        fetchContacts.fulfilled,
-        (state, action) => {
-          state.isLoading = false;
+      .addCase(fetchContacts.fulfilled, (state, action) => {
+        state.isLoading = false;
 
-          state.isSuccess = true;
+        state.isSuccess = true;
 
-          state.contacts =
-            action.payload.users || [];
-        }
-      )
+        state.contacts = action.payload.users || [];
+      })
 
-      .addCase(
-        fetchContacts.rejected,
-        setRejected
-      )
+      .addCase(fetchContacts.rejected, setRejected)
 
       /* ADD CONTACT */
-      .addCase(
-        addContact.pending,
-        setPending
-      )
+      .addCase(addContact.pending, setPending)
 
-      .addCase(
-        addContact.fulfilled,
-        (state, action) => {
-          state.isLoading = false;
+      .addCase(addContact.fulfilled, (state, action) => {
+        state.isLoading = false;
 
-          state.isSuccess = true;
+        state.isSuccess = true;
 
-          state.message =
-            action.payload.message;
-        }
-      )
+        state.message = action.payload.message;
+      })
 
-      .addCase(
-        addContact.rejected,
-        setRejected
-      )
+      .addCase(addContact.rejected, setRejected)
 
       /* SEND MOOD */
-      .addCase(
-        sendMood.pending,
-        setPending
-      )
+      .addCase(sendMood.pending, setPending)
 
-      .addCase(
-        sendMood.fulfilled,
-        (state, action) => {
-          state.isLoading = false;
+      .addCase(sendMood.fulfilled, (state, action) => {
+        state.isLoading = false;
 
-          state.isSuccess = true;
+        state.isSuccess = true;
 
-          state.mood =
-            action.payload;
-        }
-      )
+        state.mood = action.payload;
+      })
 
-      .addCase(
-        sendMood.rejected,
-        setRejected
-      );
+      .addCase(sendMood.rejected, setRejected);
   },
 });
 
-export const {
-  reset,
-  logout,
-  setUser,
-} = authSlice.actions;
+export const { reset, logout, setUser } = authSlice.actions;
 
 export default authSlice.reducer;
