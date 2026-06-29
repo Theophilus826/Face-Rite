@@ -42,63 +42,72 @@ function ChatContant() {
   }, []);
 
   useEffect(() => {
+    if (!user?.token) return;
+
     const base = API.defaults.baseURL?.replace(/\/$/, "");
-    const url = `${base}/chat/notifications/stream`;
+    const url = `${base}/notifications/stream?token=${encodeURIComponent(
+      user.token,
+    )}`;
 
-    let es;
+    const es = new EventSource(url);
 
-    try {
-      es = new EventSource(url);
+    es.onopen = () => {
+      console.log("✅ Notifications SSE connected");
+    };
 
-      es.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
 
-          if (data.type === "status") {
-            const { userId, status } = data;
+        // Ignore keep-alive events
+        if (data.type === "ping" || data.type === "connected") return;
 
-            setContacts((prev) =>
-              prev.map((u) =>
-                u._id === userId
-                  ? {
-                      ...u,
-                      status,
-                      ...(status === "offline" ? { lastActive: Date.now() } : {}),
-                    }
-                  : u,
-              ),
-            );
+        if (data.type === "status") {
+          const { userId, status } = data;
 
-            setSearchUsers((prev) =>
-              prev.map((u) =>
-                u._id === userId
-                  ? {
-                      ...u,
-                      status,
-                      ...(status === "offline" ? { lastActive: Date.now() } : {}),
-                    }
-                  : u,
-              ),
-            );
-          }
-        } catch (err) {
-          console.error("NOTIF SSE PARSE ERROR:", err);
+          setContacts((prev) =>
+            prev.map((u) =>
+              String(u._id) === String(userId)
+                ? {
+                    ...u,
+                    status,
+                    ...(status === "offline" ? { lastActive: Date.now() } : {}),
+                  }
+                : u,
+            ),
+          );
+
+          setSearchUsers((prev) =>
+            prev.map((u) =>
+              String(u._id) === String(userId)
+                ? {
+                    ...u,
+                    status,
+                    ...(status === "offline" ? { lastActive: Date.now() } : {}),
+                  }
+                : u,
+            ),
+          );
         }
-      };
 
-      es.onerror = (err) => {
-        console.error("NOTIF SSE ERROR:", err);
-      };
-    } catch (err) {
-      console.error("Failed to open notifications SSE:", err);
-    }
+        // Optional: real notifications
+        if (data.type === "notification") {
+          console.log("🔔 Notification:", data.notification);
+        }
+      } catch (err) {
+        console.error("NOTIFICATION SSE PARSE ERROR:", err);
+      }
+    };
+
+    es.onerror = (err) => {
+      console.error("❌ Notifications SSE disconnected", err);
+      es.close();
+    };
 
     return () => {
-      try {
-        es?.close();
-      } catch {}
+      es.close();
     };
-  }, []);
+  }, [user?.token]);
 
   const loadData = async () => {
     try {
@@ -336,22 +345,22 @@ function ChatContant() {
                 onClick={() => navigate(`/chat/${u._id}`)}
                 className="flex items-center gap-3 bg-white hover:bg-gray-50 p-3 rounded-2xl cursor-pointer shadow-sm"
               >
-                      <div className="relative">
-                        <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
-                          {u.avatar ? (
-                            <img
-                              src={u.avatar}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            u.name?.charAt(0)
-                          )}
-                        </div>
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
+                    {u.avatar ? (
+                      <img
+                        src={u.avatar}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      u.name?.charAt(0)
+                    )}
+                  </div>
 
-                        {(u.online || u.status === "online") && (
-                          <span className="absolute right-0 bottom-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
-                        )}
-                      </div>
+                  {(u.online || u.status === "online") && (
+                    <span className="absolute right-0 bottom-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+                  )}
+                </div>
 
                 <div>
                   <p className="font-medium text-sm">{u.name}</p>

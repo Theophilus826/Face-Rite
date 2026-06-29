@@ -70,57 +70,68 @@ function Home() {
   }, [user?.token]);
 
   useEffect(() => {
-    const base = API.defaults.baseURL?.replace(/\/$/, "");
-    const url = `${base}/chat/notifications/stream`;
+  if (!user?.token) return;
 
-    let es;
+  const base = API.defaults.baseURL?.replace(/\/$/, "");
 
+  const url = `${base}/notifications/stream?token=${encodeURIComponent(
+    user.token
+  )}`;
+
+  const es = new EventSource(url);
+
+  es.onopen = () => {
+    console.log("✅ Notification stream connected");
+  };
+
+  es.onmessage = (e) => {
     try {
-      es = new EventSource(url);
+      const data = JSON.parse(e.data);
 
-      es.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
+      // Ignore keep-alive pings
+      if (data.type === "ping" || data.type === "connected") return;
 
-          if (data.type === "status") {
-            const { userId, status } = data;
+      if (data.type === "status") {
+        const { userId, status } = data;
 
-            setPosts((prev) =>
-              prev.map((p) => {
-                const pu = p.user || {};
-                if (String(pu._id) === String(userId)) {
-                  return {
-                    ...p,
-                    user: {
-                      ...pu,
-                      status,
-                      ...(status === "offline" ? { lastActive: Date.now() } : {}),
-                    },
-                  };
-                }
+        setPosts((prev) =>
+          prev.map((p) => {
+            const pu = p.user || {};
 
-                return p;
-              }),
-            );
-          }
-        } catch (err) {
-          console.error("HOME SSE PARSE ERROR:", err);
-        }
-      };
+            if (String(pu._id) !== String(userId)) return p;
 
-      es.onerror = (err) => {
-        console.error("HOME SSE ERROR:", err);
-      };
+            return {
+              ...p,
+              user: {
+                ...pu,
+                status,
+                ...(status === "offline"
+                  ? { lastActive: Date.now() }
+                  : {}),
+              },
+            };
+          })
+        );
+      }
+
+      // Optional: notification events
+      if (data.type === "notification") {
+        console.log("🔔", data.notification);
+      }
     } catch (err) {
-      console.error("Failed to open home notifications SSE:", err);
+      console.error("HOME SSE PARSE ERROR:", err);
     }
+  };
 
-    return () => {
-      try {
-        es?.close();
-      } catch {}
-    };
-  }, []);
+  es.onerror = (err) => {
+    console.error("Notification stream disconnected", err);
+    es.close();
+  };
+
+  return () => {
+    es.close();
+  };
+}, [user?.token]);
 
   // ================= CREATE POST =================
   const createPost = async () => {
