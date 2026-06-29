@@ -222,9 +222,12 @@ export function setupAttackControls(scene, player, enemies, camera) {
     arrowContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
     arrowContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
 
-    // Keep away from screen edges
-    arrowContainer.left = "20px";
-    arrowContainer.top = isPortrait ? "-35px" : "-20px";
+    // Responsive margins
+    const bottomOffset = Math.max(20, window.innerHeight * 0.06);
+    const leftOffset = Math.max(15, window.innerWidth * 0.03);
+
+    arrowContainer.left = `${leftOffset}px`;
+    arrowContainer.top = `-${bottomOffset}px`;
 
     arrowContainer.zIndex = 1000;
     arrowContainer.isPointerBlocker = true;
@@ -249,6 +252,9 @@ export function setupAttackControls(scene, player, enemies, camera) {
       label.color = "white";
       label.fontSize = buttonSize * 0.45;
 
+      label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+      label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+
       btn.addControl(label);
 
       return btn;
@@ -261,11 +267,9 @@ export function setupAttackControls(scene, player, enemies, camera) {
 
     // ================= POSITION BUTTONS =================
     up.top = `${-offset}px`;
-
     down.top = `${offset}px`;
 
     left.left = `${-offset}px`;
-
     right.left = `${offset}px`;
 
     arrowContainer.addControl(up);
@@ -274,22 +278,20 @@ export function setupAttackControls(scene, player, enemies, camera) {
     arrowContainer.addControl(right);
 
     // ================= TOUCH EVENTS =================
-
     const bindMove = (button, direction) => {
-      button.onPointerDownObservable.add(() => {
+      const start = () => {
         moveState[direction] = true;
         updatePlayerMovement();
-      });
+      };
 
-      button.onPointerUpObservable.add(() => {
+      const stop = () => {
         moveState[direction] = false;
         updatePlayerMovement();
-      });
+      };
 
-      button.onPointerOutObservable.add(() => {
-        moveState[direction] = false;
-        updatePlayerMovement();
-      });
+      button.onPointerDownObservable.add(start);
+      button.onPointerUpObservable.add(stop);
+      button.onPointerOutObservable.add(stop);
     };
 
     bindMove(up, "up");
