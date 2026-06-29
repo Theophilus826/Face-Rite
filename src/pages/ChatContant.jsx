@@ -8,10 +8,10 @@ import { API } from "../features/Api";
 
 function ChatContant() {
   const navigate = useNavigate();
-  
+
   /* ================= DATA ================= */
-  const user = JSON.parse(localStorage.getItem("user"));
-  
+  const token = localStorage.getItem("token");
+
   const [contacts, setContacts] = useState([]);
 
   const [searchUsers, setSearchUsers] = useState([]);
@@ -43,76 +43,81 @@ function ChatContant() {
   }, []);
 
   useEffect(() => {
-  if (!user?.token) return;
+    // Get the logged-in user from localStorage
+    const storedUser = JSON.parse(localStorage.getItem("user") || "null");
 
-  const base = API.defaults.baseURL?.replace(/\/$/, "");
-  const url = `${base}/notifications/stream?token=${encodeURIComponent(
-    user.token
-  )}`;
+    const token = storedUser?.token;
 
-  const es = new EventSource(url);
-
-  es.onopen = () => {
-    console.log("✅ Notifications SSE connected");
-  };
-
-  es.onmessage = (e) => {
-    try {
-      const data = JSON.parse(e.data);
-
-      // Ignore keep-alive events
-      if (data.type === "ping" || data.type === "connected") return;
-
-      if (data.type === "status") {
-        const { userId, status } = data;
-
-        setContacts((prev) =>
-          prev.map((u) =>
-            String(u._id) === String(userId)
-              ? {
-                  ...u,
-                  status,
-                  ...(status === "offline"
-                    ? { lastActive: Date.now() }
-                    : {}),
-                }
-              : u
-          )
-        );
-
-        setSearchUsers((prev) =>
-          prev.map((u) =>
-            String(u._id) === String(userId)
-              ? {
-                  ...u,
-                  status,
-                  ...(status === "offline"
-                    ? { lastActive: Date.now() }
-                    : {}),
-                }
-              : u
-          )
-        );
-      }
-
-      // Optional: real notifications
-      if (data.type === "notification") {
-        console.log("🔔 Notification:", data.notification);
-      }
-    } catch (err) {
-      console.error("NOTIFICATION SSE PARSE ERROR:", err);
+    if (!token) {
+      console.warn("⚠️ No token found for Notification SSE");
+      return;
     }
-  };
 
-  es.onerror = (err) => {
-    console.error("❌ Notifications SSE disconnected", err);
-    es.close();
-  };
+    const base = API.defaults.baseURL.replace(/\/$/, "");
+    const url = `${base}/notifications/stream?token=${encodeURIComponent(
+      token,
+    )}`;
 
-  return () => {
-    es.close();
-  };
-}, [user?.token]);
+    console.log("Connecting SSE:", url);
+
+    const es = new EventSource(url);
+
+    es.onopen = () => {
+      console.log("✅ Notifications SSE connected");
+    };
+
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+
+        // Ignore keep-alive messages
+        if (data.type === "ping" || data.type === "connected") return;
+
+        if (data.type === "status") {
+          const { userId, status } = data;
+
+          setContacts((prev) =>
+            prev.map((u) =>
+              String(u._id) === String(userId)
+                ? {
+                    ...u,
+                    status,
+                    ...(status === "offline" ? { lastActive: Date.now() } : {}),
+                  }
+                : u,
+            ),
+          );
+
+          setSearchUsers((prev) =>
+            prev.map((u) =>
+              String(u._id) === String(userId)
+                ? {
+                    ...u,
+                    status,
+                    ...(status === "offline" ? { lastActive: Date.now() } : {}),
+                  }
+                : u,
+            ),
+          );
+        }
+
+        if (data.type === "notification") {
+          console.log("🔔 Notification:", data.notification);
+        }
+      } catch (err) {
+        console.error("NOTIFICATION SSE PARSE ERROR:", err);
+      }
+    };
+
+    es.onerror = (err) => {
+      console.error("❌ Notification SSE ERROR:", err);
+      es.close();
+    };
+
+    return () => {
+      es.close();
+    };
+  }, []);
 
   const loadData = async () => {
     try {
@@ -350,22 +355,22 @@ function ChatContant() {
                 onClick={() => navigate(`/chat/${u._id}`)}
                 className="flex items-center gap-3 bg-white hover:bg-gray-50 p-3 rounded-2xl cursor-pointer shadow-sm"
               >
-                      <div className="relative">
-                        <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
-                          {u.avatar ? (
-                            <img
-                              src={u.avatar}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            u.name?.charAt(0)
-                          )}
-                        </div>
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full bg-blue-500 overflow-hidden flex items-center justify-center text-white font-bold">
+                    {u.avatar ? (
+                      <img
+                        src={u.avatar}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      u.name?.charAt(0)
+                    )}
+                  </div>
 
-                        {(u.online || u.status === "online") && (
-                          <span className="absolute right-0 bottom-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
-                        )}
-                      </div>
+                  {(u.online || u.status === "online") && (
+                    <span className="absolute right-0 bottom-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+                  )}
+                </div>
 
                 <div>
                   <p className="font-medium text-sm">{u.name}</p>
