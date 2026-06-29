@@ -8,9 +8,10 @@ import { API } from "../features/Api";
 
 function ChatContant() {
   const navigate = useNavigate();
-
+  
   /* ================= DATA ================= */
-
+  const user = JSON.parse(localStorage.getItem("user"));
+  
   const [contacts, setContacts] = useState([]);
 
   const [searchUsers, setSearchUsers] = useState([]);
@@ -42,63 +43,76 @@ function ChatContant() {
   }, []);
 
   useEffect(() => {
-    const base = API.defaults.baseURL?.replace(/\/$/, "");
-    const url = `${base}/chat/notifications/stream`;
+  if (!user?.token) return;
 
-    let es;
+  const base = API.defaults.baseURL?.replace(/\/$/, "");
+  const url = `${base}/notifications/stream?token=${encodeURIComponent(
+    user.token
+  )}`;
 
+  const es = new EventSource(url);
+
+  es.onopen = () => {
+    console.log("✅ Notifications SSE connected");
+  };
+
+  es.onmessage = (e) => {
     try {
-      es = new EventSource(url);
+      const data = JSON.parse(e.data);
 
-      es.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
+      // Ignore keep-alive events
+      if (data.type === "ping" || data.type === "connected") return;
 
-          if (data.type === "status") {
-            const { userId, status } = data;
+      if (data.type === "status") {
+        const { userId, status } = data;
 
-            setContacts((prev) =>
-              prev.map((u) =>
-                u._id === userId
-                  ? {
-                      ...u,
-                      status,
-                      ...(status === "offline" ? { lastActive: Date.now() } : {}),
-                    }
-                  : u,
-              ),
-            );
+        setContacts((prev) =>
+          prev.map((u) =>
+            String(u._id) === String(userId)
+              ? {
+                  ...u,
+                  status,
+                  ...(status === "offline"
+                    ? { lastActive: Date.now() }
+                    : {}),
+                }
+              : u
+          )
+        );
 
-            setSearchUsers((prev) =>
-              prev.map((u) =>
-                u._id === userId
-                  ? {
-                      ...u,
-                      status,
-                      ...(status === "offline" ? { lastActive: Date.now() } : {}),
-                    }
-                  : u,
-              ),
-            );
-          }
-        } catch (err) {
-          console.error("NOTIF SSE PARSE ERROR:", err);
-        }
-      };
+        setSearchUsers((prev) =>
+          prev.map((u) =>
+            String(u._id) === String(userId)
+              ? {
+                  ...u,
+                  status,
+                  ...(status === "offline"
+                    ? { lastActive: Date.now() }
+                    : {}),
+                }
+              : u
+          )
+        );
+      }
 
-      es.onerror = (err) => {
-        console.error("NOTIF SSE ERROR:", err);
-      };
+      // Optional: real notifications
+      if (data.type === "notification") {
+        console.log("🔔 Notification:", data.notification);
+      }
     } catch (err) {
-      console.error("Failed to open notifications SSE:", err);
+      console.error("NOTIFICATION SSE PARSE ERROR:", err);
     }
+  };
 
-    return () => {
-      try {
-        es?.close();
-      } catch {}
-    };
-  }, []);
+  es.onerror = (err) => {
+    console.error("❌ Notifications SSE disconnected", err);
+    es.close();
+  };
+
+  return () => {
+    es.close();
+  };
+}, [user?.token]);
 
   const loadData = async () => {
     try {
