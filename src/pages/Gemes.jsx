@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-
+import BubbleGames from "../component/BubbleGames";
 // Your image list
 const imageList = [
   { src: "/multA.jpg" },
@@ -37,6 +37,9 @@ const games = imageList.map((img, index) => ({
 export default function Gemes() {
   return (
     <div className="min-h-screen bg-transparent text-white px-4 py-6 backdrop-blur-sm">
+      <div className=""> 
+        <BubbleGames/>
+      </div>
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gradient-to-r from-purple-400 via-pink-500 to-red-500">
         🔥 Hot Games
       </h1>

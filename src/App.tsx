@@ -53,7 +53,9 @@ import AdminLayout from "./component/AdminLayout";
 import AdminRoute from "./component/AdminRoute";
 import CarouselUploader from "./component/CarouselUploader";
 import PostGalleryWithUpload from "./component/PostGallery";
-import Profile from "./component/UserProfile";
+import Profile from "./component/UserProfile"; 
+import AdminBubble from "./pages/AdminBubble";
+
 import {
   initializePushNotifications,
   resetPushNotifications,
@@ -207,7 +209,7 @@ function AppContent() {
           <Route path="/chat" element={<ChatContant />} />
           <Route path="/chat/:chatUserId" element={<ChatPage />} />
           <Route path="/group/:groupId" element={<GroupChatPage />} />
-
+          
           {/* ================= ADMIN ================= */}
 
           <Route path="/admin" element={<AdminRoute />}>
@@ -221,6 +223,7 @@ function AppContent() {
               <Route path="adminuploadapk" element={<AdminUploadApk />} />
 
               <Route path="host-game" element={<HostGame />} />
+              <Route path="bubble" element={<AdminBubble />} />
 
               <Route path="feedbacks" element={<FeedbackPages />} />
             </Route>

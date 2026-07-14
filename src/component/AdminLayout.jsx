@@ -475,6 +475,9 @@ export default function AdminLayout() {
               <NavLink to="/admin/adminuploadapk" className={linkClass}>
                 📜 Admin Upload APK
               </NavLink>
+              <NavLink to="/admin/bubble" className={linkClass}>
+                🫧 Bubble Games
+              </NavLink>
             </nav>
             <button
               onClick={() => dispatch(logout())}
