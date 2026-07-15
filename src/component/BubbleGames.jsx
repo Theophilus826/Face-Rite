@@ -1,110 +1,161 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { io } from "socket.io-client";
 
 export default function BubbleGames() {
   const [games, setGames] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchGames();
-  }, []);
-
-  const fetchGames = async () => {
+  const fetchGames = useCallback(async () => {
     try {
       const { data } = await axios.get("/api/bubble");
 
       if (data.success) {
-        setGames(data.games);
+        setGames(data.games || []);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Fetch games error:", err);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchGames();
+
+    const token = localStorage.getItem("token");
+
+    const socket = io("https://swordgame-5.onrender.com", {
+      auth: { token },
+      transports: ["websocket"],
+      reconnection: true,
+    });
+
+    socket.on("bubble:created", fetchGames);
+    socket.on("bubble:updated", fetchGames);
+    socket.on("bubble:removed", fetchGames);
+
+    return () => {
+      socket.off("bubble:created", fetchGames);
+      socket.off("bubble:updated", fetchGames);
+      socket.off("bubble:removed", fetchGames);
+      socket.disconnect();
+    };
+  }, [fetchGames]);
 
   const joinGame = async (gameId) => {
     try {
-      // Optional: reserve a player slot in the game
-      await axios.post(`/api/bubble/${gameId}/join`);
+      const { data } = await axios.post(`/api/bubble/${gameId}/join`);
 
-      // Open the Babylon game
-      navigate(`/host-game/${gameId}`);
+      if (data.success) {
+        await fetchGames();
+        navigate(`/host-game/${gameId}`);
+      }
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Unable to join game.");
     }
   };
 
+  if (loading) {
+    return (
+      <div className="py-20 text-center text-gray-400">
+        Loading Bubble Games...
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen px-4 py-6 text-white">
-      <h1 className="text-3xl font-bold mb-6">
-        🫧 Bubble Games
-      </h1>
+    <section className="mb-12">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-3xl font-bold">🫧 Live Bubble Games</h2>
+          <p className="text-gray-400 text-sm">
+            Join a hosted multiplayer match
+          </p>
+        </div>
+
+        <span className="bg-blue-600 px-4 py-2 rounded-full text-sm font-semibold">
+          {games.length} Live
+        </span>
+      </div>
 
       {games.length === 0 ? (
-        <div className="text-center mt-20 text-gray-400">
-          No games hosted yet.
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-10 text-center text-gray-400">
+          No live games available.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
           {games.map((game) => (
             <div
               key={game._id}
-              className="bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 hover:border-blue-500 transition"
+              className="group overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 hover:border-blue-500 transition-all duration-300 hover:-translate-y-1"
             >
-              <img
-                src={game.image}
-                alt={game.title}
-                className="w-full h-44 object-cover"
-              />
+              <div className="relative">
+                <img
+                  src={game.image || "/multA.jpg"}
+                  alt={game.title}
+                  className="w-full h-48 object-cover group-hover:scale-105 transition duration-500"
+                />
 
-              <div className="p-4">
-                <h2 className="font-bold text-lg">
+                <span className="absolute top-3 right-3 bg-black/70 backdrop-blur px-3 py-1 rounded-full text-xs">
+                  {game.status}
+                </span>
+              </div>
+
+              <div className="p-5">
+                <h3 className="font-bold text-xl mb-4">
                   {game.title}
-                </h2>
+                </h3>
 
-                <div className="mt-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>💰 Bet</span>
-                    <span className="text-yellow-400">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-zinc-800 rounded-xl p-3">
+                    <div className="text-gray-400">Bet</div>
+                    <div className="text-yellow-400 font-bold">
                       ₦{game.betAmount}
-                    </span>
+                    </div>
                   </div>
 
-                  <div className="flex justify-between">
-                    <span>🏆 Reward</span>
-                    <span className="text-green-400">
+                  <div className="bg-zinc-800 rounded-xl p-3">
+                    <div className="text-gray-400">Reward</div>
+                    <div className="text-green-400 font-bold">
                       ₦{game.rewardAmount}
-                    </span>
+                    </div>
                   </div>
 
-                  <div className="flex justify-between">
-                    <span>👥 Players</span>
-                    <span>
-                      {game.players.length}/{game.maxPlayers}
-                    </span>
+                  <div className="bg-zinc-800 rounded-xl p-3">
+                    <div className="text-gray-400">Players</div>
+                    <div>
+                      {(game.players?.length || 0)}/{game.maxPlayers}
+                    </div>
                   </div>
 
-                  <div className="flex justify-between">
-                    <span>Status</span>
-                    <span className="text-green-500">
-                      {game.status}
-                    </span>
+                  <div className="bg-zinc-800 rounded-xl p-3">
+                    <div className="text-gray-400">Time</div>
+                    <div>{game.timeLimit}s</div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => joinGame(game._id)}
-                  disabled={game.status !== "Waiting"}
-                  className="w-full mt-5 bg-blue-600 rounded-lg py-2 hover:bg-blue-700 disabled:bg-gray-600"
+                  disabled={
+                    game.status !== "Waiting" ||
+                    (game.players?.length || 0) >= game.maxPlayers
+                  }
+                  className="mt-5 w-full rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 py-3 font-semibold hover:opacity-90 disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
-                  Join Game
+                  {(game.players?.length || 0) >= game.maxPlayers
+                    ? "Game Full"
+                    : "Join Match"}
                 </button>
               </div>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

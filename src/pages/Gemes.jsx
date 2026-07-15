@@ -37,7 +37,7 @@ const games = imageList.map((img, index) => ({
 export default function Gemes() {
   return (
     <div className="min-h-screen bg-transparent text-white px-4 py-6 backdrop-blur-sm">
-      <div className=""> 
+      <div className="max-w-7xl mx-auto px-4 py-8"> 
         <BubbleGames/>
       </div>
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gradient-to-r from-purple-400 via-pink-500 to-red-500">
