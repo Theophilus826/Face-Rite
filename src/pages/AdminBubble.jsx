@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import API from "../api";
+import { API } from "../features/Api";
 
 export default function AdminBubble() {
   const [games, setGames] = useState([]);

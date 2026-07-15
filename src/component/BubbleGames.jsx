@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
-import API from "../api";
+import { API } from "../features/Api";
 
 export default function BubbleGames() {
   const [games, setGames] = useState([]);
