@@ -1,26 +1,21 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../api";
 
 export default function AdminBubble() {
   const [games, setGames] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
-    title: "Bubble Tournament",
+    title: "",
     image: "/multA.jpg",
-    betAmount: 100,
-    rewardAmount: 180,
-    maxPlayers: 10,
-    scoreTarget: 300,
-    turnsBeforeShift: 3,
-    timeLimit: 180,
-    level: 1,
+    betAmount: "",
+    rewardAmount: "",
+    maxPlayers: "",
+    scoreTarget: "",
+    turnsBeforeShift: "",
+    timeLimit: "",
+    level: "",
   });
-
-  const token = localStorage.getItem("token");
-
-  const headers = {
-    Authorization: `Bearer ${token}`,
-  };
 
   useEffect(() => {
     fetchGames();
@@ -28,7 +23,7 @@ export default function AdminBubble() {
 
   const fetchGames = async () => {
     try {
-      const { data } = await axios.get("/api/bubble");
+      const { data } = await API.get("/bubble");
 
       if (data.success) {
         setGames(data.games);
@@ -39,43 +34,54 @@ export default function AdminBubble() {
   };
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]:
-        e.target.type === "number"
-          ? Number(e.target.value)
-          : e.target.value,
-    });
+    const { name, value, type } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "number" ? (value === "" ? "" : Number(value)) : value,
+    }));
   };
 
   const hostGame = async () => {
+    if (
+      !form.title ||
+      form.betAmount === "" ||
+      form.rewardAmount === "" ||
+      form.maxPlayers === "" ||
+      form.scoreTarget === "" ||
+      form.turnsBeforeShift === "" ||
+      form.timeLimit === "" ||
+      form.level === ""
+    ) {
+      return alert("Please fill in all fields.");
+    }
+
     try {
-      const { data } = await axios.post(
-        "/api/bubble",
-        form,
-        { headers }
-      );
+      setLoading(true);
+
+      const { data } = await API.post("/bubble", form);
 
       if (data.success) {
-        setGames((prev) => [data.game, ...prev]);
-
         alert("Game hosted successfully!");
+        await fetchGames();
 
         setForm({
-          title: "Bubble Tournament",
+          title: "",
           image: "/multA.jpg",
-          betAmount: 100,
-          rewardAmount: 180,
-          maxPlayers: 10,
-          scoreTarget: 300,
-          turnsBeforeShift: 3,
-          timeLimit: 180,
-          level: 1,
+          betAmount: "",
+          rewardAmount: "",
+          maxPlayers: "",
+          scoreTarget: "",
+          turnsBeforeShift: "",
+          timeLimit: "",
+          level: "",
         });
       }
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Failed to host game.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -83,15 +89,11 @@ export default function AdminBubble() {
     if (!window.confirm("End this game?")) return;
 
     try {
-      const { data } = await axios.delete(
-        `/api/bubble/${id}`,
-        { headers }
-      );
+      const { data } = await API.delete(`/bubble/${id}`);
 
       if (data.success) {
-        setGames((prev) =>
-          prev.filter((game) => game._id !== id)
-        );
+        setGames((prev) => prev.filter((game) => game._id !== id));
+        alert("Game removed successfully.");
       }
     } catch (err) {
       console.error(err);
@@ -101,103 +103,159 @@ export default function AdminBubble() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6">
-      <h1 className="text-3xl font-bold mb-8">
-        🎮 Bubble Game Admin
-      </h1>
+      <h1 className="text-3xl font-bold mb-8">🎮 Bubble Game Admin</h1>
 
       <div className="bg-gray-900 rounded-xl p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-5">
-          Host New Game
-        </h2>
+        <h2 className="text-xl font-semibold mb-5">Host New Game</h2>
 
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-2 gap-5">
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Game Title
+            </label>
+            <input
+              required
+              name="title"
+              value={form.title}
+              onChange={handleChange}
+              placeholder="Enter game title"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            />
+          </div>
 
-          <input
-            name="title"
-            value={form.title}
-            onChange={handleChange}
-            placeholder="Game Title"
-            className="bg-gray-800 rounded-lg px-4 py-3"
-          />
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Image URL
+            </label>
+            <input
+              name="image"
+              value={form.image}
+              onChange={handleChange}
+              placeholder="/multA.jpg"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            />
+          </div>
 
-          <input
-            name="image"
-            value={form.image}
-            onChange={handleChange}
-            placeholder="Image URL"
-            className="bg-gray-800 rounded-lg px-4 py-3"
-          />
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Bet Amount (₦)
+            </label>
+            <input
+              required
+              type="number"
+              min="1"
+              name="betAmount"
+              value={form.betAmount}
+              onChange={handleChange}
+              placeholder="100"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            />
+          </div>
 
-          <input
-            type="number"
-            name="betAmount"
-            value={form.betAmount}
-            onChange={handleChange}
-            placeholder="Bet Amount"
-            className="bg-gray-800 rounded-lg px-4 py-3"
-          />
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Reward Amount (₦)
+            </label>
+            <input
+              required
+              type="number"
+              min="1"
+              name="rewardAmount"
+              value={form.rewardAmount}
+              onChange={handleChange}
+              placeholder="180"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            />
+          </div>
 
-          <input
-            type="number"
-            name="rewardAmount"
-            value={form.rewardAmount}
-            onChange={handleChange}
-            placeholder="Reward Amount"
-            className="bg-gray-800 rounded-lg px-4 py-3"
-          />
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Maximum Players
+            </label>
+            <input
+              required
+              type="number"
+              min="2"
+              name="maxPlayers"
+              value={form.maxPlayers}
+              onChange={handleChange}
+              placeholder="10"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            />
+          </div>
 
-          <input
-            type="number"
-            name="maxPlayers"
-            value={form.maxPlayers}
-            onChange={handleChange}
-            placeholder="Max Players"
-            className="bg-gray-800 rounded-lg px-4 py-3"
-          />
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Target Score
+            </label>
+            <input
+              required
+              type="number"
+              min="1"
+              name="scoreTarget"
+              value={form.scoreTarget}
+              onChange={handleChange}
+              placeholder="300"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            />
+          </div>
 
-          <input
-            type="number"
-            name="scoreTarget"
-            value={form.scoreTarget}
-            onChange={handleChange}
-            placeholder="Target Score"
-            className="bg-gray-800 rounded-lg px-4 py-3"
-          />
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Turns Before Shift
+            </label>
+            <input
+              required
+              type="number"
+              min="1"
+              name="turnsBeforeShift"
+              value={form.turnsBeforeShift}
+              onChange={handleChange}
+              placeholder="3"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            />
+          </div>
 
-          <input
-            type="number"
-            name="turnsBeforeShift"
-            value={form.turnsBeforeShift}
-            onChange={handleChange}
-            placeholder="Turns Before Shift"
-            className="bg-gray-800 rounded-lg px-4 py-3"
-          />
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Time Limit (seconds)
+            </label>
+            <input
+              required
+              type="number"
+              min="10"
+              name="timeLimit"
+              value={form.timeLimit}
+              onChange={handleChange}
+              placeholder="180"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            />
+          </div>
 
-          <input
-            type="number"
-            name="timeLimit"
-            value={form.timeLimit}
-            onChange={handleChange}
-            placeholder="Time Limit"
-            className="bg-gray-800 rounded-lg px-4 py-3"
-          />
-
-          <input
-            type="number"
-            name="level"
-            value={form.level}
-            onChange={handleChange}
-            placeholder="Level"
-            className="bg-gray-800 rounded-lg px-4 py-3"
-          />
-
+          <div className="md:col-span-2">
+            <label className="block text-sm text-gray-400 mb-2">
+              Difficulty Level
+            </label>
+            <input
+              required
+              type="number"
+              min="1"
+              max="10"
+              name="level"
+              value={form.level}
+              onChange={handleChange}
+              placeholder="1"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+            />
+          </div>
         </div>
 
         <button
           onClick={hostGame}
-          className="mt-6 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold"
+          disabled={loading}
+          className="mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 px-6 py-3 rounded-lg font-semibold"
         >
-          Host Game
+          {loading ? "Hosting..." : "Host Game"}
         </button>
       </div>
 
@@ -207,9 +265,7 @@ export default function AdminBubble() {
         </h2>
 
         {games.length === 0 ? (
-          <p className="text-gray-400">
-            No active hosted games.
-          </p>
+          <p className="text-gray-400">No active hosted games.</p>
         ) : (
           <div className="space-y-4">
             {games.map((game) => (
@@ -218,9 +274,7 @@ export default function AdminBubble() {
                 className="flex justify-between items-center bg-gray-800 rounded-lg p-4"
               >
                 <div>
-                  <h3 className="font-bold text-lg">
-                    {game.title}
-                  </h3>
+                  <h3 className="font-bold text-lg">{game.title}</h3>
 
                   <p>💰 Bet: ₦{game.betAmount}</p>
 
@@ -236,9 +290,7 @@ export default function AdminBubble() {
 
                   <p>⭐ Level {game.level}</p>
 
-                  <p className="text-green-400">
-                    {game.status}
-                  </p>
+                  <p className="text-green-400">{game.status}</p>
                 </div>
 
                 <button

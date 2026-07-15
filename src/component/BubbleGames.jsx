@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { io } from "socket.io-client";
+import API from "../api";
 
 export default function BubbleGames() {
   const [games, setGames] = useState([]);
@@ -11,7 +11,7 @@ export default function BubbleGames() {
 
   const fetchGames = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/bubble");
+      const { data } = await API.get("/bubble");
 
       if (data.success) {
         setGames(data.games || []);
@@ -28,11 +28,17 @@ export default function BubbleGames() {
 
     const token = localStorage.getItem("token");
 
-    const socket = io("https://swordgame-5.onrender.com", {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-    });
+    const socket = io(
+      import.meta.env.VITE_API_URL?.replace("/api", "") ||
+        "https://swordgame-5.onrender.com",
+      {
+        auth: {
+          token: localStorage.getItem("token"),
+        },
+        transports: ["websocket"],
+        reconnection: true,
+      },
+    );
 
     socket.on("bubble:created", fetchGames);
     socket.on("bubble:updated", fetchGames);
@@ -48,7 +54,7 @@ export default function BubbleGames() {
 
   const joinGame = async (gameId) => {
     try {
-      const { data } = await axios.post(`/api/bubble/${gameId}/join`);
+      const { data } = await API.post(`/bubble/${gameId}/join`);
 
       if (data.success) {
         await fetchGames();
@@ -107,9 +113,7 @@ export default function BubbleGames() {
               </div>
 
               <div className="p-5">
-                <h3 className="font-bold text-xl mb-4">
-                  {game.title}
-                </h3>
+                <h3 className="font-bold text-xl mb-4">{game.title}</h3>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-zinc-800 rounded-xl p-3">
@@ -129,7 +133,7 @@ export default function BubbleGames() {
                   <div className="bg-zinc-800 rounded-xl p-3">
                     <div className="text-gray-400">Players</div>
                     <div>
-                      {(game.players?.length || 0)}/{game.maxPlayers}
+                      {game.players?.length || 0}/{game.maxPlayers}
                     </div>
                   </div>
 
