@@ -6,6 +6,7 @@ import { API } from "../features/Api";
 export default function BubbleGames() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
 
   const navigate = useNavigate();
 
@@ -26,7 +27,6 @@ export default function BubbleGames() {
   useEffect(() => {
     fetchGames();
 
-    const token = localStorage.getItem("token");
 
     const socket = io(
       import.meta.env.VITE_API_URL?.replace("/api", "") ||
@@ -54,24 +54,22 @@ export default function BubbleGames() {
 
   const joinGame = async (gameId) => {
     try {
+      setJoining(true);
+
       const { data } = await API.post(`/bubble/${gameId}/join`);
 
       if (data.success) {
-        await fetchGames();
         navigate(`/host-game/${gameId}`);
       }
     } catch (err) {
+      setJoining(false);
       console.error(err);
       alert(err.response?.data?.message || "Unable to join game.");
     }
   };
 
-  if (loading) {
-    return (
-      <div className="py-20 text-center text-gray-400">
-        Loading Bubble Games...
-      </div>
-    );
+  if (joining) {
+    return <GameLoader />;
   }
 
   return (
