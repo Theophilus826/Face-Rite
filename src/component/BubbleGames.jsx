@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import { API } from "../features/Api";
-
+import RobotLoader from "./Spinner";
 export default function BubbleGames() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,6 @@ export default function BubbleGames() {
 
   useEffect(() => {
     fetchGames();
-
 
     const socket = io(
       import.meta.env.VITE_API_URL?.replace("/api", "") ||
@@ -69,7 +68,7 @@ export default function BubbleGames() {
   };
 
   if (joining) {
-    return <GameLoader />;
+    return <RobotLoader />;
   }
 
   return (
