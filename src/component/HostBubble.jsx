@@ -30,7 +30,8 @@ export default function HostBubble() {
     // Start Game
     //----------------------------------------------------
     const handleGameStarted = (config) => {
-      if (config.gameId !== gameId) return;
+      console.log("🎮 gameStarted:", config);
+      if (String(config.gameId) !== String(gameId)) return;
 
       if (gameRef.current) return;
 
@@ -58,28 +59,39 @@ export default function HostBubble() {
     // Connect Socket
     //----------------------------------------------------
     const connectAndJoin = async () => {
-      try {
-        // Validate game first
-        await API.get(`/bubble/${gameId}`);
+  try {
+    await API.get(`/bubble/${gameId}`);
 
-        if (!socket.connected) {
-          socket.auth = {
-            token: localStorage.getItem("token"),
-          };
+    const join = () => {
+      if (joinedRef.current) return;
 
-          socket.connect();
-        }
+      joinedRef.current = true;
 
-        if (!joinedRef.current) {
-          joinedRef.current = true;
-          socket.emit("joinGame", gameId);
-        }
-      } catch (err) {
-        console.error(err);
-        alert(err.response?.data?.message || "Unable to join game.");
-        navigate("/bubble");
-      }
+      console.log("📤 Joining game:", gameId);
+
+      socket.emit("joinGame", gameId);
     };
+
+    if (!socket.connected) {
+      socket.auth = {
+        token: localStorage.getItem("token"),
+      };
+
+      socket.connect();
+
+      socket.once("connect", () => {
+        console.log("✅ Connected:", socket.id);
+        join();
+      });
+    } else {
+      join();
+    }
+  } catch (err) {
+    console.error(err);
+    alert(err.response?.data?.message || "Unable to join game.");
+    navigate("/bubble");
+  }
+};
 
     //----------------------------------------------------
     // Resize
