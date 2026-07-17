@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import * as BABYLON from "@babylonjs/core";
 import { Engine } from "@babylonjs/core";
 import { Game } from "../bubble/Game";
 import { io } from "socket.io-client";
@@ -27,21 +26,9 @@ export default function HostBubble() {
     const engine = new Engine(canvas, true);
     engineRef.current = engine;
 
-    // ----------------------------------------------------
-    // Create Socket
-    // ----------------------------------------------------
-    const token = localStorage.getItem("token");
-
-    const socket = io("https://swordgame-5.onrender.com", {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      autoConnect: false,
-    });
-
-    // ----------------------------------------------------
+    //----------------------------------------------------
     // Start Game
-    // ----------------------------------------------------
+    //----------------------------------------------------
     const handleGameStarted = (config) => {
       console.log("🎮 gameStarted:", config);
 
@@ -61,51 +48,55 @@ export default function HostBubble() {
       setLoading(false);
     };
 
-    // ----------------------------------------------------
+    //----------------------------------------------------
     // Bubble Errors
-    // ----------------------------------------------------
+    //----------------------------------------------------
     const handleBubbleError = ({ message }) => {
       alert(message);
       navigate("/bubble");
     };
 
-    // ----------------------------------------------------
-    // Connect & Join
-    // ----------------------------------------------------
+    //----------------------------------------------------
+    // Connect Socket
+    //----------------------------------------------------
     const connectAndJoin = async () => {
-      try {
-        await API.get(`/bubble/${gameId}`);
+  try {
+    await API.get(`/bubble/${gameId}`);
 
-        const join = () => {
-          if (joinedRef.current) return;
+    const join = () => {
+      if (joinedRef.current) return;
 
-          joinedRef.current = true;
+      joinedRef.current = true;
 
-          console.log("📤 Joining game:", gameId);
+      console.log("📤 Joining game:", gameId);
 
-          socket.emit("joinGame", gameId);
-        };
-
-        if (!socket.connected) {
-          socket.connect();
-
-          socket.once("connect", () => {
-            console.log("✅ Connected:", socket.id);
-            join();
-          });
-        } else {
-          join();
-        }
-      } catch (err) {
-        console.error(err);
-        alert(err.response?.data?.message || "Unable to join game.");
-        navigate("/bubble");
-      }
+      socket.emit("joinGame", gameId);
     };
 
-    // ----------------------------------------------------
+    if (!socket.connected) {
+      socket.auth = {
+        token: localStorage.getItem("token"),
+      };
+
+      socket.connect();
+
+      socket.once("connect", () => {
+        console.log("✅ Connected:", socket.id);
+        join();
+      });
+    } else {
+      join();
+    }
+  } catch (err) {
+    console.error(err);
+    alert(err.response?.data?.message || "Unable to join game.");
+    navigate("/bubble");
+  }
+};
+
+    //----------------------------------------------------
     // Resize
-    // ----------------------------------------------------
+    //----------------------------------------------------
     const resize = () => {
       engine.resize();
       gameRef.current?.resize?.();
@@ -121,7 +112,6 @@ export default function HostBubble() {
     return () => {
       socket.off("gameStarted", handleGameStarted);
       socket.off("bubble:error", handleBubbleError);
-      socket.disconnect();
 
       window.removeEventListener("resize", resize);
 

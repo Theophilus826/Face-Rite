@@ -1,3 +1,4 @@
+import * as BABYLON from "@babylonjs/core";
 import { randomColor } from "./Utils.js";
 import { MaterialManager } from "./MaterialManager.js";
 
