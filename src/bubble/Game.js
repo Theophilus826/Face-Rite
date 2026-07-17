@@ -1,5 +1,5 @@
 import * as GUI from "@babylonjs/gui";
-import { socket } from "./socket.js";
+import * as BABYLON from "@babylonjs/core";
 import { Board } from "./Board.js";
 import { Shooter } from "./Shooter.js";
 import { Input } from "./Input.js";
@@ -9,13 +9,13 @@ import { Effects } from "./Effects.js";
 import { StateManager, GameState } from "./GameState.js";
 
 export class Game {
-  constructor(engine, canvas, gameId) {
+  constructor(engine, canvas, gameId, socket) {
     this.engine = engine;
     this.canvas = canvas;
     this.gameId = gameId;  
     this.scene = null;
     this.camera = null;
-
+    this.socket = socket;
     // Game Systems
     this.board = null;
     this.shooter = null;
@@ -89,7 +89,7 @@ export class Game {
     // Receive game configuration from backend
     //------------------------------------------------------
 
-    socket.on("gameConfig", (config) => {
+    this.socket.on("gameConfig", (config) => {
       if (typeof config.turnsBeforeShift === "number") {
         this.turnsBeforeShift = config.turnsBeforeShift;
       }
@@ -113,7 +113,7 @@ export class Game {
     // Receive timer updates from backend
     //------------------------------------------------------
 
-    socket.on("timer", (seconds) => {
+    this.socket.on("timer", (seconds) => {
       this.state.timeRemaining = seconds;
     });
 
@@ -347,7 +347,7 @@ Time Left: ${this.state.getTimeString()}`;
 
     if (this.state.score < this.state.targetScore) return;
 
-    socket.emit("gameResult", {
+    this.socket.emit("gameResult", {
       win: true,
       score: this.state.score,
       level: this.state.level,
@@ -361,7 +361,7 @@ Time Left: ${this.state.getTimeString()}`;
   gameOver() {
     if (this.state.is(GameState.GAME_OVER)) return;
 
-    socket.emit("gameResult", {
+    this.socket.emit("gameResult", {
       win: false,
       score: this.state.score,
       level: this.state.level,
