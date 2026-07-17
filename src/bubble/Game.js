@@ -1,20 +1,18 @@
 import * as GUI from "@babylonjs/gui";
 import { socket } from "./socket.js";
-import { useParams } from "react-router-dom";
 import { Board } from "./Board.js";
 import { Shooter } from "./Shooter.js";
 import { Input } from "./Input.js";
 import { Collision } from "./Collision.js";
 import { MatchFinder } from "./MatchFinder.js";
 import { Effects } from "./Effects.js";
-
 import { StateManager, GameState } from "./GameState.js";
-const { gameId } = useParams();
+
 export class Game {
   constructor(engine, canvas, gameId) {
     this.engine = engine;
     this.canvas = canvas;
-
+    this.gameId = gameId;  
     this.scene = null;
     this.camera = null;
 

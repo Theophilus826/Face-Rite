@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import { API } from "../features/Api";
 import RobotLoader from "./Spinner";
+
 export default function BubbleGames() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
