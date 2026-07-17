@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import { API } from "../features/Api";
@@ -10,6 +10,7 @@ export default function BubbleGames() {
   const [joining, setJoining] = useState(false);
 
   const navigate = useNavigate();
+  const socketRef = useRef(null);
 
   const fetchGames = useCallback(async () => {
     try {
@@ -19,67 +20,65 @@ export default function BubbleGames() {
         setGames(data.games || []);
       }
     } catch (err) {
-      console.error("Fetch games error:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-  fetchGames();
+    fetchGames();
 
-  const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-  const socket = io("https://swordgame-5.onrender.com", {
-    auth: { token },
-    transports: ["websocket"],
-    reconnection: true,
-    autoConnect: false,
-  });
+    const socket = io("https://swordgame-5.onrender.com", {
+      auth: { token },
+      transports: ["websocket"],
+      reconnection: true,
+    });
 
-  socket.connect();
+    socketRef.current = socket;
 
-  socket.once("connect", () => {
-    console.log("🟢 Bubble Lobby Connected:", socket.id);
+    socket.on("connect", () => {
+      console.log("🟢 Bubble Lobby:", socket.id);
+    });
 
-    // Register Bubble socket events on the server
-    socket.emit("bubble:init");
-  });
+    socket.on("bubble:created", fetchGames);
+    socket.on("bubble:updated", fetchGames);
+    socket.on("bubble:removed", fetchGames);
 
-  socket.on("bubble:created", fetchGames);
-  socket.on("bubble:updated", fetchGames);
-  socket.on("bubble:removed", fetchGames);
+    return () => {
+      socket.off("bubble:created", fetchGames);
+      socket.off("bubble:updated", fetchGames);
+      socket.off("bubble:removed", fetchGames);
 
-  return () => {
-    socket.off("bubble:created", fetchGames);
-    socket.off("bubble:updated", fetchGames);
-    socket.off("bubble:removed", fetchGames);
-
-    socket.disconnect();
-  };
-}, [fetchGames]);
+      socket.disconnect();
+    };
+  }, [fetchGames]);
 
   const joinGame = async (gameId) => {
-  try {
-    setJoining(true);
+    try {
+      setJoining(true);
 
-    const { data } = await API.post(`/bubble/${gameId}/join`);
+      const { data } = await API.post(`/bubble/${gameId}/join`);
 
-    if (!data.success) {
-      throw new Error(data.message);
+      if (!data.success) {
+        throw new Error(data.message);
+      }
+
+      navigate(`/host-game/${gameId}`);
+    } catch (err) {
+      setJoining(false);
+
+      alert(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to join game."
+      );
     }
+  };
 
-    navigate(`/host-game/${gameId}`);
-  } catch (err) {
-    console.error(err);
-
-    setJoining(false);
-
-    alert(err.response?.data?.message || err.message || "Unable to join game.");
-  }
-};
-
-  if (joining) {
+  if (loading || joining) {
     return <RobotLoader />;
   }
 
@@ -113,10 +112,10 @@ export default function BubbleGames() {
                 <img
                   src={game.image || "/multA.jpg"}
                   alt={game.title}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition duration-500"
+                  className="w-full h-48 object-cover"
                 />
 
-                <span className="absolute top-3 right-3 bg-black/70 backdrop-blur px-3 py-1 rounded-full text-xs">
+                <span className="absolute top-3 right-3 bg-black/70 px-3 py-1 rounded-full text-xs">
                   {game.status}
                 </span>
               </div>
@@ -158,7 +157,7 @@ export default function BubbleGames() {
                     game.status !== "Waiting" ||
                     (game.players?.length || 0) >= game.maxPlayers
                   }
-                  className="mt-5 w-full rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 py-3 font-semibold hover:opacity-90 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  className="mt-5 w-full rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 py-3 font-semibold disabled:bg-gray-600"
                 >
                   {(game.players?.length || 0) >= game.maxPlayers
                     ? "Game Full"
