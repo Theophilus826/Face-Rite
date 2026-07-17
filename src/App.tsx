@@ -61,6 +61,7 @@ import {
   resetPushNotifications,
 } from "./features/PushNotifications";
 import { Preferences } from "@capacitor/preferences";
+import HostBubble from "./component/HostBubble";
 // Lazy
 const HostGame = lazy(() => import("./component/HostGame"));
 
@@ -209,7 +210,7 @@ function AppContent() {
           <Route path="/chat" element={<ChatContant />} />
           <Route path="/chat/:chatUserId" element={<ChatPage />} />
           <Route path="/group/:groupId" element={<GroupChatPage />} />
-          
+          <Route path="/bubble/:gameId" element={<HostBubble />} />
           {/* ================= ADMIN ================= */}
 
           <Route path="/admin" element={<AdminRoute />}>

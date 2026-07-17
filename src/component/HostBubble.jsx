@@ -18,6 +18,7 @@ export default function HostBubble() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log("HostBubble mounted");
     if (!gameId) return;
 
     const token = localStorage.getItem("token");
