@@ -44,6 +44,7 @@ import ChatContant from "./pages/ChatContant";
 import AboutPage from "./pages/AboutPage";
 import DownloadPage from "./pages/Download";
 import AdminUploadApk from "./component/AdminUploadApk";
+import HostBubble from "./component/HostBubble";
 // Components
 import Navbar from "./component/Navbar";
 import CardGrid from "./component/CardGrid";
@@ -53,9 +54,8 @@ import AdminLayout from "./component/AdminLayout";
 import AdminRoute from "./component/AdminRoute";
 import CarouselUploader from "./component/CarouselUploader";
 import PostGalleryWithUpload from "./component/PostGallery";
-import Profile from "./component/UserProfile"; 
+import Profile from "./component/UserProfile";
 import AdminBubble from "./pages/AdminBubble";
-
 import {
   initializePushNotifications,
   resetPushNotifications,
@@ -128,25 +128,25 @@ function AppContent() {
   }, [dispatch]);
 
   useEffect(() => {
-  const restoreToken = async () => {
-    try {
-      const { value } = await Preferences.get({
-        key: "token",
-      });
+    const restoreToken = async () => {
+      try {
+        const { value } = await Preferences.get({
+          key: "token",
+        });
 
-      if (!value) return;
+        if (!value) return;
 
-      console.log("Restored token:", value);
+        console.log("Restored token:", value);
 
-      // Call your existing profile/current-user endpoint
-      // and restore Redux user state here.
-    } catch (err) {
-      console.error("Restore token failed:", err);
-    }
-  };
+        // Call your existing profile/current-user endpoint
+        // and restore Redux user state here.
+      } catch (err) {
+        console.error("Restore token failed:", err);
+      }
+    };
 
-  restoreToken();
-}, []);
+    restoreToken();
+  }, []);
 
   useEffect(() => {
     if (!user?.token) {
@@ -209,7 +209,7 @@ function AppContent() {
           <Route path="/chat" element={<ChatContant />} />
           <Route path="/chat/:chatUserId" element={<ChatPage />} />
           <Route path="/group/:groupId" element={<GroupChatPage />} />
-          
+          <Route path="/host-game/:gameId" element={<HostBubble />} />
           {/* ================= ADMIN ================= */}
 
           <Route path="/admin" element={<AdminRoute />}>
