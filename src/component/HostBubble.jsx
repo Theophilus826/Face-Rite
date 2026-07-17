@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import * as BABYLON from "@babylonjs/core";
 import { Engine } from "@babylonjs/core";
 import { Game } from "../bubble/Game";
 import { io } from "socket.io-client";
