@@ -122,6 +122,7 @@ export default function HostBubble() {
       try {
         console.log("Checking game...", gameId);
 
+        // Verify game exists
         await API.get(`/bubble/${gameId}`);
 
         const join = () => {
@@ -129,20 +130,40 @@ export default function HostBubble() {
 
           joinedRef.current = true;
 
-          console.log("📤 joinGame", gameId);
+          console.log("📤 bubble:join", gameId);
 
-          socket.emit("joinGame", gameId);
+          socket.emit("bubble:join", gameId, (response) => {
+            console.log("🫧 bubble:join response:", response);
+
+            if (!response?.success) {
+              joinedRef.current = false;
+
+              alert(response?.message || "Unable to join");
+
+              navigate("/bubble");
+              return;
+            }
+
+            console.log("✅ Successfully joined Bubble game");
+            // Wait for the server to emit:
+            // socket.emit("gameStarted", payload)
+          });
         };
 
         if (!socket.connected) {
           socket.connect();
 
-          socket.once("connect", join);
+          socket.once("connect", () => {
+            console.log("✅ Connected:", socket.id);
+            join();
+          });
         } else {
           join();
         }
       } catch (err) {
-        console.error(err);
+        console.error("Join error:", err);
+
+        joinedRef.current = false;
 
         alert(err.response?.data?.message || "Unable to join.");
 
