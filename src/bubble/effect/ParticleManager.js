@@ -1,3 +1,6 @@
+import * as BABYLON from "@babylonjs/core";
+import * as GUI from "@babylonjs/gui";
+
 export class ParticleManager {
 
     constructor(scene) {

@@ -1,3 +1,5 @@
+import * as BABYLON from "@babylonjs/core";
+import * as GUI from "@babylonjs/gui";
 export class MaterialManager {
 
     static materials = new Map();
