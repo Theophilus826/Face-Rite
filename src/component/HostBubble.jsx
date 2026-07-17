@@ -35,13 +35,27 @@ export default function HostBubble() {
     const engine = new Engine(canvas, true);
     engineRef.current = engine;
 
-    //----------------------------------------------------
-    // Bubble Started
-    //----------------------------------------------------
-    const handleGameStarted = (config) => {
-      console.log("🫧 Bubble Started", config);
+    //------------------------------------------------
+    // CONNECT
+    //------------------------------------------------
+
+    socket.on("connect", () => {
+      console.log("✅ Connected:", socket.id);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("🔴 Disconnected:", reason);
+    });
+
+    //------------------------------------------------
+    // GAME STARTED
+    //------------------------------------------------
+
+    socket.on("gameStarted", (config) => {
+      console.log("🎮 gameStarted", config);
 
       if (String(config.gameId) !== String(gameId)) return;
+
       if (gameRef.current) return;
 
       const game = new Game(engine, canvas, gameId, socket);
@@ -55,44 +69,58 @@ export default function HostBubble() {
       });
 
       setLoading(false);
-    };
+    });
 
-    //----------------------------------------------------
-    // Bubble Finished
-    //----------------------------------------------------
-    const handleFinished = (data) => {
-      console.log("🏁 Bubble Finished", data);
+    //------------------------------------------------
+    // CONFIG
+    //------------------------------------------------
 
-      gameRef.current?.finish?.(data);
-    };
+    socket.on("gameConfig", (config) => {
+      console.log("⚙️ gameConfig", config);
 
-    //----------------------------------------------------
-    // Bubble Timer
-    //----------------------------------------------------
-    const handleTimer = (data) => {
-      gameRef.current?.updateTimer?.(data.timeRemaining);
-    };
-
-    //----------------------------------------------------
-    // Bubble Config
-    //----------------------------------------------------
-    const handleConfig = (config) => {
       gameRef.current?.setConfig?.(config);
-    };
+    });
 
-    //----------------------------------------------------
-    // Bubble Error
-    //----------------------------------------------------
-    const handleError = ({ message }) => {
+    //------------------------------------------------
+    // TIMER
+    //------------------------------------------------
+
+    socket.on("timer", (timeRemaining) => {
+      console.log("⏰", timeRemaining);
+
+      gameRef.current?.updateTimer?.(timeRemaining);
+    });
+
+    //------------------------------------------------
+    // FINISHED
+    //------------------------------------------------
+
+    socket.on("gameFinished", (result) => {
+      console.log("🏆 gameFinished", result);
+
+      gameRef.current?.finish?.(result);
+    });
+
+    //------------------------------------------------
+    // ERROR
+    //------------------------------------------------
+
+    socket.on("bubble:error", ({ message }) => {
+      console.error(message);
+
       alert(message);
-      navigate("/bubble");
-    };
 
-    //----------------------------------------------------
-    // Connect
-    //----------------------------------------------------
+      navigate("/bubble");
+    });
+
+    //------------------------------------------------
+    // JOIN
+    //------------------------------------------------
+
     const connectAndJoin = async () => {
       try {
+        console.log("Checking game...", gameId);
+
         await API.get(`/bubble/${gameId}`);
 
         const join = () => {
@@ -100,18 +128,15 @@ export default function HostBubble() {
 
           joinedRef.current = true;
 
-          console.log("🫧 Joining Bubble:", gameId);
+          console.log("📤 joinGame", gameId);
 
-          socket.emit("bubble:join", gameId);
+          socket.emit("joinGame", gameId);
         };
 
         if (!socket.connected) {
           socket.connect();
 
-          socket.once("connect", () => {
-            console.log("✅ Socket:", socket.id);
-            join();
-          });
+          socket.once("connect", join);
         } else {
           join();
         }
@@ -124,32 +149,19 @@ export default function HostBubble() {
       }
     };
 
-    //----------------------------------------------------
-    // Events
-    //----------------------------------------------------
-    socket.on("bubble:started", handleGameStarted);
-    socket.on("bubble:config", handleConfig);
-    socket.on("bubble:timer", handleTimer);
-    socket.on("bubble:finished", handleFinished);
-    socket.on("bubble:error", handleError);
-
     connectAndJoin();
 
-    //----------------------------------------------------
-    // Cleanup
-    //----------------------------------------------------
-    return () => {
-      socket.off("bubble:started", handleGameStarted);
-      socket.off("bubble:config", handleConfig);
-      socket.off("bubble:timer", handleTimer);
-      socket.off("bubble:finished", handleFinished);
-      socket.off("bubble:error", handleError);
+    //------------------------------------------------
+    // CLEANUP
+    //------------------------------------------------
 
+    return () => {
       socket.disconnect();
 
       engine.stopRenderLoop();
 
       gameRef.current?.scene?.dispose();
+
       gameRef.current = null;
 
       engine.dispose();

@@ -57,23 +57,46 @@ export default function BubbleGames() {
   }, [fetchGames]);
 
   const joinGame = async (gameId) => {
+    console.log("====================================");
+    console.log("🟢 JOIN BUTTON CLICKED");
+    console.log("Game ID:", gameId);
+    console.log("====================================");
+
     try {
       setJoining(true);
 
-      const { data } = await API.post(`/bubble/${gameId}/join`);
+      console.log("📡 Sending POST:", `/bubble/${gameId}/join`);
+
+      const response = await API.post(`/bubble/${gameId}/join`);
+
+      console.log("✅ API RESPONSE");
+      console.log(response);
+
+      const { data } = response;
+
+      console.log("Response data:", data);
 
       if (!data.success) {
-        throw new Error(data.message);
+        console.error("❌ Server returned success=false");
+        throw new Error(data.message || "Join failed");
       }
+
+      console.log("✅ Join successful");
+      console.log("➡️ Navigating to:", `/host-game/${gameId}`);
 
       navigate(`/host-game/${gameId}`);
     } catch (err) {
+      console.error("❌ JOIN ERROR");
+      console.error(err);
+
+      console.log("Axios response:", err.response);
+      console.log("Axios data:", err.response?.data);
+      console.log("Status:", err.response?.status);
+
       setJoining(false);
 
       alert(
-        err.response?.data?.message ||
-          err.message ||
-          "Unable to join game."
+        err.response?.data?.message || err.message || "Unable to join game.",
       );
     }
   };
