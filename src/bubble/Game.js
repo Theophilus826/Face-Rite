@@ -1,5 +1,5 @@
-import * as GUI from "@babylonjs/gui";
 import * as BABYLON from "@babylonjs/core";
+import * as GUI from "@babylonjs/gui";
 import { Board } from "./Board.js";
 import { Shooter } from "./Shooter.js";
 import { Input } from "./Input.js";

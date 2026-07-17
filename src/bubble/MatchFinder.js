@@ -1,3 +1,4 @@
+import * as BABYLON from "@babylonjs/core";
 export class MatchFinder {
   constructor(board) {
     this.board = board;

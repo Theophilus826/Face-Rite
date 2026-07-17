@@ -1,3 +1,4 @@
+import * as BABYLON from "@babylonjs/core";
 export class Input {
   constructor(scene, shooter) {
     this.scene = scene;

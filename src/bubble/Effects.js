@@ -1,3 +1,4 @@
+import * as BABYLON from "@babylonjs/core";
 import { AnimationManager } from "./effect/AnimationManager.js";
 import { ParticleManager } from "./effect/ParticleManager.js";
 import { CameraEffects } from "./effect/CameraEffects.js";

@@ -1,3 +1,4 @@
+import * as BABYLON from "@babylonjs/core";
 import { Bubble } from "./Bubble.js";
 import { randomColor } from "./Utils.js";
 import { GameState } from "./GameState.js";
