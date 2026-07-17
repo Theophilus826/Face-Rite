@@ -84,7 +84,8 @@ export default function BubbleGames() {
       console.log("✅ Join successful");
       console.log("➡️ Navigating to:", `/host-game/${gameId}`);
 
-      navigate(`/host-game/${gameId}`);
+      console.log("➡️ Navigating to:", `/bubble/${gameId}`);
+      navigate(`/bubble/${gameId}`);
     } catch (err) {
       console.error("❌ JOIN ERROR");
       console.error(err);
