@@ -26,47 +26,58 @@ export default function BubbleGames() {
   }, []);
 
   useEffect(() => {
-    fetchGames();
+  fetchGames();
 
-    const socket = io(
-      import.meta.env.VITE_API_URL?.replace("/api", "") ||
-        "https://swordgame-5.onrender.com",
-      {
-        auth: {
-          token: localStorage.getItem("token"),
-        },
-        transports: ["websocket"],
-        reconnection: true,
-      },
-    );
+  const token = localStorage.getItem("token");
 
-    socket.on("bubble:created", fetchGames);
-    socket.on("bubble:updated", fetchGames);
-    socket.on("bubble:removed", fetchGames);
+  const socket = io("https://swordgame-5.onrender.com", {
+    auth: { token },
+    transports: ["websocket"],
+    reconnection: true,
+    autoConnect: false,
+  });
 
-    return () => {
-      socket.off("bubble:created", fetchGames);
-      socket.off("bubble:updated", fetchGames);
-      socket.off("bubble:removed", fetchGames);
-      socket.disconnect();
-    };
-  }, [fetchGames]);
+  socket.connect();
+
+  socket.once("connect", () => {
+    console.log("🟢 Bubble Lobby Connected:", socket.id);
+
+    // Register Bubble socket events on the server
+    socket.emit("bubble:init");
+  });
+
+  socket.on("bubble:created", fetchGames);
+  socket.on("bubble:updated", fetchGames);
+  socket.on("bubble:removed", fetchGames);
+
+  return () => {
+    socket.off("bubble:created", fetchGames);
+    socket.off("bubble:updated", fetchGames);
+    socket.off("bubble:removed", fetchGames);
+
+    socket.disconnect();
+  };
+}, [fetchGames]);
 
   const joinGame = async (gameId) => {
-    try {
-      setJoining(true);
+  try {
+    setJoining(true);
 
-      const { data } = await API.post(`/bubble/${gameId}/join`);
+    const { data } = await API.post(`/bubble/${gameId}/join`);
 
-      if (data.success) {
-        navigate(`/host-game/${gameId}`);
-      }
-    } catch (err) {
-      setJoining(false);
-      console.error(err);
-      alert(err.response?.data?.message || "Unable to join game.");
+    if (!data.success) {
+      throw new Error(data.message);
     }
-  };
+
+    navigate(`/host-game/${gameId}`);
+  } catch (err) {
+    console.error(err);
+
+    setJoining(false);
+
+    alert(err.response?.data?.message || err.message || "Unable to join game.");
+  }
+};
 
   if (joining) {
     return <RobotLoader />;

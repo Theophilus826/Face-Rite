@@ -20,6 +20,15 @@ export default function HostBubble() {
   useEffect(() => {
     if (!gameId) return;
 
+    const token = localStorage.getItem("token");
+
+    const socket = io("https://swordgame-5.onrender.com", {
+      auth: { token },
+      transports: ["websocket"],
+      reconnection: true,
+      autoConnect: false,
+    });
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -27,16 +36,14 @@ export default function HostBubble() {
     engineRef.current = engine;
 
     //----------------------------------------------------
-    // Start Game
+    // GAME STARTED
     //----------------------------------------------------
     const handleGameStarted = (config) => {
-      console.log("🎮 gameStarted:", config);
-
       if (String(config.gameId) !== String(gameId)) return;
-
       if (gameRef.current) return;
 
       const game = new Game(engine, canvas, gameId, socket);
+
       gameRef.current = game;
 
       game.start(config);
@@ -49,80 +56,57 @@ export default function HostBubble() {
     };
 
     //----------------------------------------------------
-    // Bubble Errors
-    //----------------------------------------------------
-    const handleBubbleError = ({ message }) => {
-      alert(message);
-      navigate("/bubble");
-    };
-
-    //----------------------------------------------------
-    // Connect Socket
+    // CONNECT & JOIN
     //----------------------------------------------------
     const connectAndJoin = async () => {
-  try {
-    await API.get(`/bubble/${gameId}`);
+      try {
+        await API.get(`/bubble/${gameId}`);
 
-    const join = () => {
-      if (joinedRef.current) return;
+        const join = () => {
+          if (joinedRef.current) return;
 
-      joinedRef.current = true;
+          joinedRef.current = true;
 
-      console.log("📤 Joining game:", gameId);
+          socket.emit("bubble:init");
 
-      socket.emit("joinGame", gameId);
-    };
+          socket.emit("joinGame", gameId, (res) => {
+            if (!res.success) {
+              alert(res.message);
+              navigate("/bubble");
+            }
+          });
+        };
 
-    if (!socket.connected) {
-      socket.auth = {
-        token: localStorage.getItem("token"),
-      };
+        if (!socket.connected) {
+          socket.connect();
 
-      socket.connect();
-
-      socket.once("connect", () => {
-        console.log("✅ Connected:", socket.id);
-        join();
-      });
-    } else {
-      join();
-    }
-  } catch (err) {
-    console.error(err);
-    alert(err.response?.data?.message || "Unable to join game.");
-    navigate("/bubble");
-  }
-};
-
-    //----------------------------------------------------
-    // Resize
-    //----------------------------------------------------
-    const resize = () => {
-      engine.resize();
-      gameRef.current?.resize?.();
+          socket.once("connect", () => {
+            console.log("✅ Connected:", socket.id);
+            join();
+          });
+        } else {
+          join();
+        }
+      } catch (err) {
+        console.error(err);
+        alert(err.response?.data?.message || "Unable to join game.");
+        navigate("/bubble");
+      }
     };
 
     socket.on("gameStarted", handleGameStarted);
-    socket.on("bubble:error", handleBubbleError);
 
     connectAndJoin();
 
-    window.addEventListener("resize", resize);
-
     return () => {
       socket.off("gameStarted", handleGameStarted);
-      socket.off("bubble:error", handleBubbleError);
-
-      window.removeEventListener("resize", resize);
+      socket.disconnect();
 
       engine.stopRenderLoop();
-
       gameRef.current?.scene?.dispose();
-      gameRef.current = null;
+      engine.dispose();
 
       joinedRef.current = false;
-
-      engine.dispose();
     };
   }, [gameId, navigate]);
 
