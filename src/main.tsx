@@ -1,4 +1,4 @@
-import React from "react";
+// import React from "react";
 import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
 import { Capacitor } from "@capacitor/core";
@@ -24,11 +24,9 @@ const initializeAdMob = async () => {
 initializeAdMob();
 
 ReactDOM.createRoot(
-  document.getElementById("root") as HTMLElement
+  document.getElementById("root")
 ).render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <App />
-    </Provider>
-  </React.StrictMode>
+  <Provider store={store}>
+    <App />
+  </Provider>
 );

@@ -37,6 +37,33 @@ export default function HostBubble() {
       stencil: true,
     });
 
+    console.log("================================");
+    console.log("Canvas Element");
+    console.log("client:", canvas.clientWidth, canvas.clientHeight);
+    console.log("offset:", canvas.offsetWidth, canvas.offsetHeight);
+    console.log("bounding:", canvas.getBoundingClientRect());
+
+    console.log("================================");
+    console.log("Babylon Engine");
+    console.log("render:", engine.getRenderWidth(), engine.getRenderHeight());
+
+    requestAnimationFrame(() => {
+      console.log("================================");
+      console.log("After requestAnimationFrame");
+
+      console.log("client:", canvas.clientWidth, canvas.clientHeight);
+      console.log("offset:", canvas.offsetWidth, canvas.offsetHeight);
+      console.log("bounding:", canvas.getBoundingClientRect());
+
+      engine.resize();
+
+      console.log(
+        "render after resize:",
+        engine.getRenderWidth(),
+        engine.getRenderHeight(),
+      );
+    });
+
     engineRef.current = engine;
 
     //------------------------------------------------
