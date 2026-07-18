@@ -53,25 +53,42 @@ export default function HostBubble() {
     //------------------------------------------------
 
     socket.on("gameStarted", (config) => {
-      console.log("🎮 gameStarted", config);
+      try {
+        console.log("🎮 gameStarted", config);
 
-      if (String(config.gameId) !== String(gameId)) return;
+        if (String(config.gameId) !== String(gameId)) {
+          console.log("Wrong game");
+          return;
+        }
 
-      if (gameRef.current) return;
+        if (gameRef.current) {
+          console.log("Game already exists");
+          return;
+        }
 
-      const game = new Game(engine, canvas, gameId, socket);
+        console.log("Creating Game");
 
-      gameRef.current = game;
+        const game = new Game(engine, canvas, gameId, socket);
 
-      game.start(config);
+        console.log("Game created");
 
-      engine.runRenderLoop(() => {
-        game.render();
-      });
+        gameRef.current = game;
 
-      setLoading(false);
+        game.start(config);
+
+        console.log("Game started");
+
+        engine.runRenderLoop(() => {
+          game.render();
+        });
+
+        setLoading(false);
+
+        console.log("Loading hidden");
+      } catch (err) {
+        console.error("gameStarted crashed:", err);
+      }
     });
-
     //------------------------------------------------
     // CONFIG
     //------------------------------------------------
