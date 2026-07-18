@@ -53,7 +53,7 @@ import AdminLayout from "./component/AdminLayout";
 import AdminRoute from "./component/AdminRoute";
 import CarouselUploader from "./component/CarouselUploader";
 import PostGalleryWithUpload from "./component/PostGallery";
-import Profile from "./component/UserProfile"; 
+import Profile from "./component/UserProfile";
 import AdminBubble from "./pages/AdminBubble";
 
 import {
@@ -129,25 +129,25 @@ function AppContent() {
   }, [dispatch]);
 
   useEffect(() => {
-  const restoreToken = async () => {
-    try {
-      const { value } = await Preferences.get({
-        key: "token",
-      });
+    const restoreToken = async () => {
+      try {
+        const { value } = await Preferences.get({
+          key: "token",
+        });
 
-      if (!value) return;
+        if (!value) return;
 
-      console.log("Restored token:", value);
+        console.log("Restored token:", value);
 
-      // Call your existing profile/current-user endpoint
-      // and restore Redux user state here.
-    } catch (err) {
-      console.error("Restore token failed:", err);
-    }
-  };
+        // Call your existing profile/current-user endpoint
+        // and restore Redux user state here.
+      } catch (err) {
+        console.error("Restore token failed:", err);
+      }
+    };
 
-  restoreToken();
-}, []);
+    restoreToken();
+  }, []);
 
   useEffect(() => {
     if (!user?.token) {
@@ -158,10 +158,25 @@ function AppContent() {
     initializePushNotifications(user.token, API_BASE);
   }, [user?.token, API_BASE]);
   /* ================= UI HIDE LOGIC ================= */
-  const hideLayout =
+  const isGame =
     location.pathname.startsWith("/host-game") ||
+    location.pathname.startsWith("/bubble");
+
+  const hideLayout =
+    isGame ||
     location.pathname.startsWith("/chat") ||
     location.pathname.startsWith("/group");
+
+  if (isGame) {
+    return (
+      <Suspense fallback={<GameLoader />}>
+        <Routes>
+          <Route path="/host-game" element={<HostGame />} />
+          <Route path="/bubble/:gameId" element={<HostBubble />} />
+        </Routes>
+      </Suspense>
+    );
+  }
 
   return (
     <div
@@ -170,11 +185,9 @@ function AppContent() {
     >
       <ToastContainer position="top-right" autoClose={3000} />
 
-      {/* ================= NAVIGATION ================= */}
       {!hideLayout && <Navbar />}
       {!hideLayout && <BottomNav />}
 
-      {/* ================= ROUTES ================= */}
       <Suspense fallback={<GameLoader />}>
         <Routes>
           {/* ================= PUBLIC ================= */}
@@ -191,7 +204,7 @@ function AppContent() {
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/download" element={<DownloadPage />} />
 
-          <Route path="/host-game" element={<HostGame />} />
+          {/* Removed host-game and bubble routes */}
 
           <Route path="/home" element={<Home />} />
           <Route path="/me" element={<Me />} />
@@ -210,7 +223,7 @@ function AppContent() {
           <Route path="/chat" element={<ChatContant />} />
           <Route path="/chat/:chatUserId" element={<ChatPage />} />
           <Route path="/group/:groupId" element={<GroupChatPage />} />
-          <Route path="/bubble/:gameId" element={<HostBubble />} />
+
           {/* ================= ADMIN ================= */}
 
           <Route path="/admin" element={<AdminRoute />}>
@@ -222,10 +235,7 @@ function AppContent() {
               <Route path="deposits" element={<AdminDeposit />} />
               <Route path="withdraw" element={<AdminWithdrawals />} />
               <Route path="adminuploadapk" element={<AdminUploadApk />} />
-
-              <Route path="host-game" element={<HostGame />} />
               <Route path="bubble" element={<AdminBubble />} />
-
               <Route path="feedbacks" element={<FeedbackPages />} />
             </Route>
           </Route>
@@ -234,7 +244,6 @@ function AppContent() {
 
           <Route path="/cards" element={<CardGrid />} />
           <Route path="/about" element={<AboutPage />} />
-          {/* ================= FALLBACK ================= */}
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
