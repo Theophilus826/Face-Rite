@@ -211,16 +211,27 @@ export default function HostBubble() {
 
   return (
     <>
-      {loading && <GameLoader />}
-
-      <canvas
-        ref={canvasRef}
+      <div
         style={{
-          width: "100%",
+          width: "100vw",
           height: "100vh",
-          display: loading ? "none" : "block",
+          overflow: "hidden",
+          background: "#111",
+          margin: 0,
         }}
-      />
+      >
+        {loading && <GameLoader />}
+
+        <canvas
+          ref={canvasRef}
+          style={{
+            width: "100%",
+            height: "100%",
+            display: loading ? "none" : "block",
+            touchAction: "none",
+          }}
+        />
+      </div>
     </>
   );
 }
