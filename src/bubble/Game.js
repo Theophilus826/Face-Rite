@@ -164,7 +164,15 @@ export class Game {
   }
 
   updateCamera() {
-    const ratio = this.engine.getRenderWidth() / this.engine.getRenderHeight();
+    const width = this.engine.getRenderWidth();
+    const height = this.engine.getRenderHeight();
+    const ratio = width / height;
+
+    console.log({
+      width,
+      height,
+      ratio,
+    });
 
     const size = 10;
 
