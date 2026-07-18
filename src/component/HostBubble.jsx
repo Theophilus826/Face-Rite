@@ -235,15 +235,19 @@ export default function HostBubble() {
       style={{
         position: "fixed",
         inset: 0,
+        width: "100vw",
+        height: "100vh",
+        overflow: "hidden",
         background: "#111",
       }}
     >
       <canvas
         ref={canvasRef}
         style={{
+          display: "block",
           width: "100%",
           height: "100%",
-          display: "block",
+          touchAction: "none",
         }}
       />
     </div>
