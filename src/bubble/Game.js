@@ -43,20 +43,57 @@ export class Game {
   // Start
   //==========================================================
 
-  start() {
+  start(config) {
     console.log("Socket connected:", this.socket.connected);
     console.log("Socket ID:", this.socket.id);
-    this.createScene();
 
+    this.createScene();
     this.createSystems();
 
-    this.createHUD();
+    if (config) {
+      this.applyConfig(config);
+    }
 
+    this.createHUD();
     this.bindEvents();
 
     this.state.set(GameState.PLAYING);
   }
 
+  //==========================================================
+  // Config
+  //==========================================================
+
+  applyConfig(config) {
+    if (config.turnsBeforeShift != null) {
+      this.turnsBeforeShift = config.turnsBeforeShift;
+    }
+
+    if (config.timeLimit != null) {
+      this.state.timeLimit = config.timeLimit;
+      this.state.timeRemaining = config.timeLimit;
+    }
+
+    if (config.targetScore != null) {
+      this.state.targetScore = config.targetScore;
+    }
+
+    if (config.level != null) {
+      this.state.level = config.level;
+    }
+
+    console.log("Game Config:", config);
+  }
+
+  // Called from React when the server sends a new config
+  setConfig(config) {
+    this.applyConfig(config);
+  }
+
+  // Called from React when the server sends a timer update
+  updateTimer(seconds) {
+    this.state.timeRemaining = seconds;
+  }
   //==========================================================
   // Systems
   //==========================================================
@@ -86,42 +123,6 @@ export class Game {
     this.shooter.setGame(this);
 
     this.input = new Input(this.scene, this.shooter);
-
-    //------------------------------------------------------
-    // Receive game configuration from backend
-    //------------------------------------------------------
-
-    this.socket.on("gameConfig", (config) => {
-      if (typeof config.turnsBeforeShift === "number") {
-        this.turnsBeforeShift = config.turnsBeforeShift;
-      }
-
-      if (typeof config.timeLimit === "number") {
-        this.state.timeLimit = config.timeLimit;
-        this.state.timeRemaining = config.timeLimit;
-      }
-
-      if (typeof config.targetScore === "number") {
-        this.state.targetScore = config.targetScore;
-      }
-
-      if (typeof config.level === "number") {
-        this.state.level = config.level;
-      }
-      console.log("Game Config:", config);
-    });
-
-    //------------------------------------------------------
-    // Receive timer updates from backend
-    //------------------------------------------------------
-
-    this.socket.on("timer", (seconds) => {
-      this.state.timeRemaining = seconds;
-    });
-
-    //------------------------------------------------------
-    // Start game request
-    //------------------------------------------------------
   }
 
   //==========================================================

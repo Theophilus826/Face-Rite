@@ -18,7 +18,6 @@ export default function HostBubble() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("HostBubble mounted");
     if (!gameId) return;
 
     const token = localStorage.getItem("token");
@@ -33,11 +32,26 @@ export default function HostBubble() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const engine = new Engine(canvas, true);
+    const engine = new Engine(canvas, true, {
+      preserveDrawingBuffer: true,
+      stencil: true,
+    });
+
     engineRef.current = engine;
 
     //------------------------------------------------
-    // CONNECT
+    // Resize
+    //------------------------------------------------
+
+    const handleResize = () => {
+      engine.resize();
+      gameRef.current?.resize();
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    //------------------------------------------------
+    // Socket Events
     //------------------------------------------------
 
     socket.on("connect", () => {
@@ -49,97 +63,74 @@ export default function HostBubble() {
     });
 
     //------------------------------------------------
-    // GAME STARTED
+    // Game Started
     //------------------------------------------------
 
     socket.on("gameStarted", (config) => {
       try {
         console.log("🎮 gameStarted", config);
 
-        if (String(config.gameId) !== String(gameId)) {
-          console.log("Wrong game");
-          return;
-        }
+        if (String(config.gameId) !== String(gameId)) return;
 
-        if (gameRef.current) {
-          console.log("Game already exists");
-          return;
-        }
-
-        console.log("Creating Game");
+        if (gameRef.current) return;
 
         const game = new Game(engine, canvas, gameId, socket);
-
-        console.log("Game created");
 
         gameRef.current = game;
 
         game.start(config);
-
-        console.log("Game started");
 
         engine.runRenderLoop(() => {
           game.render();
         });
 
         setLoading(false);
-
-        console.log("Loading hidden");
       } catch (err) {
         console.error("gameStarted crashed:", err);
       }
     });
+
     //------------------------------------------------
-    // CONFIG
+    // Config Updates
     //------------------------------------------------
 
     socket.on("gameConfig", (config) => {
       console.log("⚙️ gameConfig", config);
-
-      gameRef.current?.setConfig?.(config);
+      gameRef.current?.setConfig(config);
     });
 
     //------------------------------------------------
-    // TIMER
+    // Timer Updates
     //------------------------------------------------
 
     socket.on("timer", (timeRemaining) => {
-      console.log("⏰", timeRemaining);
-
-      gameRef.current?.updateTimer?.(timeRemaining);
+      gameRef.current?.updateTimer(timeRemaining);
     });
 
     //------------------------------------------------
-    // FINISHED
+    // Finished
     //------------------------------------------------
 
     socket.on("gameFinished", (result) => {
-      console.log("🏆 gameFinished", result);
-
+      console.log("🏆", result);
       gameRef.current?.finish?.(result);
     });
 
     //------------------------------------------------
-    // ERROR
+    // Errors
     //------------------------------------------------
 
     socket.on("bubble:error", ({ message }) => {
-      console.error(message);
-
       alert(message);
-
       navigate("/bubble");
     });
 
     //------------------------------------------------
-    // JOIN
+    // Join Game
     //------------------------------------------------
 
     const connectAndJoin = async () => {
       try {
-        console.log("Checking game...", gameId);
-
-        // Verify game exists
         await API.get(`/bubble/${gameId}`);
 
         const join = () => {
@@ -147,39 +138,24 @@ export default function HostBubble() {
 
           joinedRef.current = true;
 
-          console.log("📤 bubble:join", gameId);
-
           socket.emit("bubble:join", gameId, (response) => {
-            console.log("🫧 bubble:join response:", response);
-
             if (!response?.success) {
               joinedRef.current = false;
 
               alert(response?.message || "Unable to join");
 
               navigate("/bubble");
-              return;
             }
-
-            console.log("✅ Successfully joined Bubble game");
-            // Wait for the server to emit:
-            // socket.emit("gameStarted", payload)
           });
         };
 
         if (!socket.connected) {
           socket.connect();
-
-          socket.once("connect", () => {
-            console.log("✅ Connected:", socket.id);
-            join();
-          });
+          socket.once("connect", join);
         } else {
           join();
         }
       } catch (err) {
-        console.error("Join error:", err);
-
         joinedRef.current = false;
 
         alert(err.response?.data?.message || "Unable to join.");
@@ -191,10 +167,12 @@ export default function HostBubble() {
     connectAndJoin();
 
     //------------------------------------------------
-    // CLEANUP
+    // Cleanup
     //------------------------------------------------
 
     return () => {
+      window.removeEventListener("resize", handleResize);
+
       socket.disconnect();
 
       engine.stopRenderLoop();
@@ -210,28 +188,25 @@ export default function HostBubble() {
   }, [gameId, navigate]);
 
   return (
-    <>
-      <div
-        style={{
-          width: "100vw",
-          height: "100vh",
-          overflow: "hidden",
-          background: "#111",
-          margin: 0,
-        }}
-      >
-        {loading && <GameLoader />}
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+        overflow: "hidden",
+        background: "#111",
+      }}
+    >
+      {loading && <GameLoader />}
 
-        <canvas
-          ref={canvasRef}
-          style={{
-            width: "100%",
-            height: "100%",
-            display: loading ? "none" : "block",
-            touchAction: "none",
-          }}
-        />
-      </div>
-    </>
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: loading ? "none" : "block",
+          touchAction: "none",
+        }}
+      />
+    </div>
   );
 }
