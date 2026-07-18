@@ -12,7 +12,7 @@ export class Game {
   constructor(engine, canvas, gameId, socket) {
     this.engine = engine;
     this.canvas = canvas;
-    this.gameId = gameId;  
+    this.gameId = gameId;
     this.scene = null;
     this.camera = null;
     this.socket = socket;
@@ -44,6 +44,8 @@ export class Game {
   //==========================================================
 
   start() {
+    console.log("Socket connected:", this.socket.connected);
+    console.log("Socket ID:", this.socket.id);
     this.createScene();
 
     this.createSystems();
@@ -120,8 +122,6 @@ export class Game {
     //------------------------------------------------------
     // Start game request
     //------------------------------------------------------
-
-   
   }
 
   //==========================================================
