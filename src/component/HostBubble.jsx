@@ -31,6 +31,22 @@ export default function HostBubble() {
 
     const canvas = canvasRef.current;
     if (!canvas) return;
+    console.log("canvas", canvas);
+
+    console.log("parent", canvas.parentElement);
+    console.log("parent rect", canvas.parentElement.getBoundingClientRect());
+
+    console.log(
+      "grandparent rect",
+      canvas.parentElement.parentElement?.getBoundingClientRect(),
+    );
+
+    console.log("body", document.body.getBoundingClientRect());
+
+    console.log(
+      "root",
+      document.getElementById("root")?.getBoundingClientRect(),
+    );
 
     const engine = new Engine(canvas, true, {
       preserveDrawingBuffer: true,
