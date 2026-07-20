@@ -134,7 +134,7 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, tempMessage]);
 
       try {
-        const res = await API.post("/chat/messages/image", formData, {
+        const res = await API.post("/chat/messages/media", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },

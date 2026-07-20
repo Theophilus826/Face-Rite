@@ -43,7 +43,26 @@ export function useChatSocket({
         /* ================= INIT ================= */
 
         if (data.type === "init") {
-          setMessages(data.messages || []);
+          setMessages((prev) => {
+            // merge init messages with any pending optimistic messages
+            const serverMessages = data.messages || [];
+            const pendingMessages = prev.filter(m => m.pending);
+            
+            // combine and remove duplicates
+            const combined = [...serverMessages, ...pendingMessages];
+            const unique = [];
+            const seen = new Set();
+            
+            for (const msg of combined) {
+              const id = msg._id?.toString?.() || msg._id;
+              if (!seen.has(id)) {
+                seen.add(id);
+                unique.push(msg);
+              }
+            }
+            
+            return unique;
+          });
           return;
         }
 
@@ -121,5 +140,5 @@ export function useChatSocket({
         ref.current = null;
       }
     };
-  }, [userId, chatUserId, setMessages]);
+  }, [userId, chatUserId]);
 }
