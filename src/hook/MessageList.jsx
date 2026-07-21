@@ -145,13 +145,15 @@ export default function MessageList({ messages = [], userId, onDelete }) {
                 {type === "image" && (
                   <div className="p-1">
                     {!imageErrors[msg._id] ? (
-                      <div className="relative">
+                      <div className="relative w-full">
                         <img
                           src={
                             msg.image || msg.imageUrl || msg.file || msg.media
                           }
                           alt="chat"
-                          className="rounded-2xl max-w-full object-cover cursor-pointer"
+                          className="rounded-2xl max-w-full w-full object-cover cursor-pointer max-h-96"
+                          loading="eager"
+                          onError={() => handleImageError(msg._id)}
                           onClick={() =>
                             window.open(
                               msg.image ||
@@ -176,7 +178,7 @@ export default function MessageList({ messages = [], userId, onDelete }) {
                         </a>
                       </div>
                     ) : (
-                      <div className="rounded-2xl max-w-full h-48 bg-gray-700/50 flex items-center justify-center">
+                      <div className="rounded-2xl max-w-full w-full h-48 bg-gray-700/50 flex items-center justify-center">
                         <p className="text-xs text-gray-400">
                           Image failed to load
                         </p>
