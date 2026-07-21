@@ -95,8 +95,17 @@ export default function ChatPage() {
 
         // replace temp message
         setMessages((prev) =>
-          prev.map((m) => (m._id === tempId ? res.data.message : m)),
+          prev.map((m) =>
+            m._id === tempId
+              ? {
+                  ...res.data.message,
+                  _id: res.data.message._id,
+                }
+              : m,
+          ),
         );
+
+        console.log("Messages after upload:", messages);
       } catch (err) {
         console.error("Text send failed:", err.response?.data || err.message);
 
@@ -139,7 +148,7 @@ export default function ChatPage() {
             "Content-Type": "multipart/form-data",
           },
         });
-
+        console.log("UPLOAD RESPONSE:", res.data);
         setMessages((prev) =>
           prev.map((m) => (m._id === tempId ? res.data.message : m)),
         );
@@ -230,12 +239,16 @@ export default function ChatPage() {
           onDelete={async (messageId) => {
             try {
               // find message locally
-              const msg = messages.find((m) => String(m._id) === String(messageId));
+              const msg = messages.find(
+                (m) => String(m._id) === String(messageId),
+              );
 
               // if message is pending or temp id (not a 24-char hex ObjectId), just remove locally
               const isTemp = !messageId || String(messageId).length !== 24;
               if (msg?.pending || isTemp) {
-                setMessages((prev) => prev.filter((m) => String(m._id) !== String(messageId)));
+                setMessages((prev) =>
+                  prev.filter((m) => String(m._id) !== String(messageId)),
+                );
                 return;
               }
 
@@ -243,7 +256,10 @@ export default function ChatPage() {
 
               setMessages((prev) => prev.filter((m) => m._id !== messageId));
             } catch (err) {
-              console.error("Delete failed:", err.response?.data || err.message);
+              console.error(
+                "Delete failed:",
+                err.response?.data || err.message,
+              );
             }
           }}
         />
