@@ -38,7 +38,7 @@ export default function MessageList({ messages = [], userId, onDelete }) {
   };
 
   const handleImageError = (messageId) => {
-    console.error(`Image failed to load for message: ${messageId}`);
+    // console.error(`Image failed to load for message: ${messageId}`);
     setImageErrors((prev) => ({ ...prev, [messageId]: true }));
   };
 
@@ -67,17 +67,7 @@ export default function MessageList({ messages = [], userId, onDelete }) {
 
         const type = msg.type || msg.messageType || "text";
 
-        /* ================= DEBUG LOGGING ================= */
-        if (type === "image") {
-          console.log(`IMAGE MESSAGE ${msg._id}:`, {
-            image: msg.image,
-            imageUrl: msg.imageUrl,
-            file: msg.file,
-            media: msg.media,
-            pending: msg.pending,
-            type: msg.type,
-          });
-        }
+        
 
         return (
           <div
