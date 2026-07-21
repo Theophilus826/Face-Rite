@@ -340,10 +340,7 @@ function Home() {
           </Link>
         </div>
 
-        {/* Card Grid */}
-        <div className="mt-4">
-          <CardGrid />
-        </div>
+        
       </div>
 
       {/* POSTS */}
