@@ -39,7 +39,7 @@ export default function MessageList({ messages = [], userId, onDelete }) {
 
   const handleImageError = (messageId) => {
     console.error(`Image failed to load for message: ${messageId}`);
-    setImageErrors(prev => ({ ...prev, [messageId]: true }));
+    setImageErrors((prev) => ({ ...prev, [messageId]: true }));
   };
 
   return (
@@ -145,16 +145,41 @@ export default function MessageList({ messages = [], userId, onDelete }) {
                 {type === "image" && (
                   <div className="p-1">
                     {!imageErrors[msg._id] ? (
-                      <img
-                        src={msg.image || msg.imageUrl || msg.file || msg.media}
-                        alt="chat"
-                        className="rounded-2xl max-w-full object-cover max-h-96"
-                        loading="lazy"
-                        onError={() => handleImageError(msg._id)}
-                      />
+                      <div className="relative">
+                        <img
+                          src={
+                            msg.image || msg.imageUrl || msg.file || msg.media
+                          }
+                          alt="chat"
+                          className="rounded-2xl max-w-full object-cover cursor-pointer"
+                          onClick={() =>
+                            window.open(
+                              msg.image ||
+                                msg.imageUrl ||
+                                msg.file ||
+                                msg.media,
+                              "_blank",
+                            )
+                          }
+                        />
+
+                        <a
+                          href={
+                            msg.image || msg.imageUrl || msg.file || msg.media
+                          }
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg backdrop-blur"
+                        >
+                          Download
+                        </a>
+                      </div>
                     ) : (
                       <div className="rounded-2xl max-w-full h-48 bg-gray-700/50 flex items-center justify-center">
-                        <p className="text-xs text-gray-400">Image failed to load</p>
+                        <p className="text-xs text-gray-400">
+                          Image failed to load
+                        </p>
                       </div>
                     )}
 
