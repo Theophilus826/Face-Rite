@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function MessageList({
-  messages = [],
-  userId,
-  onDelete,
-}) {
+export default function MessageList({ messages = [], userId, onDelete }) {
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const pressTimerRef = useRef(null);
 
@@ -46,9 +42,7 @@ export default function MessageList({
         /* ================= SENDER ================= */
 
         const senderId =
-          typeof msg.fromUser === "object"
-            ? msg.fromUser?._id
-            : msg.fromUser;
+          typeof msg.fromUser === "object" ? msg.fromUser?._id : msg.fromUser;
 
         const mine = senderId === userId;
 
@@ -65,19 +59,12 @@ export default function MessageList({
 
         /* ================= MESSAGE TYPE ================= */
 
-        const type =
-          msg.type ||
-          msg.messageType ||
-          "text";
+        const type = msg.type || msg.messageType || "text";
 
         return (
           <div
             key={msg._id || index}
-            className={`flex ${
-              mine
-                ? "justify-end"
-                : "justify-start"
-            }`}
+            className={`flex ${mine ? "justify-end" : "justify-start"}`}
           >
             <div
               className="max-w-xs md:max-w-sm"
@@ -98,7 +85,6 @@ export default function MessageList({
                 }
               }}
             >
-
               {/* NAME */}
 
               {!mine && !sameSender && (
@@ -115,12 +101,9 @@ export default function MessageList({
                     ? "bg-blue-500/80 border-blue-400/20 text-white"
                     : "bg-white/10 border-white/10 text-white"
                 } ${
-                  selectedMessageId === msg._id
-                    ? "ring-2 ring-red-400"
-                    : ""
+                  selectedMessageId === msg._id ? "ring-2 ring-red-400" : ""
                 }`}
               >
-
                 {/* delete control for own messages */}
                 {selectedMessageId === msg._id && onDelete && mine && (
                   <button
@@ -144,13 +127,10 @@ export default function MessageList({
                 {type === "image" && (
                   <div className="p-1">
                     <img
-                      src={
-                        msg.imageUrl ||
-                        msg.file ||
-                        msg.media
-                      }
+                      src={msg.image || msg.imageUrl || msg.file || msg.media}
                       alt="chat"
                       className="rounded-2xl max-w-full object-cover"
+                      loading="lazy"
                     />
 
                     {(msg.text || msg.caption) && (
@@ -165,17 +145,9 @@ export default function MessageList({
 
                 {(type === "audio" || type === "voice") && (
                   <div className="p-3">
-                    <audio
-                      controls
-                      className="max-w-[240px]"
-                    >
+                    <audio controls className="max-w-[240px]">
                       <source
-                        src={
-                          msg.audio ||
-                          msg.audioUrl ||
-                          msg.file ||
-                          msg.media
-                        }
+                        src={msg.audio || msg.audioUrl || msg.file || msg.media}
                         type="audio/webm"
                       />
                     </audio>
@@ -186,17 +158,8 @@ export default function MessageList({
 
                 {type === "video" && (
                   <div className="p-1">
-                    <video
-                      controls
-                      className="rounded-2xl max-w-full"
-                    >
-                      <source
-                        src={
-                          msg.videoUrl ||
-                          msg.file ||
-                          msg.media
-                        }
-                      />
+                    <video controls className="rounded-2xl max-w-full">
+                      <source src={msg.videoUrl || msg.file || msg.media} />
                     </video>
                   </div>
                 )}
@@ -205,10 +168,7 @@ export default function MessageList({
 
                 {type === "file" && (
                   <a
-                    href={
-                      msg.fileUrl ||
-                      msg.file
-                    }
+                    href={msg.fileUrl || msg.file}
                     target="_blank"
                     rel="noreferrer"
                     className="block px-4 py-3 underline text-sm"
@@ -222,15 +182,11 @@ export default function MessageList({
 
               <p
                 className={`text-[10px] mt-1 px-1 text-gray-400 ${
-                  mine
-                    ? "text-right"
-                    : "text-left"
+                  mine ? "text-right" : "text-left"
                 }`}
               >
                 {msg.createdAt
-                  ? new Date(
-                      msg.createdAt
-                    ).toLocaleTimeString([], {
+                  ? new Date(msg.createdAt).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })

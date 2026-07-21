@@ -164,23 +164,23 @@ export class Game {
   }
 
   updateCamera() {
-    const width = this.engine.getRenderWidth();
-    const height = this.engine.getRenderHeight();
-    const ratio = width / height;
+    const ratio = this.engine.getRenderWidth() / this.engine.getRenderHeight();
 
-    console.log({
-      width,
-      height,
-      ratio,
-    });
+    // World size of your board
+    const boardWidth = this.board
+      ? this.board.rightWall - this.board.leftWall
+      : 10;
 
-    const size = 10;
+    const margin = 1;
 
-    this.camera.orthoLeft = -size * ratio;
-    this.camera.orthoRight = size * ratio;
+    // Camera height needed so the board fits horizontally
+    const verticalSize = boardWidth / ratio / 2 + margin;
 
-    this.camera.orthoTop = size;
-    this.camera.orthoBottom = -size;
+    this.camera.orthoTop = verticalSize;
+    this.camera.orthoBottom = -verticalSize;
+
+    this.camera.orthoLeft = -verticalSize * ratio;
+    this.camera.orthoRight = verticalSize * ratio;
   }
 
   createLights() {
