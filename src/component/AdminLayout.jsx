@@ -478,6 +478,12 @@ export default function AdminLayout() {
               <NavLink to="/admin/bubble" className={linkClass}>
                 🫧 Bubble Games
               </NavLink>
+              <NavLink to="/admin/feedbacks" className={linkClass}>
+                📝 Feedbacks
+              </NavLink>
+              <NavLink to="/admin/share" className={linkClass}>
+                📤 Share
+              </NavLink>
             </nav>
             <button
               onClick={() => dispatch(logout())}

@@ -55,13 +55,14 @@ import CarouselUploader from "./component/CarouselUploader";
 import PostGalleryWithUpload from "./component/PostGallery";
 import Profile from "./component/UserProfile";
 import AdminBubble from "./pages/AdminBubble";
-
+import Share from "./component/Share";
 import {
   initializePushNotifications,
   resetPushNotifications,
 } from "./features/PushNotifications";
 import { Preferences } from "@capacitor/preferences";
 import HostBubble from "./component/HostBubble";
+import AdminSharePage from "./pages/AdminSharePage";
 // Lazy
 const HostGame = lazy(() => import("./component/HostGame"));
 
@@ -223,7 +224,7 @@ function AppContent() {
           <Route path="/chat" element={<ChatContant />} />
           <Route path="/chat/:chatUserId" element={<ChatPage />} />
           <Route path="/group/:groupId" element={<GroupChatPage />} />
-
+          <Route path="/share" element={<Share user={user} />} />
           {/* ================= ADMIN ================= */}
 
           <Route path="/admin" element={<AdminRoute />}>
@@ -237,6 +238,7 @@ function AppContent() {
               <Route path="adminuploadapk" element={<AdminUploadApk />} />
               <Route path="bubble" element={<AdminBubble />} />
               <Route path="feedbacks" element={<FeedbackPages />} />
+              <Route path="share" element={<AdminSharePage />} />
             </Route>
           </Route>
 
