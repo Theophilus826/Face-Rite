@@ -344,7 +344,7 @@ function Home() {
       </div>
 
       {/* POSTS */}
-      <section className="max-w-5xl mx-auto space-y-6">
+      <section className="max-w-5xl mx-auto mt-6 space-y-6">
         {posts.map((post, index) => {
           const postUser = post.user || {};
 

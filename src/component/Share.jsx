@@ -1,118 +1,256 @@
 import React, { useState, useEffect } from "react";
+import "../Share.css";
+import API from "../features/Api";
 
-function Share({ user, token }) {
+function Share({ user }) {
+  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState("");
-  const [progress, setProgress] = useState(0);
-  const [target, setTarget] = useState(5);
-  const [reward, setReward] = useState(10);
-  const [loading, setLoading] = useState(false);
+
+  const [stats, setStats] = useState({
+    cash: 0,
+    referrals: 0,
+    reward: 10,
+    required: 5,
+    invitees: [],
+    milestones: [
+      { users: 2, reward: 2400 },
+      { users: 5, reward: 5200 },
+      { users: 8, reward: 18000 },
+    ],
+  });
 
   const referralCode = user?.referralCode || "";
-  const referralLink = `${window.location.origin}/signup?ref=${referralCode}`;
 
-  /* ---------------- COPY LINK ---------------- */
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(referralLink);
+  const referralLink = `${window.location.origin}/register?ref=${referralCode}`;
 
-      setCopied(true);
-      setMessage("Referral link copied!");
+  useEffect(() => {
+    fetchReferralStats();
+  }, []);
 
-      setTimeout(() => {
-        setCopied(false);
-        setMessage("");
-      }, 2000);
-    } catch {
-      setMessage("Failed to copy link.");
-    }
-  };
+  /* ================= LOAD STATS ================= */
 
-  /* ---------------- FETCH REFERRAL STATS ---------------- */
   const fetchReferralStats = async () => {
-    if (!token) return;
-
     try {
       setLoading(true);
 
-      const res = await fetch("/api/auth/referral-stats", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
+      const { data } = await API.get("/share/referral-stats");
 
       if (data.success) {
-        setProgress(data.referrals || 0);
-        setTarget(data.required || 5);
-        setReward(data.reward || 10);
+        setStats((prev) => ({
+          ...prev,
+          ...data,
+        }));
       }
     } catch (err) {
-      console.error("Referral fetch error:", err);
-      setMessage("Failed to load referral stats");
+      console.error(err);
+      setMessage("Unable to load referral stats");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchReferralStats();
-  }, [token]);
+  /* ================= INVITE ================= */
 
-  /* ---------------- PROGRESS CALC ---------------- */
-  const percent = Math.min((progress / target) * 100, 100);
+  const handleInvite = async () => {
+    if (!referralCode) {
+      setMessage("Referral code not available.");
+      return;
+    }
+
+    const text = `Join using my referral link and earn rewards!\n${referralLink}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Invite Friends",
+          text,
+          url: referralLink,
+        });
+      } else {
+        await navigator.clipboard.writeText(referralLink);
+
+        setCopied(true);
+        setMessage("Referral link copied!");
+
+        setTimeout(() => {
+          setCopied(false);
+          setMessage("");
+        }, 2000);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  /* ================= WITHDRAW ================= */
+
+  const handleWithdraw = async () => {
+    try {
+      setLoading(true);
+
+      const { data } = await API.post("/share/withdraw");
+
+      setMessage(data.message);
+
+      fetchReferralStats();
+    } catch (err) {
+      setMessage(
+        err.response?.data?.message || "Withdrawal failed"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================= PROGRESS ================= */
+
+  const maxUsers =
+    stats.milestones[stats.milestones.length - 1]?.users ||
+    stats.required;
+
+  const percent = Math.min(
+    (stats.referrals / maxUsers) * 100,
+    100
+  );
 
   return (
-    <div
-      style={{
-        padding: "1rem",
-        border: "1px solid #ccc",
-        borderRadius: "8px",
-        maxWidth: "400px",
-      }}
-    >
-      <h2>Invite Friends & Earn Coins</h2>
-
-      {loading && <p>Loading stats...</p>}
-
-      <p>
-        Your referral code: <strong>{referralCode}</strong>
-      </p>
-
-      {/* Progress Bar */}
-      <div
-        style={{
-          margin: "10px 0",
-          background: "#eee",
-          borderRadius: "8px",
-          height: "20px",
-        }}
-      >
-        <div
-          style={{
-            width: `${percent}%`,
-            background: "#4ade80",
-            height: "100%",
-            borderRadius: "8px",
-            transition: "width 0.3s",
-          }}
-        />
+    <div className="share-page">
+      <div className="share-header">
+        <h1>Invite Friends</h1>
+        <h2>Get Rewards</h2>
       </div>
 
-      <p>
-        {progress}/{target} referrals
-      </p>
+      <div className="cash-card">
+        <div className="cash-row">
+          <div>
+            <h3>My Cash</h3>
+            <h1>₦{stats.cash}</h1>
+          </div>
 
-      <p>
-        Invite {target} friends and earn <strong>{reward} coins</strong>
-      </p>
+          <button
+            className="withdraw-btn"
+            onClick={handleWithdraw}
+            disabled={loading || stats.cash <= 0}
+          >
+            Withdraw
+          </button>
+        </div>
 
-      <button onClick={handleCopy}>
-        {copied ? "Copied!" : "Copy Referral Link"}
-      </button>
+        <p>
+          Invite{" "}
+          <strong>
+            {Math.max(stats.required - stats.referrals, 0)}
+          </strong>{" "}
+          more users to reach ₦{stats.reward}
+        </p>
 
-      {message && <p style={{ marginTop: "10px" }}>{message}</p>}
+        <div className="progress-container">
+          <div className="progress-line">
+            <div
+              className="progress-fill"
+              style={{
+                width: `${percent}%`,
+              }}
+            />
+
+            {stats.milestones.map((item) => (
+              <div
+                key={item.users}
+                className={`milestone ${
+                  stats.referrals >= item.users
+                    ? "active"
+                    : ""
+                }`}
+                style={{
+                  left: `${(item.users / maxUsers) * 100}%`,
+                }}
+              >
+                <span>₦{item.reward}</span>
+                <small>{item.users} Users</small>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="steps">
+          <div>
+            <span>🔗</span>
+            <p>Share Link</p>
+          </div>
+
+          <div>
+            <span>⭐</span>
+            <p>Invitee Finishes</p>
+          </div>
+
+          <div>
+            <span>💰</span>
+            <p>Get Cash</p>
+          </div>
+        </div>
+
+        <button
+          className="invite-btn"
+          onClick={handleInvite}
+          disabled={loading}
+        >
+          {copied ? "Copied!" : "Invite Now"}
+        </button>
+
+        {message && (
+          <p className="message">{message}</p>
+        )}
+      </div>
+
+      <div className="invitees-card">
+        <h2>My Invitees</h2>
+
+        {loading ? (
+          <p>Loading...</p>
+        ) : stats.invitees?.length ? (
+          stats.invitees.map((invite) => (
+            <div
+              className="invitee"
+              key={invite._id}
+            >
+              <div>
+                <strong>
+                  {invite.referredUser?.name}
+                </strong>
+
+                <p>
+                  {invite.referredUser?.email ||
+                    invite.referredUser?.phone}
+                </p>
+              </div>
+
+              <span
+                className={`status ${
+                  invite.rewarded
+                    ? "done"
+                    : invite.completed
+                    ? "completed"
+                    : "pending"
+                }`}
+              >
+                {invite.rewarded
+                  ? "Rewarded"
+                  : invite.completed
+                  ? "Completed"
+                  : "Pending Task"}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="empty">
+            <h3>No Invitees Yet</h3>
+            <p>
+              Invite friends using your referral link.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
