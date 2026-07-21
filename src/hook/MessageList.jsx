@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 export default function MessageList({ messages = [], userId, onDelete }) {
   const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const [imageErrors, setImageErrors] = useState({});
   const pressTimerRef = useRef(null);
 
   const clearPressTimer = () => {
@@ -36,6 +37,11 @@ export default function MessageList({ messages = [], userId, onDelete }) {
     setSelectedMessageId(null);
   };
 
+  const handleImageError = (messageId) => {
+    console.error(`Image failed to load for message: ${messageId}`);
+    setImageErrors(prev => ({ ...prev, [messageId]: true }));
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
       {messages.map((msg, index) => {
@@ -60,6 +66,18 @@ export default function MessageList({ messages = [], userId, onDelete }) {
         /* ================= MESSAGE TYPE ================= */
 
         const type = msg.type || msg.messageType || "text";
+
+        /* ================= DEBUG LOGGING ================= */
+        if (type === "image") {
+          console.log(`IMAGE MESSAGE ${msg._id}:`, {
+            image: msg.image,
+            imageUrl: msg.imageUrl,
+            file: msg.file,
+            media: msg.media,
+            pending: msg.pending,
+            type: msg.type,
+          });
+        }
 
         return (
           <div
@@ -108,7 +126,7 @@ export default function MessageList({ messages = [], userId, onDelete }) {
                 {selectedMessageId === msg._id && onDelete && mine && (
                   <button
                     onClick={() => handleDelete(msg._id)}
-                    className="absolute -right-2 -top-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full shadow-lg"
+                    className="absolute -right-2 -top-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full shadow-lg z-10"
                   >
                     Delete
                   </button>
@@ -126,12 +144,19 @@ export default function MessageList({ messages = [], userId, onDelete }) {
 
                 {type === "image" && (
                   <div className="p-1">
-                    <img
-                      src={msg.image || msg.imageUrl || msg.file || msg.media}
-                      alt="chat"
-                      className="rounded-2xl max-w-full object-cover"
-                      loading="lazy"
-                    />
+                    {!imageErrors[msg._id] ? (
+                      <img
+                        src={msg.image || msg.imageUrl || msg.file || msg.media}
+                        alt="chat"
+                        className="rounded-2xl max-w-full object-cover max-h-96"
+                        loading="lazy"
+                        onError={() => handleImageError(msg._id)}
+                      />
+                    ) : (
+                      <div className="rounded-2xl max-w-full h-48 bg-gray-700/50 flex items-center justify-center">
+                        <p className="text-xs text-gray-400">Image failed to load</p>
+                      </div>
+                    )}
 
                     {(msg.text || msg.caption) && (
                       <p className="px-3 pb-3 pt-2 text-sm">

@@ -193,7 +193,7 @@ export default function ChatPage() {
             "Content-Type": "multipart/form-data",
           },
         });
-
+        console.log("✅ IMAGE SENT - Response:", res.data.message);
         setMessages((prev) =>
           prev.map((m) => (m._id === tempId ? res.data.message : m)),
         );
