@@ -10,6 +10,8 @@ export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  const savedReferral = localStorage.getItem("referralCode") || "";
+
   const [formData, setFormData] = useState({
     name: "",
     identifier: "",
@@ -17,9 +19,9 @@ export default function Register() {
     confirmPassword: "",
   });
 
-  const [referralCode, setReferralCode] = useState(
-    localStorage.getItem("referralCode") || ""
-  );
+  const [referralCode, setReferralCode] = useState(savedReferral);
+  const [referralCodeLocked, setReferralCodeLocked] =
+    useState(!!savedReferral);
 
   const { user, isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.auth
@@ -33,6 +35,7 @@ export default function Register() {
     if (ref) {
       localStorage.setItem("referralCode", ref);
       setReferralCode(ref);
+      setReferralCodeLocked(true);
     }
   }, [searchParams]);
 
@@ -47,7 +50,6 @@ export default function Register() {
       localStorage.removeItem("referralCode");
 
       toast.success("Account created successfully");
-
       navigate("/welcome");
     }
 
@@ -90,6 +92,11 @@ export default function Register() {
       return toast.error("Passwords do not match");
     }
 
+    // Save manually entered referral code
+    if (referralCode && !referralCodeLocked) {
+      localStorage.setItem("referralCode", referralCode.trim());
+    }
+
     dispatch(
       registerUser({
         name: formData.name,
@@ -106,7 +113,7 @@ export default function Register() {
 
         confirmPassword: formData.confirmPassword,
 
-        referralCode: referralCode || undefined,
+        referralCode: referralCode.trim() || undefined,
       })
     );
   };
@@ -116,12 +123,11 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-4">
       <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/30 shadow-lg">
-
         <h2 className="text-3xl font-bold text-center mb-3">
           Create Account
         </h2>
 
-        {referralCode && (
+        {referralCodeLocked && referralCode && (
           <div className="mb-6 rounded-lg bg-green-100 border border-green-300 text-green-700 p-3 text-center">
             🎉 You're joining with referral code:
             <br />
@@ -129,10 +135,7 @@ export default function Register() {
           </div>
         )}
 
-        <form
-          onSubmit={onSubmit}
-          className="flex flex-col gap-5"
-        >
+        <form onSubmit={onSubmit} className="flex flex-col gap-5">
           <input
             type="text"
             name="name"
@@ -152,6 +155,31 @@ export default function Register() {
             className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
             required
           />
+
+          <input
+            type="text"
+            placeholder="Referral Code (Optional)"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value)}
+            disabled={referralCodeLocked}
+            className={`p-4 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+              referralCodeLocked
+                ? "bg-green-50 border-green-300 text-green-700 cursor-not-allowed"
+                : "bg-white/50 border-white/40"
+            }`}
+          />
+
+          {!referralCodeLocked && (
+            <small className="text-gray-500 -mt-3">
+              Leave empty if you don't have a referral code.
+            </small>
+          )}
+
+          {referralCodeLocked && (
+            <small className="text-green-600 -mt-3">
+              Referral code applied from invitation link.
+            </small>
+          )}
 
           <input
             type="password"

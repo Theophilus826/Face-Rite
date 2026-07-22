@@ -2,6 +2,12 @@ import React, { useState, useEffect } from "react";
 import "../Share.css";
 import API from "../features/Api";
 
+const MILESTONES = [
+  { users: 5, reward: 1000 },
+  { users: 13, reward: 2500 },
+  { users: 25, reward: 3600 },
+];
+
 function Share({ user }) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -10,14 +16,10 @@ function Share({ user }) {
   const [stats, setStats] = useState({
     cash: 0,
     referrals: 0,
-    reward: 10,
-    required: 5,
+    reward: MILESTONES[0].reward,
+    required: MILESTONES[0].users,
     invitees: [],
-    milestones: [
-      { users: 5, reward: 1000 },
-      { users: 13, reward: 2500 },
-      { users: 25, reward: 3600 },
-    ],
+    milestones: MILESTONES,
   });
 
   const referralCode = user?.referralCode || "";
@@ -40,6 +42,7 @@ function Share({ user }) {
         setStats((prev) => ({
           ...prev,
           ...data,
+          milestones: MILESTONES,
         }));
       }
     } catch (err) {
@@ -95,9 +98,7 @@ function Share({ user }) {
 
       fetchReferralStats();
     } catch (err) {
-      setMessage(
-        err.response?.data?.message || "Withdrawal failed"
-      );
+      setMessage(err.response?.data?.message || "Withdrawal failed");
     } finally {
       setLoading(false);
     }
@@ -107,11 +108,19 @@ function Share({ user }) {
 
   const maxUsers =
     stats.milestones[stats.milestones.length - 1]?.users ||
-    stats.required;
+    MILESTONES[MILESTONES.length - 1].users;
 
-  const percent = Math.min(
-    (stats.referrals / maxUsers) * 100,
-    100
+  const percent = Math.min((stats.referrals / maxUsers) * 100, 100);
+
+  // Find the next milestone
+  const nextMilestone =
+    stats.milestones.find(
+      (milestone) => stats.referrals < milestone.users
+    ) || stats.milestones[stats.milestones.length - 1];
+
+  const remainingUsers = Math.max(
+    nextMilestone.users - stats.referrals,
+    0
   );
 
   return (
@@ -138,11 +147,18 @@ function Share({ user }) {
         </div>
 
         <p>
-          Invite{" "}
-          <strong>
-            {Math.max(stats.required - stats.referrals, 0)}
-          </strong>{" "}
-          more users to reach ₦{stats.reward}
+          {remainingUsers > 0 ? (
+            <>
+              Invite <strong>{remainingUsers}</strong> more{" "}
+              {remainingUsers === 1 ? "user" : "users"} to earn{" "}
+              <strong>₦{nextMilestone.reward}</strong>
+            </>
+          ) : (
+            <>
+              🎉 Congratulations! You've reached the highest reward of{" "}
+              <strong>₦{nextMilestone.reward}</strong>
+            </>
+          )}
         </p>
 
         <div className="progress-container">
@@ -158,9 +174,7 @@ function Share({ user }) {
               <div
                 key={item.users}
                 className={`milestone ${
-                  stats.referrals >= item.users
-                    ? "active"
-                    : ""
+                  stats.referrals >= item.users ? "active" : ""
                 }`}
                 style={{
                   left: `${(item.users / maxUsers) * 100}%`,
@@ -198,9 +212,7 @@ function Share({ user }) {
           {copied ? "Copied!" : "Invite Now"}
         </button>
 
-        {message && (
-          <p className="message">{message}</p>
-        )}
+        {message && <p className="message">{message}</p>}
       </div>
 
       <div className="invitees-card">
@@ -210,14 +222,9 @@ function Share({ user }) {
           <p>Loading...</p>
         ) : stats.invitees?.length ? (
           stats.invitees.map((invite) => (
-            <div
-              className="invitee"
-              key={invite._id}
-            >
+            <div className="invitee" key={invite._id}>
               <div>
-                <strong>
-                  {invite.referredUser?.name}
-                </strong>
+                <strong>{invite.referredUser?.name}</strong>
 
                 <p>
                   {invite.referredUser?.email ||
@@ -245,9 +252,7 @@ function Share({ user }) {
         ) : (
           <div className="empty">
             <h3>No Invitees Yet</h3>
-            <p>
-              Invite friends using your referral link.
-            </p>
+            <p>Invite friends using your referral link.</p>
           </div>
         )}
       </div>
