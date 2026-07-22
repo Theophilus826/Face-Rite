@@ -194,9 +194,14 @@ export default function Profile() {
   }, [loadProfile]);
 
   useEffect(() => {
-    const base = API.defaults.baseURL?.replace(/\/$/, "");
     const token = user?.token || localStorage.getItem("token");
-    const url = `${base}/chat/notifications/stream?token=${token}`;
+    if (!token) {
+      console.warn("No auth token available for SSE");
+      return;
+    }
+
+    const base = API.defaults.baseURL?.replace(/\/$/, "");
+    const url = `${base}/chat/notifications/stream?token=${encodeURIComponent(token)}`;
 
     let es;
 
@@ -226,6 +231,7 @@ export default function Profile() {
 
       es.onerror = (err) => {
         console.error("PROFILE SSE ERROR:", err);
+        es.close();
       };
     } catch (err) {
       console.error("Failed to open profile notifications SSE:", err);
@@ -236,7 +242,7 @@ export default function Profile() {
         es?.close();
       } catch {}
     };
-  }, [profileUserId, user?._id]);
+  }, [profileUserId, user?._id, user?.token]);
 
   if (!user)
     return (
