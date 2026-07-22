@@ -6,6 +6,7 @@ function AdminTaskSharePage() {
   const [tasks, setTasks] = useState([]);
   const [progress, setProgress] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [users, setUsers] = useState([]);
 
   const [form, setForm] = useState({
     title: "",
@@ -15,11 +16,23 @@ function AdminTaskSharePage() {
     allowedTypes: ["text"],
     requiredKeyword: "",
     expiresAt: "",
+    assignedUsers: [],
   });
 
   useEffect(() => {
     loadTasks();
+    loadUsers();
   }, []);
+
+  const loadUsers = async () => {
+    try {
+      const { data } = await API.get("/users");
+
+      setUsers(data.users || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const loadTasks = async () => {
     try {
@@ -57,9 +70,7 @@ function AdminTaskSharePage() {
 
   const viewProgress = async (id) => {
     try {
-      const { data } = await API.get(
-        `/share-tasks/tasks/${id}/progress`
-      );
+      const { data } = await API.get(`/share-tasks/tasks/${id}/progress`);
 
       setSelectedTask(id);
       setProgress(data.progress || []);
@@ -71,18 +82,13 @@ function AdminTaskSharePage() {
 
   const rewardUser = async (taskId, userId) => {
     try {
-      await API.post(
-        `/share-tasks/tasks/${taskId}/reward`,
-        { userId }
-      );
+      await API.post(`/share-tasks/tasks/${taskId}/reward`, { userId });
 
       toast.success("Reward sent");
       viewProgress(taskId);
     } catch (err) {
       console.error(err);
-      toast.error(
-        err.response?.data?.message || "Reward failed"
-      );
+      toast.error(err.response?.data?.message || "Reward failed");
     }
   };
 
@@ -90,6 +96,36 @@ function AdminTaskSharePage() {
     <div className="admin-share">
       <h2>Share Tasks</h2>
 
+      <div className="mt-4">
+        <label>Assign Users</label>
+
+        <select
+          multiple
+          value={form.assignedUsers}
+          onChange={(e) => {
+            const values = Array.from(
+              e.target.selectedOptions,
+              (option) => option.value,
+            );
+
+            setForm({
+              ...form,
+              assignedUsers: values,
+            });
+          }}
+          className="border rounded p-2 w-full h-48"
+        >
+          {users.map((user) => (
+            <option key={user._id} value={user._id}>
+              {user.name} ({user.email})
+            </option>
+          ))}
+        </select>
+
+        <small>
+          Hold Ctrl (Windows) or Cmd (Mac) to select multiple users.
+        </small>
+      </div>
       <div className="create-task">
         <input
           placeholder="Title"
@@ -137,37 +173,20 @@ function AdminTaskSharePage() {
           }
         />
 
-        <button onClick={createTask}>
-          Create Task
-        </button>
+        <button onClick={createTask}>Create Task</button>
       </div>
 
       {tasks.map((task) => (
-        <div
-          key={task._id}
-          className="task-card"
-        >
+        <div key={task._id} className="task-card">
           <h3>{task.title}</h3>
 
           <p>{task.description}</p>
 
           <p>Reward: {task.rewardCoins} Coins</p>
 
-          <button
-            onClick={() =>
-              viewProgress(task._id)
-            }
-          >
-            Progress
-          </button>
+          <button onClick={() => viewProgress(task._id)}>Progress</button>
 
-          <button
-            onClick={() =>
-              deleteTask(task._id)
-            }
-          >
-            Delete
-          </button>
+          <button onClick={() => deleteTask(task._id)}>Delete</button>
         </div>
       ))}
 
@@ -176,47 +195,24 @@ function AdminTaskSharePage() {
           <h2>User Progress</h2>
 
           {progress.map((item) => (
-            <div
-              key={item._id}
-              className="progress-card"
-            >
+            <div key={item._id} className="progress-card">
               <h4>{item.user.name}</h4>
 
               <p>
-                {item.messageCount} /{" "}
-                {item.task.requiredMessages}
+                {item.messageCount} / {item.task.requiredMessages}
               </p>
 
-              <p>
-                {item.completed
-                  ? "Completed"
-                  : "Pending"}
-              </p>
+              <p>{item.completed ? "Completed" : "Pending"}</p>
 
-              <p>
-                {item.rewarded
-                  ? "Rewarded"
-                  : "Not Rewarded"}
-              </p>
+              <p>{item.rewarded ? "Rewarded" : "Not Rewarded"}</p>
 
-              <p>
-                Recipients:{" "}
-                {item.recipients.length}
-              </p>
+              <p>Recipients: {item.recipients.length}</p>
 
-              {!item.rewarded &&
-                item.completed && (
-                  <button
-                    onClick={() =>
-                      rewardUser(
-                        selectedTask,
-                        item.user._id
-                      )
-                    }
-                  >
-                    Reward
-                  </button>
-                )}
+              {!item.rewarded && item.completed && (
+                <button onClick={() => rewardUser(selectedTask, item.user._id)}>
+                  Reward
+                </button>
+              )}
             </div>
           ))}
         </>
