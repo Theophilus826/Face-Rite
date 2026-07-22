@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   getTasks,
   getMyTasks,
-} from "../features/shareTask/shareTaskSlice";
+} from "../features/gameSlice/ShareTaskSlice";
 
 export default function TaskDetails() {
   const { id } = useParams();
