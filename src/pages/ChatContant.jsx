@@ -332,9 +332,6 @@ function ChatContant() {
 
                       <div>
                         <p className="font-medium text-sm">{u.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {u.phone || "No phone"}
-                        </p>
                       </div>
                     </div>
 
@@ -385,13 +382,8 @@ function ChatContant() {
 
                 <div>
                   <p className="font-medium text-sm">{u.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {u.phone || "No phone"}
-                  </p>
 
-                  <p className="text-xs text-gray-500">
-                    {u.phone || "Tap to chat"}
-                  </p>
+                  <p className="text-xs text-gray-500">Tap to chat</p>
                 </div>
               </div>
             ))}

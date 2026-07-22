@@ -44,12 +44,16 @@ function ProfileHeader({ image, isUploading, onUpload, editable }) {
         0,
         0,
         crop.width,
-        crop.height
+        crop.height,
       );
 
-      canvas.toBlob(async (blob) => {
-        await onUpload(blob, src);
-      }, "image/jpeg", 0.9);
+      canvas.toBlob(
+        async (blob) => {
+          await onUpload(blob, src);
+        },
+        "image/jpeg",
+        0.9,
+      );
     };
     reader.readAsDataURL(file);
   };
@@ -63,7 +67,9 @@ function ProfileHeader({ image, isUploading, onUpload, editable }) {
       />
       <label
         className={`mt-3 text-sm ${
-          editable ? "cursor-pointer text-blue-600 hover:underline" : "text-gray-400"
+          editable
+            ? "cursor-pointer text-blue-600 hover:underline"
+            : "text-gray-400"
         }`}
       >
         {isUploading
@@ -89,7 +95,9 @@ function ProfilePosts({ posts, isLoading, user }) {
     return <p className="text-center text-muted">Loading posts...</p>;
 
   if (!posts.length)
-    return <p className="text-center text-muted">No posts yet. Start sharing 🚀</p>;
+    return (
+      <p className="text-center text-muted">No posts yet. Start sharing 🚀</p>
+    );
 
   return (
     <>
@@ -238,17 +246,11 @@ export default function Profile() {
 
   if (isLoading)
     return (
-      <div className="text-center mt-10 text-muted">
-        Loading profile...
-      </div>
+      <div className="text-center mt-10 text-muted">Loading profile...</div>
     );
 
   if (!profileUser)
-    return (
-      <div className="text-center mt-10 text-muted">
-        User not found.
-      </div>
-    );
+    return <div className="text-center mt-10 text-muted">User not found.</div>;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -271,6 +273,9 @@ export default function Profile() {
             {new Date(profileUser.lastActive).toLocaleString()}
           </span>
         )}
+        <p className="text-xs text-gray-500">
+          {profileUser?.user?.phone || "No phone"}
+        </p>
       </div>
 
       <ProfilePosts posts={posts} isLoading={isLoading} user={profileUser} />
