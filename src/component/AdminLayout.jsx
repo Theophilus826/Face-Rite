@@ -484,6 +484,12 @@ export default function AdminLayout() {
               <NavLink to="/admin/share" className={linkClass}>
                 📤 Share
               </NavLink>
+              <NavLink to="/admin/share-tasks" className={linkClass}>
+                📤 Share Tasks
+              </NavLink>
+              <NavLink to="/admin/Admin-users" className={linkClass}>
+                👥 Admin Users
+              </NavLink>
             </nav>
             <button
               onClick={() => dispatch(logout())}

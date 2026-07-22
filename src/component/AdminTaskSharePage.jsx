@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import API from "../features/Api";
 import { toast } from "react-toastify";
 
-function AdminSharePage() {
+function AdminTaskSharePage() {
   const [tasks, setTasks] = useState([]);
   const [progress, setProgress] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -220,4 +220,4 @@ function AdminSharePage() {
   );
 }
 
-export default AdminSharePage;
+export default AdminTaskSharePage;

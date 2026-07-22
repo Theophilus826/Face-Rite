@@ -65,7 +65,8 @@ import HostBubble from "./component/HostBubble";
 import AdminSharePage from "./pages/AdminSharePage";
 import TaskDetails from "./pages/TaskDetails";
 import ShareTasks from "./pages/ShareTasks";
-
+import AdminTaskSharePage from "./component/AdminTaskSharePage";
+import AdminUsersPanel from "./component/AdminUsersPanel";
 // Lazy
 const HostGame = lazy(() => import("./component/HostGame"));
 
@@ -244,7 +245,9 @@ function AppContent() {
               <Route path="bubble" element={<AdminBubble />} />
               <Route path="feedbacks" element={<FeedbackPages />} />
               <Route path="share" element={<AdminSharePage />} />
-            
+              <Route path="share-tasks" element={<AdminTaskSharePage />} />
+              <Route path="Admin-users" element={<AdminUsersPanel />} />
+
             </Route>
           </Route>
 
