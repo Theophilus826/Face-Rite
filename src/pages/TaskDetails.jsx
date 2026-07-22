@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  getTasks,
-  getMyTasks,
+  fetchTasks,
+  fetchMyTasks,
 } from "../features/gameSlice/ShareTaskSlice";
 
 export default function TaskDetails() {
@@ -16,8 +16,8 @@ export default function TaskDetails() {
   );
 
   useEffect(() => {
-    dispatch(getTasks());
-    dispatch(getMyTasks());
+    dispatch(fetchTasks());
+    dispatch(fetchMyTasks());
   }, [dispatch]);
 
   const task = tasks.find((t) => t._id === id);
