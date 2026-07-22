@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  getTasks,
-  getMyTasks,
+  fetchTasks,
+  fetchMyTasks,
 } from "../features/gameSlice/ShareTaskSlice";
 
 export default function ShareTasks() {
@@ -15,8 +15,8 @@ export default function ShareTasks() {
   } = useSelector((state) => state.shareTasks);
 
   useEffect(() => {
-    dispatch(getTasks());
-    dispatch(getMyTasks());
+    dispatch(fetchTasks());
+    dispatch(fetchMyTasks());
   }, [dispatch]);
 
   const getProgress = (taskId) =>
