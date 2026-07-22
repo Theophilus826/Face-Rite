@@ -1,7 +1,7 @@
 // src/features/ShareTaskSlice.js
 
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import ShareTaskService from "../services/ShareTaskService";
+import ShareTaskService from "../gameSlice/ShareTaskService";
 
 /* =========================================
    INITIAL STATE
