@@ -23,20 +23,22 @@ function AdminTaskSharePage() {
 
   const loadTasks = async () => {
     try {
-      const { data } = await API.get("/share/tasks");
+      const { data } = await API.get("/share-tasks/tasks");
       setTasks(data.tasks || []);
     } catch (err) {
+      console.error(err);
       toast.error("Unable to load tasks");
     }
   };
 
   const createTask = async () => {
     try {
-      await API.post("/share/tasks", form);
+      await API.post("/share-tasks/tasks", form);
       toast.success("Task created");
       loadTasks();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Error");
+      console.error(err);
+      toast.error(err.response?.data?.message || "Error creating task");
     }
   };
 
@@ -44,43 +46,49 @@ function AdminTaskSharePage() {
     if (!window.confirm("Delete task?")) return;
 
     try {
-      await API.delete(`/share/tasks/${id}`);
+      await API.delete(`/share-tasks/tasks/${id}`);
       toast.success("Deleted");
       loadTasks();
     } catch (err) {
+      console.error(err);
       toast.error("Delete failed");
     }
   };
 
   const viewProgress = async (id) => {
     try {
-      const { data } = await API.get(`/share/tasks/${id}/progress`);
+      const { data } = await API.get(
+        `/share-tasks/tasks/${id}/progress`
+      );
+
       setSelectedTask(id);
       setProgress(data.progress || []);
     } catch (err) {
+      console.error(err);
       toast.error("Unable to load progress");
     }
   };
 
   const rewardUser = async (taskId, userId) => {
     try {
-      await API.post(`/share/tasks/${taskId}/reward`, {
-        userId,
-      });
+      await API.post(
+        `/share-tasks/tasks/${taskId}/reward`,
+        { userId }
+      );
 
       toast.success("Reward sent");
-
       viewProgress(taskId);
     } catch (err) {
-      toast.error(err.response?.data?.message);
+      console.error(err);
+      toast.error(
+        err.response?.data?.message || "Reward failed"
+      );
     }
   };
 
   return (
     <div className="admin-share">
       <h2>Share Tasks</h2>
-
-      {/* Create Task */}
 
       <div className="create-task">
         <input
@@ -107,7 +115,7 @@ function AdminTaskSharePage() {
 
         <input
           type="number"
-          placeholder="Reward"
+          placeholder="Reward Coins"
           value={form.rewardCoins}
           onChange={(e) =>
             setForm({
@@ -119,7 +127,7 @@ function AdminTaskSharePage() {
 
         <input
           type="number"
-          placeholder="Required Users"
+          placeholder="Required Messages"
           value={form.requiredMessages}
           onChange={(e) =>
             setForm({
@@ -134,17 +142,16 @@ function AdminTaskSharePage() {
         </button>
       </div>
 
-      {/* Tasks */}
-
       {tasks.map((task) => (
-        <div key={task._id} className="task-card">
+        <div
+          key={task._id}
+          className="task-card"
+        >
           <h3>{task.title}</h3>
 
           <p>{task.description}</p>
 
-          <p>
-            Reward: {task.rewardCoins} Coins
-          </p>
+          <p>Reward: {task.rewardCoins} Coins</p>
 
           <button
             onClick={() =>
@@ -163,8 +170,6 @@ function AdminTaskSharePage() {
           </button>
         </div>
       ))}
-
-      {/* Progress */}
 
       {selectedTask && (
         <>
@@ -195,7 +200,7 @@ function AdminTaskSharePage() {
               </p>
 
               <p>
-                Recipients:
+                Recipients:{" "}
                 {item.recipients.length}
               </p>
 
