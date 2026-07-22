@@ -63,6 +63,9 @@ import {
 import { Preferences } from "@capacitor/preferences";
 import HostBubble from "./component/HostBubble";
 import AdminSharePage from "./pages/AdminSharePage";
+import TaskDetails from "./pages/TaskDetails";
+import ShareTasks from "./pages/ShareTasks";
+
 // Lazy
 const HostGame = lazy(() => import("./component/HostGame"));
 
@@ -225,6 +228,8 @@ function AppContent() {
           <Route path="/chat/:chatUserId" element={<ChatPage />} />
           <Route path="/group/:groupId" element={<GroupChatPage />} />
           <Route path="/share" element={<Share user={user} />} />
+          <Route path="/TaskDetails" element={<TaskDetails/>} />
+          <Route path="/ShareTasks" element={<ShareTasks/>} />
           {/* ================= ADMIN ================= */}
 
           <Route path="/admin" element={<AdminRoute />}>
@@ -239,6 +244,7 @@ function AppContent() {
               <Route path="bubble" element={<AdminBubble />} />
               <Route path="feedbacks" element={<FeedbackPages />} />
               <Route path="share" element={<AdminSharePage />} />
+            
             </Route>
           </Route>
 

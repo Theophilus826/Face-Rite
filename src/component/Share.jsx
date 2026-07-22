@@ -14,9 +14,9 @@ function Share({ user }) {
     required: 5,
     invitees: [],
     milestones: [
-      { users: 2, reward: 2400 },
-      { users: 5, reward: 5200 },
-      { users: 8, reward: 18000 },
+      { users: 5, reward: 1000 },
+      { users: 13, reward: 2500 },
+      { users: 25, reward: 3600 },
     ],
   });
 
