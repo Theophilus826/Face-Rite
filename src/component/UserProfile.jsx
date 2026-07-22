@@ -195,7 +195,8 @@ export default function Profile() {
 
   useEffect(() => {
     const base = API.defaults.baseURL?.replace(/\/$/, "");
-    const url = `${base}/chat/notifications/stream`;
+    const token = user?.token || localStorage.getItem("token");
+    const url = `${base}/chat/notifications/stream?token=${token}`;
 
     let es;
 
