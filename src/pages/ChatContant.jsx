@@ -150,9 +150,11 @@ function ChatContant() {
 
   const handleSearch = async (q) => {
     try {
-      const res = await API.get(`/users/search?q=${q}`);
+      const res = await API.get(`/users/search?q=${encodeURIComponent(q)}`);
 
-      setSearchUsers(res.data.users || []);
+      const me = JSON.parse(localStorage.getItem("user") || "{}");
+
+      setSearchUsers((res.data.users || []).filter((u) => u._id !== me._id));
     } catch (err) {
       console.error(err);
     }
@@ -162,11 +164,13 @@ function ChatContant() {
 
   const addContact = async (userId) => {
     try {
-      await API.post("/users/contacts/add", {
+      const res = await API.post("/users/contacts/add", {
         userId,
       });
 
-      await loadData();
+      if (res.data.contact) {
+        setContacts((prev) => [...prev, res.data.contact]);
+      }
 
       setSearchUsers((prev) => prev.filter((u) => u._id !== userId));
     } catch (err) {
@@ -177,8 +181,12 @@ function ChatContant() {
   /* ================= FILTER CONTACTS ================= */
 
   const filteredContacts = useMemo(() => {
-    return contacts.filter((u) =>
-      u.name?.toLowerCase().includes(globalSearch.toLowerCase()),
+    const q = globalSearch.toLowerCase().trim();
+
+    return contacts.filter(
+      (u) =>
+        u.name?.toLowerCase().includes(q) ||
+        u.phone?.includes(globalSearch.trim()),
     );
   }, [contacts, globalSearch]);
 
@@ -324,6 +332,9 @@ function ChatContant() {
 
                       <div>
                         <p className="font-medium text-sm">{u.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {u.phone || "No phone"}
+                        </p>
                       </div>
                     </div>
 
@@ -374,8 +385,13 @@ function ChatContant() {
 
                 <div>
                   <p className="font-medium text-sm">{u.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {u.phone || "No phone"}
+                  </p>
 
-                  <p className="text-xs text-gray-500">Tap to chat</p>
+                  <p className="text-xs text-gray-500">
+                    {u.phone || "Tap to chat"}
+                  </p>
                 </div>
               </div>
             ))}
