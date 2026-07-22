@@ -1,19 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import io from "socket.io-client";
 
-const socket = io("https://swordgame-5.onrender.com");
-
 export default function AdminUsersPanel() {
+  const socketRef = useRef(null);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [search, setSearch] = useState("");
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
   useEffect(() => {
-    socket.emit("admin:getUsers");
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const socket = io("https://swordgame-5.onrender.com/admin", {
+      path: "/socket.io",
+      withCredentials: true,
+      auth: { token },
+      reconnection: true,
+    });
+    socketRef.current = socket;
+
+    const init = () => {
+      socket.emit("admin:getUsers");
+    };
+
+    socket.on("connect", init);
+    socket.on("reconnect", init);
 
     socket.on("users:list", (data) => {
-      const list = data.users || data;
+      const list = Array.isArray(data) ? data : data.users || data;
       setUsers(list);
     });
 
@@ -34,8 +49,8 @@ export default function AdminUsersPanel() {
     });
 
     return () => {
-      socket.off("users:list");
-      socket.off("user:status");
+      socket.disconnect();
+      socketRef.current = null;
     };
   }, []);
 
