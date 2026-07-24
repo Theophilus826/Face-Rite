@@ -9,6 +9,8 @@ const MILESTONES = [
   { users: 25, reward: 3600 },
 ];
 
+const { tasks } = useSelector((state) => state.shareTasks);
+
 function Share({ user }) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -126,8 +128,10 @@ function Share({ user }) {
         <h1>Invite Friends</h1>
         <h2>Get Rewards</h2>
 
-        <Link to={`/TaskDetails/${task._id}`}>
-          <button className="btn btn-primary">View Task Details</button>
+        <Link to={`/TaskDetails/${tasks[0]?._id}`}>
+          <button className="btn btn-primary" disabled={!tasks.length}>
+            View Task Details
+          </button>
         </Link>
       </div>
 
