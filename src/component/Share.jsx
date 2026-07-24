@@ -135,9 +135,15 @@ function Share({ user }) {
         <h2>Get Rewards</h2>
 
         {tasks.length > 0 ? (
-          <Link to={`/TaskDetails/${tasks[0]._id}`}>
-            <button className="btn btn-primary">View Task Details</button>
-          </Link>
+          <div className="task-list">
+            {tasks.map((task) => (
+              <Link key={task._id} to={`/TaskDetails/${task._id}`}>
+                <button className="btn btn-primary">
+                  {task.title} — 🪙 {task.rewardCoins} Coins
+                </button>
+              </Link>
+            ))}
+          </div>
         ) : (
           <button className="btn btn-primary" disabled>
             Loading Tasks...
