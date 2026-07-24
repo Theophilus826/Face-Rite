@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import "../Share.css";
 import API from "../features/Api";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchTasks } from "../features/gameSlice/ShareTaskSlice";
+
 
 const MILESTONES = [
   { users: 5, reward: 1000 },
