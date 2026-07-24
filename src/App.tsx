@@ -229,6 +229,7 @@ function AppContent() {
           <Route path="/chat/:chatUserId" element={<ChatPage />} />
           <Route path="/group/:groupId" element={<GroupChatPage />} />
           <Route path="/share" element={<Share user={user} />} />
+          <Route path="/TaskDetails" element={<TaskDetails />} />
           <Route path="/TaskDetails/:id" element={<TaskDetails />} />
           <Route path="/ShareTasks" element={<ShareTasks />} />
           {/* ================= ADMIN ================= */}
