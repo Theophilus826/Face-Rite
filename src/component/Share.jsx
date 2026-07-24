@@ -145,7 +145,7 @@ function Share({ user }) {
             ))}
           </div>
         ) : (
-          <button className="btn btn-primary" disabled>
+          <button className="btn btn-primary">
             Loading Tasks...
           </button>
         )}
