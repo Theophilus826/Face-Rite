@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../Share.css";
 import API from "../features/Api";
+import { Link } from "react-router-dom";
 
 const MILESTONES = [
   { users: 5, reward: 1000 },
@@ -114,14 +115,10 @@ function Share({ user }) {
 
   // Find the next milestone
   const nextMilestone =
-    stats.milestones.find(
-      (milestone) => stats.referrals < milestone.users
-    ) || stats.milestones[stats.milestones.length - 1];
+    stats.milestones.find((milestone) => stats.referrals < milestone.users) ||
+    stats.milestones[stats.milestones.length - 1];
 
-  const remainingUsers = Math.max(
-    nextMilestone.users - stats.referrals,
-    0
-  );
+  const remainingUsers = Math.max(nextMilestone.users - stats.referrals, 0);
 
   return (
     <div className="share-page">
@@ -133,6 +130,23 @@ function Share({ user }) {
       <div className="cash-card">
         <div className="cash-row">
           <div>
+            <div className="cash-row">
+              <Link to="/TaskDetails">
+                <button className="btn btn-primary">View Task Details</button>
+              </Link>
+              <div>
+                <h3>My Cash</h3>
+                <h1>₦{stats.cash}</h1>
+              </div>
+
+              <button
+                className="withdraw-btn"
+                onClick={handleWithdraw}
+                disabled={loading || stats.cash <= 0}
+              >
+                Withdraw
+              </button>
+            </div>
             <h3>My Cash</h3>
             <h1>₦{stats.cash}</h1>
           </div>
@@ -227,8 +241,7 @@ function Share({ user }) {
                 <strong>{invite.referredUser?.name}</strong>
 
                 <p>
-                  {invite.referredUser?.email ||
-                    invite.referredUser?.phone}
+                  {invite.referredUser?.email || invite.referredUser?.phone}
                 </p>
               </div>
 
