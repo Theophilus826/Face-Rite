@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../Share.css";
 import API from "../features/Api";
+import { Link } from "react-router-dom";
 
 const MILESTONES = [
   { users: 5, reward: 1000 },
