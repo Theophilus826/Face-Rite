@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../Share.css";
 import API from "../features/Api";
-import { Link } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchTasks } from "../features/gameSlice/ShareTaskSlice";
-
+import { Link, Navigate } from "react-router-dom";
 
 const MILESTONES = [
   { users: 5, reward: 1000 },
@@ -13,10 +10,6 @@ const MILESTONES = [
 ];
 
 function Share({ user }) {
-  const dispatch = useDispatch();
-
-  const { tasks = [] } = useSelector((state) => state.shareTasks);
-
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState("");
@@ -36,8 +29,7 @@ function Share({ user }) {
 
   useEffect(() => {
     fetchReferralStats();
-    dispatch(fetchTasks());
-  }, [dispatch]);
+  }, []);
 
   /* ================= LOAD STATS ================= */
 
@@ -133,22 +125,9 @@ function Share({ user }) {
       <div className="share-header">
         <h1>Invite Friends</h1>
         <h2>Get Rewards</h2>
-
-        {tasks.length > 0 ? (
-          <div className="task-list">
-            {tasks.map((task) => (
-              <Link key={task._id} to={`/TaskDetails/${task._id}`}>
-                <button className="btn btn-primary">
-                  {task.title} — 🪙 {task.rewardCoins} Coins
-                </button>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <button className="btn btn-primary">
-            Loading Tasks...
-          </button>
-        )}
+        <Link to="/TaskDetails">
+          <button className="btn btn-primary">View Task Details</button>
+        </Link>
       </div>
 
       <div className="cash-card">
