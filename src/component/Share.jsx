@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "../Share.css";
 import API from "../features/Api";
-import { Link } from "react-router-dom";
 
 const MILESTONES = [
   { users: 5, reward: 1000 },
@@ -125,28 +124,15 @@ function Share({ user }) {
       <div className="share-header">
         <h1>Invite Friends</h1>
         <h2>Get Rewards</h2>
+
+        <Link to={`/TaskDetails/${task._id}`}>
+          <button className="btn btn-primary">View Task Details</button>
+        </Link>
       </div>
 
       <div className="cash-card">
         <div className="cash-row">
           <div>
-            <div className="cash-row">
-              <Link to="/TaskDetails">
-                <button className="btn btn-primary">View Task Details</button>
-              </Link>
-              <div>
-                <h3>My Cash</h3>
-                <h1>₦{stats.cash}</h1>
-              </div>
-
-              <button
-                className="withdraw-btn"
-                onClick={handleWithdraw}
-                disabled={loading || stats.cash <= 0}
-              >
-                Withdraw
-              </button>
-            </div>
             <h3>My Cash</h3>
             <h1>₦{stats.cash}</h1>
           </div>
