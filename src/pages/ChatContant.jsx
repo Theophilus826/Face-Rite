@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import { Search, Users, Plus, Coins, UserPlus } from "lucide-react";
 import { ArrowLeft } from "lucide-react";
@@ -35,6 +35,9 @@ function ChatContant() {
   /* ================= REWARD ================= */
 
   const [showReward, setShowReward] = useState(false);
+
+  const location = useLocation();
+  const sharedTask = location.state?.sharedTask;
 
   /* ================= LOAD DATA ================= */
 
@@ -360,7 +363,11 @@ function ChatContant() {
             {filteredContacts.map((u) => (
               <div
                 key={u._id}
-                onClick={() => navigate(`/chat/${u._id}`)}
+                onClick={() =>
+                  navigate(`/chat/${u._id}`, {
+                    state: { sharedTask },
+                  })
+                }
                 className="flex items-center gap-3 bg-white hover:bg-gray-50 p-3 rounded-2xl cursor-pointer shadow-sm"
               >
                 <div className="relative">
@@ -402,7 +409,11 @@ function ChatContant() {
             {filteredGroups.map((g) => (
               <div
                 key={g._id}
-                onClick={() => navigate(`/group/${g._id}`)}
+                onClick={() =>
+                  navigate(`/group/${g._id}`, {
+                    state: { sharedTask },
+                  })
+                }
                 className="flex items-center gap-3 bg-white hover:bg-gray-50 p-3 rounded-2xl cursor-pointer shadow-sm"
               >
                 <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   fetchTasks,
   fetchMyTasks,
@@ -7,6 +8,7 @@ import {
 
 export default function ShareTasks() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const {
     tasks = [],
@@ -21,6 +23,22 @@ export default function ShareTasks() {
 
   const getProgress = (taskId) =>
     myTasks.find((item) => item.task?._id === taskId);
+
+  const handleShare = (task, type) => {
+    navigate("/chat", {
+      state: {
+        sharedTask: {
+          taskId: task._id,
+          title: task.title,
+          type,
+          text: task.description,
+          image: task.image || null,
+          rewardCoins: task.rewardCoins,
+          requiredKeyword: task.requiredKeyword,
+        },
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -161,6 +179,29 @@ export default function ShareTasks() {
                       <span className="px-4 py-2 rounded-full bg-blue-100 text-blue-700 font-semibold">
                         🚀 In Progress
                       </span>
+                    )}
+                  </div>
+
+                  {/* Share Buttons */}
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      onClick={() =>
+                        handleShare(task, "text")
+                      }
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold transition"
+                    >
+                      Share Text
+                    </button>
+
+                    {task.image && (
+                      <button
+                        onClick={() =>
+                          handleShare(task, "image")
+                        }
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition"
+                      >
+                        Share Image
+                      </button>
                     )}
                   </div>
 

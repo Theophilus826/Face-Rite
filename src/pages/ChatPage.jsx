@@ -1,6 +1,6 @@
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import MessageList from "../hook/MessageList";
 import ChatInput from "../hook/ChatInput";
@@ -22,6 +22,8 @@ export default function ChatPage() {
 
   /* ================= CHAT ================= */
   const { messages, setMessages } = useMessages(chatUserId);
+  const location = useLocation();
+  const sharedTask = location.state?.sharedTask;
 
   /* ================= SOCKET ================= */
   useChatSocket({
@@ -90,7 +92,8 @@ export default function ChatPage() {
       try {
         const res = await API.post("/chat/messages", {
           toUserId: chatUserId,
-          text,
+          text: payload.text,
+          image: payload.image,
         });
 
         // replace temp message
@@ -114,13 +117,9 @@ export default function ChatPage() {
       }
     }
 
-    /* ================= IMAGE ================= */
-    if (payload.type === "image") {
-      const formData = new FormData();
+    /* ================= SHARED IMAGE ================= */
 
-      formData.append("image", payload.file);
-      formData.append("toUserId", chatUserId);
-
+    if (payload.type === "shared-image") {
       const tempId = Date.now().toString();
 
       const tempMessage = {
@@ -128,7 +127,65 @@ export default function ChatPage() {
 
         type: "image",
 
+        image: payload.image,
+        text: payload.text || "",
+
+        fromUser: {
+          _id: user._id,
+          name: user.name,
+        },
+
+        toUser: chatUserId,
+
+        pending: true,
+
+        createdAt: new Date().toISOString(),
+      };
+
+      // optimistic UI
+      setMessages((prev) => [...prev, tempMessage]);
+
+      try {
+        const res = await API.post("/chat/messages/share", {
+          toUserId: chatUserId,
+          image: payload.image,
+          text: payload.text,
+        });
+
+        setMessages((prev) =>
+          prev.map((m) => (m._id === tempId ? res.data.message : m)),
+        );
+      } catch (err) {
+        console.error(
+          "Shared image send failed:",
+          err.response?.data || err.message,
+        );
+
+        setMessages((prev) => prev.filter((m) => m._id !== tempId));
+      }
+
+      return;
+    }
+
+    /* ================= IMAGE ================= */
+    if (payload.type === "image") {
+      const formData = new FormData();
+
+      formData.append("image", payload.file);
+      formData.append("toUserId", chatUserId);
+
+      if (payload.text) {
+        formData.append("text", payload.text);
+      }
+
+      const tempId = Date.now().toString();
+
+      const tempMessage = {
+        _id: tempId,
+        type: "image",
+
         image: URL.createObjectURL(payload.file),
+        text: payload.text || "",
 
         fromUser: {
           _id: user._id,
@@ -274,7 +331,11 @@ export default function ChatPage() {
 
       {/* ================= INPUT ================= */}
       <div className="sticky bottom-0 w-full z-50 bg-transparent pb-[30px]">
-        <ChatInput onSend={sendMessage} typingUser={typingUser} />
+        <ChatInput
+          onSend={sendMessage}
+          typingUser={typingUser}
+          sharedTask={sharedTask}
+        />
       </div>
     </div>
   );
