@@ -108,7 +108,7 @@ export default function ChatPage() {
           ),
         );
 
-        console.log("Messages after upload:", messages);
+        
       } catch (err) {
         console.error("Text send failed:", err.response?.data || err.message);
 
