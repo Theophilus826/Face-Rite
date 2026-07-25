@@ -125,6 +125,9 @@ function Share({ user }) {
       <div className="share-header">
         <h1>Invite Friends</h1>
         <h2>Get Rewards</h2>
+        <Link to="/ShareTasks">
+          <button className="btn btn-primary">ShareTasks</button>
+        </Link>
         <Link to="/TaskDetails">
           <button className="btn btn-primary">View Task Details</button>
         </Link>

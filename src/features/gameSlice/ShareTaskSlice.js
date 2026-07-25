@@ -47,7 +47,10 @@ export const fetchTasks = createAsyncThunk(
   async (_, thunkAPI) => {
     try {
       const res = await ShareTaskService.getTasks();
-      return res.data.tasks;
+
+      console.log(res);
+
+      return res.tasks; // or res depending on API
     } catch (err) {
       return thunkAPI.rejectWithValue(
         err.response?.data?.message || err.message
