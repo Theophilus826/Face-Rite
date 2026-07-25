@@ -128,9 +128,6 @@ function Share({ user }) {
         <Link to="/ShareTasks">
           <button className="btn btn-primary">ShareTasks</button>
         </Link>
-        <Link to="/TaskDetails">
-          <button className="btn btn-primary">View Task Details</button>
-        </Link>
       </div>
 
       <div className="cash-card">
