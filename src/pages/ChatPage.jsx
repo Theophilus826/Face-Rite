@@ -92,7 +92,7 @@ export default function ChatPage() {
       try {
         const res = await API.post("/chat/messages", {
           toUserId: chatUserId,
-          text: payload.content,
+          text: payload.text,
           image: payload.image,
         });
 

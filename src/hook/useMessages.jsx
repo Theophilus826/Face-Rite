@@ -22,7 +22,7 @@ export function useMessages(chatUserId) {
 
         text:
           type === "text"
-            ? payload.content
+            ? payload.text
             : "",
 
         createdAt: new Date(),
@@ -52,10 +52,10 @@ export function useMessages(chatUserId) {
 
       formData.append("type", type);
 
-      if (payload.content) {
+      if (payload.text) {
         formData.append(
-          "content",
-          payload.content
+          "text",
+          payload.text
         );
       }
 
