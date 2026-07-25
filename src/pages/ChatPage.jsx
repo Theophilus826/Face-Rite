@@ -63,7 +63,7 @@ export default function ChatPage() {
 
     /* ================= TEXT ================= */
     if (payload.type === "text") {
-      const text = payload.content?.trim();
+      const text = payload.text?.trim();
 
       if (!text) return;
 
@@ -92,7 +92,7 @@ export default function ChatPage() {
       try {
         const res = await API.post("/chat/messages", {
           toUserId: chatUserId,
-          text: payload.text,
+          text: payload.content,
           image: payload.image,
         });
 

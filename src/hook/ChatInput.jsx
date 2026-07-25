@@ -43,27 +43,24 @@ export default function ChatInput({ onSend, sharedTask }) {
   /* ================= SEND TEXT ================= */
 
   const handleSend = () => {
-    if (!text.trim() && !sharedImage) return;
+  if (!text.trim() && !sharedImage) return;
 
-    if (sharedImage) {
-      onSend({
-        type: "shared-image",
-        image: sharedImage,
-        text,
-      });
-
-      setSharedImage(null);
-      setText("");
-      return;
-    }
-
+  if (sharedImage) {
+    onSend({
+      type: "shared-image",
+      image: sharedImage,
+      text: text.trim(),
+    });
+  } else {
     onSend({
       type: "text",
-      content: text,
+      text: text.trim(),
     });
+  }
 
-    setText("");
-  };
+  setText("");
+  setSharedImage(null);
+};
 
   /* ================= CAMERA ================= */
 
@@ -262,7 +259,10 @@ export default function ChatInput({ onSend, sharedTask }) {
           {text && <p className="mt-2 text-white text-sm">{text}</p>}
 
           <button
-            onClick={() => setSharedImage(null)}
+            onClick={() => {
+  setSharedImage(null);
+  setText("");
+}}
             className="mt-2 text-xs text-red-400"
           >
             Remove
@@ -426,7 +426,7 @@ export default function ChatInput({ onSend, sharedTask }) {
 
         {/* SEND / MIC */}
 
-        {text.trim() ? (
+        {text.trim() || sharedImage ? (
           <button
             onClick={handleSend}
             className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-xl border border-white/10 flex items-center justify-center"
