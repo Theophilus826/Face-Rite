@@ -5,7 +5,6 @@ import { toast } from "react-toastify";
 function AdminTaskSharePage() {
   const [tasks, setTasks] = useState([]);
   const [progress, setProgress] = useState([]);
-  const [taskProgress, setTaskProgress] = useState({});
   const [selectedTask, setSelectedTask] = useState(null);
   const [users, setUsers] = useState([]);
   const [image, setImage] = useState(null);
@@ -40,28 +39,7 @@ function AdminTaskSharePage() {
   const loadTasks = async () => {
     try {
       const { data } = await API.get("/share-tasks/tasks");
-
-      const tasks = data.tasks || [];
-      setTasks(tasks);
-
-      // Load progress for every task
-      const progressMap = {};
-
-      await Promise.all(
-        tasks.map(async (task) => {
-          try {
-            const res = await API.get(
-              `/share-tasks/tasks/${task._id}/progress`,
-            );
-
-            progressMap[task._id] = res.data.progress || [];
-          } catch {
-            progressMap[task._id] = [];
-          }
-        }),
-      );
-
-      setTaskProgress(progressMap);
+      setTasks(data.tasks || []);
     } catch (err) {
       console.error(err);
       toast.error("Unable to load tasks");
@@ -408,97 +386,58 @@ function AdminTaskSharePage() {
 
       {/* Existing Tasks */}
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {tasks.map((task) => {
-          const users = taskProgress[task._id] || [];
+        {tasks.map((task) => (
+          <div
+            key={task._id}
+            className="bg-white rounded-2xl shadow-lg overflow-hidden"
+          >
+            {task.image && (
+              <img
+                src={task.image}
+                alt={task.title}
+                className="w-full h-52 object-cover"
+              />
+            )}
 
-          const totalAssigned =
-            task.assignedUsers?.length > 0
-              ? task.assignedUsers.length
-              : users.length;
+            <div className="p-5">
+              <h3 className="text-xl font-bold">{task.title}</h3>
 
-          const completedUsers = users.filter((u) => u.completed).length;
+              <p className="text-gray-600 mt-2 line-clamp-3">
+                {task.description}
+              </p>
 
-          const rewardedUsers = users.filter((u) => u.rewarded).length;
-
-          const isCompleted =
-            totalAssigned > 0 && completedUsers === totalAssigned;
-
-          return (
-            <div
-              key={task._id}
-              className="bg-white rounded-2xl shadow-lg overflow-hidden"
-            >
-              {task.image && (
-                <img
-                  src={task.image}
-                  alt={task.title}
-                  className="w-full h-52 object-cover"
-                />
-              )}
-
-              <div className="p-5">
-                <div className="flex items-start justify-between">
-                  <h3 className="text-xl font-bold">{task.title}</h3>
-
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      isCompleted
-                        ? "bg-green-100 text-green-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
-                  >
-                    {isCompleted ? "Completed" : "Active"}
-                  </span>
-                </div>
-
-                <p className="text-gray-600 mt-2 line-clamp-3">
-                  {task.description}
+              <div className="mt-4 space-y-2 text-sm">
+                <p>
+                  💰 <strong>{task.rewardCoins}</strong> Coins
                 </p>
 
-                <div className="mt-4 space-y-2 text-sm">
-                  <p>
-                    💰 <strong>{task.rewardCoins}</strong> Coins
-                  </p>
+                <p>
+                  💬 <strong>{task.requiredMessages}</strong> Messages
+                </p>
 
-                  <p>
-                    💬 <strong>{task.requiredMessages}</strong> Messages
-                  </p>
+                <p>📩 {task.allowedTypes?.join(", ")}</p>
 
-                  <p>📩 {task.allowedTypes?.join(", ")}</p>
+                {task.requiredKeyword && <p>🔑 {task.requiredKeyword}</p>}
+              </div>
 
-                  {task.requiredKeyword && <p>🔑 {task.requiredKeyword}</p>}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => viewProgress(task._id)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2"
+                >
+                  Progress
+                </button>
 
-                  <p>
-                    👥 Completed Users:{" "}
-                    <strong>
-                      {completedUsers}/{totalAssigned}
-                    </strong>
-                  </p>
-
-                  <p>
-                    🎁 Rewarded Users: <strong>{rewardedUsers}</strong>
-                  </p>
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                  <button
-                    onClick={() => viewProgress(task._id)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2"
-                  >
-                    Progress
-                  </button>
-
-                  <button
-                    onClick={() => deleteTask(task._id)}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg py-2"
-                  >
-                    Delete
-                  </button>
-                </div>
+                <button
+                  onClick={() => deleteTask(task._id)}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg py-2"
+                >
+                  Delete
+                </button>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       {selectedTask && (
