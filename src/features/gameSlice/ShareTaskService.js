@@ -9,6 +9,7 @@ const getTasks = async () => {
 
 const getMyTasks = async () => {
   const response = await API.get("/share-tasks/tasks/my");
+  console.log(response.data);
   return response.data;
 };
 
