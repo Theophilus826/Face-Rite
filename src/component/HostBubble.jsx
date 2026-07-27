@@ -238,7 +238,7 @@ export default function HostBubble() {
         width: "100vw",
         height: "100vh",
         overflow: "hidden",
-        background: "#111",
+        background: "#4d0909",
       }}
     >
       <canvas
