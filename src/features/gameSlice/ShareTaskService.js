@@ -8,8 +8,8 @@ const getTasks = async () => {
 };
 
 const getMyTasks = async () => {
-  const { data } = await API.get("/share-tasks/tasks/my");
-  return data;
+  const response = await API.get("/share-tasks/tasks/my");
+  return response.data;
 };
 
 /* ================= ADMIN ================= */
