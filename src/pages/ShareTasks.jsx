@@ -19,7 +19,18 @@ export default function ShareTasks() {
   }, [dispatch]);
 
   const getProgress = (taskId) =>
-    myTasks.find((item) => item.task?._id === taskId);
+    myTasks.find((item) =>
+      typeof item.task === "string"
+        ? item.task === taskId
+        : item.task?._id === taskId,
+    );
+
+  console.log(tasks);
+  console.log(myTasks);
+
+  tasks.forEach((task) => {
+    console.log(task._id, getProgress(task._id));
+  });
 
   const handleShare = (task, type) => {
     navigate("/chat", {
