@@ -1,4 +1,4 @@
-import callService from "./CallService";
+import callService from "./callService";
 
 class CallSignalListener {
   constructor() {
