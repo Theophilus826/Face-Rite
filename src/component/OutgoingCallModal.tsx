@@ -1,5 +1,5 @@
 import { useSelector } from "react-redux";
-import { RootState } from "../app/store";
+import type { RootState } from "../app/store";
 
 import callService from "../features/callService";
 

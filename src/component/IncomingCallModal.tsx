@@ -6,7 +6,7 @@ import {
   Video,
 } from "lucide-react";
 
-import { RootState } from "../app/store";
+import type { RootState } from "../app/store";
 import callService from "../features/callService";
 
 export default function IncomingCallModal() {

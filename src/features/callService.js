@@ -777,6 +777,23 @@ resetState() {
   this.iceConnectionState = "new";
 }
 
+async cancel() {
+  if (!this.callId) return;
+
+  try {
+    await endCall(this.callId);
+
+    this.emit("call_cancelled", {
+      callId: this.callId,
+    });
+
+    this.cleanup();
+  } catch (err) {
+    console.error("Cancel call failed:", err);
+    throw err;
+  }
+}
+
 /* ===========================================
     CLEANUP
 =========================================== */

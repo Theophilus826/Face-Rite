@@ -9,7 +9,7 @@ import {
   RefreshCcw,
 } from "lucide-react";
 
-import { RootState } from "../app/store";
+import type { RootState } from "../app/store";
 import callService from "../features/callService";
 
 export default function CallScreen() {
@@ -72,9 +72,7 @@ export default function CallScreen() {
     };
   }, []);
 
-  if (!["calling", "accepted", "connected"].includes(status)) {
-    return null;
-  }
+  
 
   /* ==========================
       ACTIONS
@@ -142,6 +140,10 @@ export default function CallScreen() {
         return status;
     }
   }, [status, duration]);
+
+  if (!["calling", "accepted", "connected"].includes(status)) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black overflow-hidden">

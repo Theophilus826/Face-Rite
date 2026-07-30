@@ -10,7 +10,7 @@ import {
   RefreshCcw,
 } from "lucide-react";
 
-import { RootState } from "../app/store";
+import type { RootState } from "../app/store";
 import callService from "../features/callService";
 
 export default function CallPage() {
@@ -89,21 +89,7 @@ export default function CallPage() {
     };
   }, []);
 
-  /* ==========================
-      HIDE
-  ========================== */
-
-  if (
-    ![
-      "calling",
-      "accepted",
-      "connected",
-    ].includes(status)
-  ) {
-    return null;
-  }
-
-  /* ==========================
+    /* ==========================
       ACTIONS
   ========================== */
 
@@ -176,6 +162,16 @@ export default function CallPage() {
         return status;
     }
   }, [status, duration]);
+
+   if (
+    ![
+      "calling",
+      "accepted",
+      "connected",
+    ].includes(status)
+  ) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black overflow-hidden">
