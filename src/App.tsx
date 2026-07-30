@@ -43,9 +43,9 @@ import AdminWithdrawals from "./pages/AdminWithdrawals";
 import ChatContant from "./pages/ChatContant";
 import AboutPage from "./pages/AboutPage";
 import DownloadPage from "./pages/Download";
-import IncomingCallModal from "./pages/IncomingCallModal";
+import IncomingCallModal from "./component/IncomingCallModal";
 import CallPage from "./pages/CallPage";
-import OutgoingCallModal from "./pages/OutgoingCallModal";
+import OutgoingCallModal from "./component/OutgoingCallModal";
 import AdminUploadApk from "./component/AdminUploadApk";
 // Components
 import Navbar from "./component/Navbar";

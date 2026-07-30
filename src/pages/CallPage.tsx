@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import {
@@ -12,21 +13,27 @@ import {
 import { RootState } from "../app/store";
 import callService from "../features/callService";
 
-export default function CallScreen() {
+export default function CallPage() {
   const {
     status,
+    call,
     localStream,
     remoteStream,
     muted,
     videoEnabled,
     connectionState,
-    call,
-  } = useSelector((state: RootState) => state.call);
+  } = useSelector(
+    (state: RootState) => state.call
+  );
 
-  const localVideo = useRef<HTMLVideoElement>(null);
-  const remoteVideo = useRef<HTMLVideoElement>(null);
+  const localVideoRef =
+    useRef<HTMLVideoElement>(null);
 
-  const [duration, setDuration] = useState(0);
+  const remoteVideoRef =
+    useRef<HTMLVideoElement>(null);
+
+  const [duration, setDuration] =
+    useState(0);
 
   /* ==========================
       TIMER
@@ -43,23 +50,33 @@ export default function CallScreen() {
   }, [status]);
 
   /* ==========================
-      LOCAL STREAM
+      LOCAL VIDEO
   ========================== */
 
   useEffect(() => {
-    if (localVideo.current && localStream) {
-      localVideo.current.srcObject = localStream;
-    }
+    if (
+      !localVideoRef.current ||
+      !localStream
+    )
+      return;
+
+    localVideoRef.current.srcObject =
+      localStream;
   }, [localStream]);
 
   /* ==========================
-      REMOTE STREAM
+      REMOTE VIDEO
   ========================== */
 
   useEffect(() => {
-    if (remoteVideo.current && remoteStream) {
-      remoteVideo.current.srcObject = remoteStream;
-    }
+    if (
+      !remoteVideoRef.current ||
+      !remoteStream
+    )
+      return;
+
+    remoteVideoRef.current.srcObject =
+      remoteStream;
   }, [remoteStream]);
 
   /* ==========================
@@ -72,7 +89,17 @@ export default function CallScreen() {
     };
   }, []);
 
-  if (!["calling", "accepted", "connected"].includes(status)) {
+  /* ==========================
+      HIDE
+  ========================== */
+
+  if (
+    ![
+      "calling",
+      "accepted",
+      "connected",
+    ].includes(status)
+  ) {
     return null;
   }
 
@@ -88,7 +115,7 @@ export default function CallScreen() {
     }
   };
 
-  const mute = () => {
+  const toggleMute = () => {
     callService.toggleMute();
   };
 
@@ -104,11 +131,18 @@ export default function CallScreen() {
       HELPERS
   ========================== */
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+  const formatTime = (
+    seconds: number
+  ) => {
+    const mins = Math.floor(
+      seconds / 60
+    );
+
     const secs = seconds % 60;
 
-    return `${mins}:${String(secs).padStart(2, "0")}`;
+    return `${mins}:${String(
+      secs
+    ).padStart(2, "0")}`;
   };
 
   const displayName = useMemo(() => {
@@ -144,95 +178,115 @@ export default function CallScreen() {
   }, [status, duration]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black overflow-hidden">
-      {/* Remote Video */}
+    <div className="fixed inset-0 z-[9999] bg-black overflow-hidden">
+
+      {/* ================= REMOTE ================= */}
+
       {remoteStream ? (
         <video
-          ref={remoteVideo}
+          ref={remoteVideoRef}
           autoPlay
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-900 text-white">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-950 text-white">
+
           <img
             src={avatar}
             alt={displayName}
-            className="w-40 h-40 rounded-full object-cover border-4 border-white"
+            className="w-40 h-40 rounded-full object-cover border-4 border-white shadow-2xl"
           />
 
-          <h2 className="mt-6 text-3xl font-semibold">
+          <h2 className="mt-6 text-3xl font-bold">
             {displayName}
           </h2>
 
           <p className="mt-3 text-lg opacity-70">
             {statusText}
           </p>
+
+          <p className="mt-2 text-sm opacity-50">
+            {connectionState}
+          </p>
+
         </div>
       )}
 
-      {/* Local Video */}
-      {videoEnabled && localStream && (
-        <video
-          ref={localVideo}
-          autoPlay
-          muted
-          playsInline
-          className="absolute top-5 right-5 w-44 h-64 rounded-xl border-2 border-white object-cover shadow-xl"
-        />
-      )}
+      {/* ================= LOCAL ================= */}
 
-      {/* Header */}
+      {videoEnabled &&
+        localStream && (
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            className="absolute top-5 right-5 w-40 h-60 rounded-2xl object-cover border-2 border-white shadow-xl bg-black"
+          />
+        )}
+
+      {/* ================= HEADER ================= */}
+
       <div className="absolute top-6 left-0 right-0 flex flex-col items-center text-white">
-        <h2 className="text-2xl font-bold">
-          {displayName}
-        </h2>
 
-        <p className="mt-2 text-sm opacity-80">
+        <h1 className="text-3xl font-bold">
+          {displayName}
+        </h1>
+
+        <p className="mt-2 text-sm opacity-70">
           {statusText}
         </p>
 
-        {connectionState && (
-          <p className="text-xs opacity-60 mt-1">
-            {connectionState}
-          </p>
-        )}
       </div>
 
-      {/* Controls */}
+      {/* ================= CONTROLS ================= */}
+
       <div className="absolute bottom-10 left-0 right-0 flex justify-center">
-        <div className="flex gap-5 bg-black/40 backdrop-blur-md px-6 py-4 rounded-full">
+
+        <div className="flex items-center gap-5 rounded-full bg-black/40 backdrop-blur-md px-6 py-4">
 
           <button
-            onClick={mute}
-            className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center"
+            onClick={toggleMute}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
           >
-            {muted ? <MicOff /> : <Mic />}
+            {muted ? (
+              <MicOff size={24} />
+            ) : (
+              <Mic size={24} />
+            )}
           </button>
 
           <button
             onClick={toggleVideo}
-            className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
           >
-            {videoEnabled ? <Video /> : <VideoOff />}
+            {videoEnabled ? (
+              <Video size={24} />
+            ) : (
+              <VideoOff size={24} />
+            )}
           </button>
 
           <button
             onClick={switchCamera}
-            className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center"
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-black transition hover:scale-105"
           >
-            <RefreshCcw />
+            <RefreshCcw size={22} />
           </button>
 
           <button
             onClick={end}
-            className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center"
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-700 hover:scale-105"
           >
             <PhoneOff size={30} />
           </button>
 
         </div>
+
       </div>
+
     </div>
   );
 }
+

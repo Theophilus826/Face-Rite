@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { API } from "../features/Api";
+import CallButton from "../component/CallButton";
 
 export default function ChatHeader({ users = [], chatUserId, status }) {
   const navigate = useNavigate();
@@ -116,9 +117,7 @@ export default function ChatHeader({ users = [], chatUserId, status }) {
           View Profile
         </button>
 
-        <button className="w-9 h-9 rounded-lg border hover:bg-gray-100 flex items-center justify-center">
-          📞
-        </button>
+        <CallButton userId={chatUserId} />
 
         <button className="w-9 h-9 rounded-lg border hover:bg-gray-100 flex items-center justify-center">
           ⋮
