@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Eye, EyeOff } from "lucide-react";
 import { registerUser, reset } from "../features/AuthSlice";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -22,6 +23,10 @@ export default function Register() {
   const [referralCode, setReferralCode] = useState(savedReferral);
   const [referralCodeLocked, setReferralCodeLocked] =
     useState(!!savedReferral);
+
+  // Password visibility states
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { user, isLoading, isError, isSuccess, message } = useSelector(
     (state) => state.auth
@@ -92,7 +97,6 @@ export default function Register() {
       return toast.error("Passwords do not match");
     }
 
-    // Save manually entered referral code
     if (referralCode && !referralCodeLocked) {
       localStorage.setItem("referralCode", referralCode.trim());
     }
@@ -100,19 +104,14 @@ export default function Register() {
     dispatch(
       registerUser({
         name: formData.name,
-
         email: formData.identifier.includes("@")
           ? formData.identifier
           : undefined,
-
         phone: !formData.identifier.includes("@")
           ? formData.identifier
           : undefined,
-
         password: formData.password,
-
         confirmPassword: formData.confirmPassword,
-
         referralCode: referralCode.trim() || undefined,
       })
     );
@@ -136,6 +135,7 @@ export default function Register() {
         )}
 
         <form onSubmit={onSubmit} className="flex flex-col gap-5">
+          {/* Name */}
           <input
             type="text"
             name="name"
@@ -146,6 +146,7 @@ export default function Register() {
             required
           />
 
+          {/* Email / Phone */}
           <input
             type="text"
             name="identifier"
@@ -156,6 +157,7 @@ export default function Register() {
             required
           />
 
+          {/* Referral */}
           <input
             type="text"
             placeholder="Referral Code (Optional)"
@@ -181,26 +183,59 @@ export default function Register() {
             </small>
           )}
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            required
-          />
+          {/* Password */}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              value={formData.password}
+              onChange={onChange}
+              className="w-full p-4 pr-12 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              required
+            />
 
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChange={onChange}
-            className="p-4 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            required
-          />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 transition"
+            >
+              {showPassword ? (
+                <EyeOff size={18} className="text-gray-600" />
+              ) : (
+                <Eye size={18} className="text-gray-600" />
+              )}
+            </button>
+          </div>
 
+          {/* Confirm Password */}
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              value={formData.confirmPassword}
+              onChange={onChange}
+              className="w-full p-4 pr-12 rounded-lg bg-white/50 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              required
+            />
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowConfirmPassword((prev) => !prev)
+              }
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 transition"
+            >
+              {showConfirmPassword ? (
+                <EyeOff size={18} className="text-gray-600" />
+              ) : (
+                <Eye size={18} className="text-gray-600" />
+              )}
+            </button>
+          </div>
+
+          {/* Submit */}
           <button
             type="submit"
             disabled={isLoading}
