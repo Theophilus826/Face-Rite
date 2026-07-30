@@ -17,7 +17,7 @@ const initializeAdMob = async () => {
       initializeForTesting: true,
     });
 
-    console.log("AdMob initialized");
+    
   }
 };
 

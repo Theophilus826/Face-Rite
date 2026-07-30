@@ -133,4 +133,91 @@ export const verifyDeposit = async (reference) => {
   return res.data;
 };
 
+// ===============================
+// Call Helpers
+// ===============================
+
+// Start Call
+export const startCall = async (receiverId, type = "voice") => {
+  const res = await API.post("/call/start", {
+    receiverId,
+    type,
+  });
+
+  return res.data;
+};
+
+// Accept Call
+export const acceptCall = async (callId) => {
+  const res = await API.post("/call/accept", {
+    callId,
+  });
+
+  return res.data;
+};
+
+// Reject Call
+export const rejectCall = async (callId) => {
+  const res = await API.post("/call/reject", {
+    callId,
+  });
+
+  return res.data;
+};
+
+// Cancel Call
+export const cancelCall = async (callId) => {
+  const res = await API.post("/call/cancel", {
+    callId,
+  });
+
+  return res.data;
+};
+
+// End Call
+export const endCall = async (callId) => {
+  const res = await API.post("/call/end", {
+    callId,
+  });
+
+  return res.data;
+};
+
+// Send SDP Offer
+export const sendOffer = async (callId, offer) => {
+  const res = await API.post("/call/offer", {
+    callId,
+    offer,
+  });
+
+  return res.data;
+};
+
+// Send SDP Answer
+export const sendAnswer = async (callId, answer) => {
+  const res = await API.post("/call/answer", {
+    callId,
+    answer,
+  });
+
+  return res.data;
+};
+
+// Send ICE Candidate
+export const sendIceCandidate = async (callId, candidate) => {
+  const res = await API.post("/call/ice", {
+    callId,
+    candidate,
+  });
+
+  return res.data;
+};
+
+// Get Call Status
+export const getCallStatus = async (callId) => {
+  const res = await API.get(`/call/${callId}`);
+
+  return res.data;
+};
+
 export default API;
