@@ -210,19 +210,15 @@ function AppContent() {
       <Suspense fallback={<GameLoader />}>
         <Routes>
           <Route path="/host-game" element={<HostGame />} />
-
           <Route path="/bubble/:gameId" element={<HostBubble />} />
         </Routes>
       </Suspense>
     );
   }
-
   return (
     <div
       className="min-h-screen w-full bg-cover bg-center bg-no-repeat"
-      style={{
-        backgroundImage: `url(${globle})`,
-      }}
+      style={{ backgroundImage: `url(${globle})` }}
     >
       <ToastContainer position="top-right" autoClose={3000} />
 
@@ -231,100 +227,64 @@ function AppContent() {
 
       <Suspense fallback={<GameLoader />}>
         <Routes>
-          {/* Keep all your existing routes here */}
-          return (
-          <div
-            className="min-h-screen w-full bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${globle})` }}
-          >
-            <ToastContainer position="top-right" autoClose={3000} />
+          {/* Public Routes */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route
+            path="/login"
+            element={user?.token ? <Navigate to="/home" replace /> : <Login />}
+          />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/download" element={<DownloadPage />} />
 
-            {!hideLayout && <Navbar />}
-            {!hideLayout && <BottomNav />}
+          {/* App Routes */}
+          <Route path="/home" element={<Home />} />
+          <Route path="/me" element={<Me />} />
+          <Route path="/deposit" element={<DepositPanel />} />
+          <Route path="/withdraw" element={<Withdraw />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:profileUserId" element={<Profile />} />
+          <Route path="/post" element={<PostGalleryWrapper />} />
+          <Route path="/postComments/:id" element={<PostCommentsWrapper />} />
+          <Route path="/coin-history" element={<CoinHistory />} />
+          <Route path="/feedbacks" element={<FeedbackPages />} />
+          <Route path="/newfeedback" element={<NewFeedback />} />
+          <Route path="/feedback/:id" element={<FeedbackDetail />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/gemes" element={<Gemes />} />
+          <Route path="/chat" element={<ChatContant />} />
+          <Route path="/chat/:chatUserId" element={<ChatPage />} />
+          <Route path="/group/:groupId" element={<GroupChatPage />} />
+          <Route path="/share" element={<Share user={user} />} />
+          <Route path="/TaskDetails" element={<TaskDetails />} />
+          <Route path="/TaskDetails/:id" element={<TaskDetails />} />
+          <Route path="/ShareTasks" element={<ShareTasks />} />
+          <Route path="/call" element={<CallPage />} />
 
-            <Suspense fallback={<GameLoader />}>
-              <Routes>
-                {/* ================= PUBLIC ================= */}
+          {/* Admin */}
+          <Route path="/admin" element={<AdminRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route index element={<Navigate to="monitor" replace />} />
+              <Route path="monitor" element={<AdminMonitor />} />
+              <Route path="credit-coins" element={<AdminCreditCoins />} />
+              <Route path="carousel-upload" element={<CarouselUploader />} />
+              <Route path="deposits" element={<AdminDeposit />} />
+              <Route path="withdraw" element={<AdminWithdrawals />} />
+              <Route path="adminuploadapk" element={<AdminUploadApk />} />
+              <Route path="bubble" element={<AdminBubble />} />
+              <Route path="feedbacks" element={<FeedbackPages />} />
+              <Route path="share" element={<AdminSharePage />} />
+              <Route path="share-tasks" element={<AdminTaskSharePage />} />
+              <Route path="Admin-users" element={<AdminUsersPanel />} />
+            </Route>
+          </Route>
 
-                <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Other */}
+          <Route path="/cards" element={<CardGrid />} />
+          <Route path="/about" element={<AboutPage />} />
 
-                <Route
-                  path="/login"
-                  element={
-                    user?.token ? <Navigate to="/home" replace /> : <Login />
-                  }
-                />
-
-                <Route path="/register" element={<Register />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route
-                  path="/reset-password/:token"
-                  element={<ResetPassword />}
-                />
-                <Route path="/download" element={<DownloadPage />} />
-
-                {/* Removed host-game and bubble routes */}
-
-                <Route path="/home" element={<Home />} />
-                <Route path="/me" element={<Me />} />
-                <Route path="/deposit" element={<DepositPanel />} />
-                <Route path="/withdraw" element={<Withdraw />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/profile/:profileUserId" element={<Profile />} />
-                <Route path="/post" element={<PostGalleryWrapper />} />
-                <Route
-                  path="/postComments/:id"
-                  element={<PostCommentsWrapper />}
-                />
-                <Route path="/coin-history" element={<CoinHistory />} />
-                <Route path="/feedbacks" element={<FeedbackPages />} />
-                <Route path="/newfeedback" element={<NewFeedback />} />
-                <Route path="/feedback/:id" element={<FeedbackDetail />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/gemes" element={<Gemes />} />
-                <Route path="/chat" element={<ChatContant />} />
-                <Route path="/chat/:chatUserId" element={<ChatPage />} />
-                <Route path="/group/:groupId" element={<GroupChatPage />} />
-                <Route path="/share" element={<Share user={user} />} />
-                <Route path="/TaskDetails" element={<TaskDetails />} />
-                <Route path="/TaskDetails/:id" element={<TaskDetails />} />
-                <Route path="/ShareTasks" element={<ShareTasks />} />
-                <Route path="/call" element={<CallPage />} />
-                {/* ================= ADMIN ================= */}
-
-                <Route path="/admin" element={<AdminRoute />}>
-                  <Route element={<AdminLayout />}>
-                    <Route index element={<Navigate to="monitor" replace />} />
-                    <Route path="monitor" element={<AdminMonitor />} />
-                    <Route path="credit-coins" element={<AdminCreditCoins />} />
-                    <Route
-                      path="carousel-upload"
-                      element={<CarouselUploader />}
-                    />
-                    <Route path="deposits" element={<AdminDeposit />} />
-                    <Route path="withdraw" element={<AdminWithdrawals />} />
-                    <Route path="adminuploadapk" element={<AdminUploadApk />} />
-                    <Route path="bubble" element={<AdminBubble />} />
-                    <Route path="feedbacks" element={<FeedbackPages />} />
-                    <Route path="share" element={<AdminSharePage />} />
-                    <Route
-                      path="share-tasks"
-                      element={<AdminTaskSharePage />}
-                    />
-                    <Route path="Admin-users" element={<AdminUsersPanel />} />
-                  </Route>
-                </Route>
-
-                {/* ================= OTHER ================= */}
-
-                <Route path="/cards" element={<CardGrid />} />
-                <Route path="/about" element={<AboutPage />} />
-
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
-          </div>
-          );
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </div>
