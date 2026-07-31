@@ -486,10 +486,11 @@ async start(receiverId, type = "voice") {
     this.isCaller = true;
     this.callType = type;
 
-    const { call } = await startCall({
+    // ✅ Pass receiverId and type separately
+    const { call } = await startCall(
       receiverId,
-      type,
-    });
+      type
+    );
 
     this.call = call;
     this.callId = call.id;
