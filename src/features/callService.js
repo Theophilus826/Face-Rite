@@ -90,16 +90,90 @@ class CallService {
   =========================================== */
 
   async createPeer() {
-    if (this.peer) {
-      return this.peer;
-    }
-
-    this.peer = new RTCPeerConnection(configuration);
-
-    this.registerPeerEvents();
-
+  if (this.peer) {
     return this.peer;
   }
+
+  const peer = new RTCPeerConnection({
+    iceServers: [
+      {
+        urls: "stun:stun.l.google.com:19302",
+      },
+    ],
+  });
+
+  this.peer = peer;
+
+  /* ==========================
+      LOCAL TRACKS
+  ========================== */
+
+  if (this.localStream) {
+    this.localStream.getTracks().forEach((track) => {
+      peer.addTrack(track, this.localStream);
+    });
+  }
+
+  /* ==========================
+      REMOTE STREAM
+  ========================== */
+
+  peer.ontrack = (event) => {
+    this.remoteStream = event.streams[0];
+
+    this.emit("remote_stream", {
+      stream: this.remoteStream,
+    });
+  };
+
+  /* ==========================
+      ICE
+  ========================== */
+
+  peer.onicecandidate = async ({ candidate }) => {
+    if (!candidate || !this.callId) {
+      return;
+    }
+
+    try {
+      await sendIceCandidate(
+        this.callId,
+        candidate
+      );
+    } catch (err) {
+      console.error("SEND ICE:", err);
+    }
+  };
+
+  /* ==========================
+      CONNECTION STATE
+  ========================== */
+
+  peer.onconnectionstatechange = () => {
+    this.connectionState = peer.connectionState;
+
+    this.emit("connection_state", {
+      state: peer.connectionState,
+    });
+
+    switch (peer.connectionState) {
+      case "connected":
+        this.emit("call_connected");
+        break;
+
+      case "failed":
+      case "closed":
+      case "disconnected":
+        this.cleanup();
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  return peer;
+}
 
   /* ===========================================
       PEER EVENTS
@@ -486,26 +560,22 @@ async start(receiverId, type = "voice") {
     this.isCaller = true;
     this.callType = type;
 
-    // ✅ Pass receiverId and type separately
-    const { call } = await startCall(
+    // Start the call
+    const { call } = await startCall({
       receiverId,
-      type
-    );
+      type,
+    });
 
     this.call = call;
     this.callId = call.id;
 
-    await this.createPeer();
-
-    await this.createLocalStream(
-      type === "video"
-    );
-
+    // Notify UI that we're ringing
     this.emit("calling", {
       call,
     });
 
-    await this.createOffer();
+    // Wait for "call_accepted" SSE event
+    // createOffer() will be called from onAccepted()
 
     return call;
   } catch (err) {
@@ -519,6 +589,23 @@ async start(receiverId, type = "voice") {
   }
 }
 
+async onAccepted() {
+  if (!this.isCaller) return;
+
+  if (!this.peer) {
+    await this.createPeer();
+  }
+
+  if (!this.localStream) {
+    await this.createLocalStream(
+      this.callType === "video"
+    );
+  }
+
+  await this.createOffer();
+
+  this.emit("call_accepted");
+}
 /* ===========================================
     ACCEPT CALL
 =========================================== */
@@ -569,9 +656,7 @@ async reject() {
       return;
     }
 
-    await rejectCall({
-      callId: this.callId,
-    });
+    await rejectCall(this.callId);
 
     this.emit("call_rejected");
 
@@ -594,22 +679,14 @@ async reject() {
 async end() {
   try {
     if (this.callId) {
-      await endCall({
-        callId: this.callId,
-      });
+      await endCall(this.callId);
     }
+  } catch (err) {
+    console.error("END CALL:", err);
+  } finally {
+    this.cleanup();
 
     this.emit("call_ended");
-
-    this.cleanup();
-  } catch (err) {
-    console.error("END:", err);
-
-    this.emit("error", {
-      error: err,
-    });
-
-    throw err;
   }
 }
 
@@ -649,21 +726,24 @@ async createOffer() {
 
 async createAnswer() {
   if (!this.peer) {
-    throw new Error(
-      "Peer not created"
-    );
+    throw new Error("Peer not created");
   }
 
-  const answer =
-    await this.peer.createAnswer();
+  if (!this.callId) {
+    throw new Error("Missing call ID");
+  }
 
-  await this.peer.setLocalDescription(
-    answer
-  );
+  const answer = await this.peer.createAnswer();
+
+  await this.peer.setLocalDescription(answer);
 
   await sendAnswer({
     callId: this.callId,
     answer,
+  });
+
+  this.emit("answer_sent", {
+    call: this.call,
   });
 
   return answer;
@@ -674,17 +754,31 @@ async createAnswer() {
 
 async receiveOffer(call, offer) {
   try {
+    if (!offer) {
+      throw new Error("Missing SDP offer");
+    }
+
     this.call = call;
     this.callId = call.id;
     this.callType = call.type;
     this.isCaller = false;
 
-    await this.createPeer();
+    if (!this.peer) {
+      await this.createPeer();
+    }
 
     if (!this.localStream) {
       await this.createLocalStream(
         call.type === "video"
       );
+    }
+
+    // Ignore duplicate offers
+    if (
+      this.peer.signalingState !== "stable" ||
+      this.peer.remoteDescription
+    ) {
+      return;
     }
 
     await this.peer.setRemoteDescription(
@@ -703,6 +797,8 @@ async receiveOffer(call, offer) {
     this.emit("error", {
       error: err,
     });
+
+    throw err;
   }
 }
 
@@ -712,20 +808,33 @@ async receiveOffer(call, offer) {
 
 async receiveAnswer(answer) {
   try {
-    if (!this.peer) return;
+    if (!this.peer) {
+      throw new Error("Peer not created");
+    }
+
+    if (!answer) {
+      throw new Error("Missing SDP answer");
+    }
+
+    if (this.peer.signalingState !== "have-local-offer") {
+      return;
+    }
 
     await this.peer.setRemoteDescription(
       new RTCSessionDescription(answer)
     );
 
-    this.emit("call_connected");
-
+    this.emit("call_connected", {
+      call: this.call,
+    });
   } catch (err) {
-    console.error("ANSWER:", err);
+    console.error("RECEIVE ANSWER:", err);
 
     this.emit("error", {
       error: err,
     });
+
+    throw err;
   }
 }
 
@@ -735,16 +844,30 @@ async receiveAnswer(answer) {
 
 async receiveIceCandidate(candidate) {
   try {
-    if (!this.peer) return;
+    if (!this.peer) {
+      return;
+    }
 
-    if (!candidate) return;
+    if (!candidate) {
+      return;
+    }
+
+    // Remote description not ready yet
+    if (!this.peer.remoteDescription) {
+      this.pendingCandidates.push(candidate);
+      return;
+    }
 
     await this.peer.addIceCandidate(
       new RTCIceCandidate(candidate)
     );
 
   } catch (err) {
-    console.error("ICE:", err);
+    console.error("RECEIVE ICE:", err);
+
+    this.emit("error", {
+      error: err,
+    });
   }
 }
 
@@ -753,9 +876,9 @@ async receiveIceCandidate(candidate) {
 =========================================== */
 
 remoteEnded() {
-  this.emit("call_ended");
-
   this.cleanup();
+
+  this.emit("call_ended");
 }
 
 /* ===========================================
@@ -800,21 +923,17 @@ async cancel() {
 =========================================== */
 
 cleanup() {
+  /* ==========================
+      PEER
+  ========================== */
 
   if (this.peer) {
-
     this.peer.ontrack = null;
-
     this.peer.onicecandidate = null;
-
     this.peer.onconnectionstatechange = null;
-
     this.peer.oniceconnectionstatechange = null;
-
     this.peer.onsignalingstatechange = null;
-
     this.peer.onnegotiationneeded = null;
-
     this.peer.ondatachannel = null;
 
     this.peer.getSenders().forEach((sender) => {
@@ -823,32 +942,50 @@ cleanup() {
       } catch (_) {}
     });
 
-    this.peer.close();
+    try {
+      this.peer.close();
+    } catch (_) {}
 
     this.peer = null;
   }
 
-  if (this.localStream) {
+  /* ==========================
+      LOCAL STREAM
+  ========================== */
 
-    this.localStream
-      .getTracks()
-      .forEach((track) => {
-        track.stop();
-      });
+  if (this.localStream) {
+    this.localStream.getTracks().forEach((track) => {
+      track.stop();
+    });
 
     this.localStream = null;
   }
 
-  if (this.remoteStream) {
+  /* ==========================
+      REMOTE STREAM
+  ========================== */
 
-    this.remoteStream
-      .getTracks()
-      .forEach((track) => {
-        track.stop();
-      });
+  if (this.remoteStream) {
+    this.remoteStream.getTracks().forEach((track) => {
+      track.stop();
+    });
 
     this.remoteStream = null;
   }
+
+  /* ==========================
+      RESET CALL STATE
+  ========================== */
+
+  this.pendingCandidates = [];
+
+  this.call = null;
+  this.callId = null;
+  this.callType = "voice";
+
+  this.isCaller = false;
+
+  this.connectionState = "new";
 
   this.resetState();
 

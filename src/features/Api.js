@@ -136,9 +136,8 @@ export const verifyDeposit = async (reference) => {
 // ===============================
 // Call Helpers
 // ===============================
-
 // Start Call
-export const startCall = async (receiverId, type = "voice") => {
+export const startCall = async ({ receiverId, type = "voice" }) => {
   const res = await API.post("/call/start", {
     receiverId,
     type,
@@ -148,43 +147,31 @@ export const startCall = async (receiverId, type = "voice") => {
 };
 
 // Accept Call
-export const acceptCall = async (callId) => {
-  const res = await API.post("/call/accept", {
-    callId,
-  });
-
+export const acceptCall = async ({ callId }) => {
+  const res = await API.post("/call/accept", { callId });
   return res.data;
 };
 
 // Reject Call
-export const rejectCall = async (callId) => {
-  const res = await API.post("/call/reject", {
-    callId,
-  });
-
+export const rejectCall = async ({ callId }) => {
+  const res = await API.post("/call/reject", { callId });
   return res.data;
 };
 
 // Cancel Call
-export const cancelCall = async (callId) => {
-  const res = await API.post("/call/cancel", {
-    callId,
-  });
-
+export const cancelCall = async ({ callId }) => {
+  const res = await API.post("/call/cancel", { callId });
   return res.data;
 };
 
 // End Call
-export const endCall = async (callId) => {
-  const res = await API.post("/call/end", {
-    callId,
-  });
-
+export const endCall = async ({ callId }) => {
+  const res = await API.post("/call/end", { callId });
   return res.data;
 };
 
 // Send SDP Offer
-export const sendOffer = async (callId, offer) => {
+export const sendOffer = async ({ callId, offer }) => {
   const res = await API.post("/call/offer", {
     callId,
     offer,
@@ -194,7 +181,7 @@ export const sendOffer = async (callId, offer) => {
 };
 
 // Send SDP Answer
-export const sendAnswer = async (callId, answer) => {
+export const sendAnswer = async ({ callId, answer }) => {
   const res = await API.post("/call/answer", {
     callId,
     answer,
@@ -204,18 +191,11 @@ export const sendAnswer = async (callId, answer) => {
 };
 
 // Send ICE Candidate
-export const sendIceCandidate = async (callId, candidate) => {
+export const sendIceCandidate = async ({ callId, candidate }) => {
   const res = await API.post("/call/ice", {
     callId,
     candidate,
   });
-
-  return res.data;
-};
-
-// Get Call Status
-export const getCallStatus = async (callId) => {
-  const res = await API.get(`/call/${callId}`);
 
   return res.data;
 };

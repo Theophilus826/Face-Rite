@@ -6,9 +6,7 @@ class CallSignalListener {
   }
 
   connect(userId) {
-    if (this.eventSource) {
-      return;
-    }
+    if (this.eventSource) return;
 
     const token = localStorage.getItem("token");
 
@@ -49,12 +47,12 @@ class CallSignalListener {
     if (!this.eventSource) return;
 
     this.eventSource.close();
-
     this.eventSource = null;
   }
 
   async handle(event) {
     switch (event.type) {
+
       /* ===========================
           Incoming Call
       =========================== */
@@ -76,8 +74,7 @@ class CallSignalListener {
       =========================== */
 
       case "call_accepted":
-        callService.emit("call_accepted");
-
+        await callService.onAccepted();
         break;
 
       /* ===========================
@@ -85,8 +82,10 @@ class CallSignalListener {
       =========================== */
 
       case "offer":
-        await callService.receiveOffer(event.call, event.offer);
-
+        await callService.receiveOffer(
+          event.call,
+          event.offer
+        );
         break;
 
       /* ===========================
@@ -94,8 +93,9 @@ class CallSignalListener {
       =========================== */
 
       case "answer":
-        await callService.receiveAnswer(event.answer);
-
+        await callService.receiveAnswer(
+          event.answer
+        );
         break;
 
       /* ===========================
@@ -103,8 +103,9 @@ class CallSignalListener {
       =========================== */
 
       case "ice_candidate":
-        await callService.receiveIceCandidate(event.candidate);
-
+        await callService.receiveIceCandidate(
+          event.candidate
+        );
         break;
 
       /* ===========================
@@ -113,7 +114,6 @@ class CallSignalListener {
 
       case "call_ended":
         callService.remoteEnded();
-
         break;
 
       /* ===========================
@@ -122,9 +122,7 @@ class CallSignalListener {
 
       case "call_rejected":
         callService.cleanup();
-
         callService.emit("call_rejected");
-
         break;
 
       /* ===========================
@@ -133,12 +131,11 @@ class CallSignalListener {
 
       case "call_timeout":
         callService.cleanup();
-
         callService.emit("call_timeout");
-
         break;
 
       default:
+        console.log("Unknown SSE event:", event);
         break;
     }
   }
