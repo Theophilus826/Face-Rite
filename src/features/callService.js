@@ -212,28 +212,51 @@ class CallService {
 
     /* ---------- Connection ---------- */
 
-    this.peer.onconnectionstatechange = () => {
-      this.connectionState = this.peer.connectionState;
+    this.peer.onconnectionstatechange = async () => {
+  this.connectionState = this.peer.connectionState;
 
-      this.emit("connection_state", {
-        state: this.connectionState,
-      });
+  console.log("========== CONNECTION STATE ==========");
+  console.log("State:", this.connectionState);
+  console.log("Call ID:", this.callId);
 
-      switch (this.connectionState) {
-        case "connected":
-          this.emit("call_connected");
-          break;
+  this.emit("connection_state", {
+    state: this.connectionState,
+  });
 
-        case "failed":
-        case "closed":
-        case "disconnected":
-          this.cleanup();
-          break;
+  switch (this.connectionState) {
+    case "connected":
+      console.log("✅ Peer connected");
+      this.emit("call_connected");
+      break;
 
-        default:
-          break;
+    case "failed":
+    case "disconnected":
+    case "closed":
+      console.log("❌ Peer disconnected");
+
+      // Notify backend before clearing local state
+      if (this.callId) {
+        try {
+          await endCall({
+            callId: this.callId,
+          });
+
+          console.log("Backend call ended");
+        } catch (err) {
+          console.error(
+            "END CALL:",
+            err.response?.data || err
+          );
+        }
       }
-    };
+
+      this.cleanup();
+      break;
+
+    default:
+      break;
+  }
+};
 
     /* ---------- ICE Connection ---------- */
 
@@ -613,20 +636,32 @@ class CallService {
 =========================================== */
 
   async end() {
-    try {
-      if (this.callId) {
-        await endCall({
-          callId: this.callId,
-        });
-      }
-    } catch (err) {
-      console.error("END CALL:", err);
-    } finally {
-      this.cleanup();
+  console.log("========== END ==========");
+  console.log("Call ID:", this.callId);
 
-      this.emit("call_ended");
+  try {
+    if (this.callId) {
+      console.log("Sending /call/end");
+
+      const res = await endCall({
+        callId: this.callId,
+      });
+
+      console.log("END RESPONSE:", res);
+    } else {
+      console.log("No callId");
     }
+  } catch (err) {
+    console.error(
+      "END CALL:",
+      err.response?.status,
+      err.response?.data
+    );
+  } finally {
+    this.cleanup();
+    this.emit("call_ended");
   }
+}
 
   /* ===========================================
     CREATE OFFER
@@ -847,74 +882,85 @@ class CallService {
 =========================================== */
 
   cleanup() {
-    /* ==========================
-      PEER
+  console.log("========== CLEANUP ==========");
+  console.log("Call ID:", this.callId);
+
+  /* ==========================
+     PEER
   ========================== */
 
-    if (this.peer) {
-      this.peer.ontrack = null;
-      this.peer.onicecandidate = null;
-      this.peer.onconnectionstatechange = null;
-      this.peer.oniceconnectionstatechange = null;
-      this.peer.onsignalingstatechange = null;
-      this.peer.onnegotiationneeded = null;
-      this.peer.ondatachannel = null;
+  if (this.peer) {
+    this.peer.ontrack = null;
+    this.peer.onicecandidate = null;
+    this.peer.onconnectionstatechange = null;
+    this.peer.oniceconnectionstatechange = null;
+    this.peer.onsignalingstatechange = null;
+    this.peer.onnegotiationneeded = null;
+    this.peer.ondatachannel = null;
 
-      this.peer.getSenders().forEach((sender) => {
-        try {
-          sender.replaceTrack(null);
-        } catch (_) {}
-      });
-
+    this.peer.getSenders().forEach((sender) => {
       try {
-        this.peer.close();
-      } catch (_) {}
+        sender.replaceTrack(null);
+      } catch (err) {
+        console.warn("replaceTrack:", err);
+      }
+    });
 
-      this.peer = null;
+    try {
+      this.peer.close();
+    } catch (err) {
+      console.warn("peer.close:", err);
     }
 
-    /* ==========================
-      LOCAL STREAM
-  ========================== */
-
-    if (this.localStream) {
-      this.localStream.getTracks().forEach((track) => {
-        track.stop();
-      });
-
-      this.localStream = null;
-    }
-
-    /* ==========================
-      REMOTE STREAM
-  ========================== */
-
-    if (this.remoteStream) {
-      this.remoteStream.getTracks().forEach((track) => {
-        track.stop();
-      });
-
-      this.remoteStream = null;
-    }
-
-    /* ==========================
-      RESET CALL STATE
-  ========================== */
-
-    this.pendingCandidates = [];
-
-    this.call = null;
-    this.callId = null;
-    this.callType = "voice";
-
-    this.isCaller = false;
-
-    this.connectionState = "new";
-
-    this.resetState();
-
-    this.emit("cleanup");
+    this.peer = null;
   }
+
+  /* ==========================
+     LOCAL STREAM
+  ========================== */
+
+  if (this.localStream) {
+    this.localStream.getTracks().forEach((track) => track.stop());
+    this.localStream = null;
+  }
+
+  /* ==========================
+     REMOTE STREAM
+  ========================== */
+
+  if (this.remoteStream) {
+    this.remoteStream.getTracks().forEach((track) => track.stop());
+    this.remoteStream = null;
+  }
+
+  /* ==========================
+     RESET STATE
+  ========================== */
+
+  this.pendingCandidates = [];
+
+  // Keep the values until the very end for debugging
+  const oldCall = this.call;
+  const oldCallId = this.callId;
+
+  this.call = null;
+  this.callId = null;
+  this.callType = "voice";
+  this.isCaller = false;
+
+  this.connectionState = "new";
+  this.signalingState = "stable";
+  this.iceConnectionState = "new";
+
+  this.resetState();
+
+  console.log("Cleanup complete:", oldCallId);
+
+  this.emit("cleanup", {
+    call: oldCall,
+    callId: oldCallId,
+  });
+}
 
   /* ===========================================
     DESTROY
