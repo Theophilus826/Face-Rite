@@ -11,10 +11,7 @@ import {
 const configuration = {
   iceServers: [
     {
-      urls: [
-        "stun:stun.l.google.com:19302",
-        "stun:stun1.l.google.com:19302",
-      ],
+      urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"],
     },
   ],
 };
@@ -90,90 +87,90 @@ class CallService {
   =========================================== */
 
   async createPeer() {
-  if (this.peer) {
-    return this.peer;
-  }
+    if (this.peer) {
+      return this.peer;
+    }
 
-  const peer = new RTCPeerConnection({
-    iceServers: [
-      {
-        urls: "stun:stun.l.google.com:19302",
-      },
-    ],
-  });
+    const peer = new RTCPeerConnection({
+      iceServers: [
+        {
+          urls: "stun:stun.l.google.com:19302",
+        },
+      ],
+    });
 
-  this.peer = peer;
+    this.peer = peer;
 
-  /* ==========================
+    /* ==========================
       LOCAL TRACKS
   ========================== */
 
-  if (this.localStream) {
-    this.localStream.getTracks().forEach((track) => {
-      peer.addTrack(track, this.localStream);
-    });
-  }
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => {
+        peer.addTrack(track, this.localStream);
+      });
+    }
 
-  /* ==========================
+    /* ==========================
       REMOTE STREAM
   ========================== */
 
-  peer.ontrack = (event) => {
-    this.remoteStream = event.streams[0];
+    peer.ontrack = (event) => {
+      this.remoteStream = event.streams[0];
 
-    this.emit("remote_stream", {
-      stream: this.remoteStream,
-    });
-  };
+      this.emit("remote_stream", {
+        stream: this.remoteStream,
+      });
+    };
 
-  /* ==========================
+    /* ==========================
       ICE
   ========================== */
 
-  peer.onicecandidate = async ({ candidate }) => {
-    if (!candidate || !this.callId) {
-      return;
-    }
+    this.peer.onicecandidate = async ({ candidate }) => {
+      if (!candidate || !this.callId) {
+        return;
+      }
 
-    try {
-      await sendIceCandidate(
-        this.callId,
-        candidate
-      );
-    } catch (err) {
-      console.error("SEND ICE:", err);
-    }
-  };
+      try {
+        await sendIceCandidate({
+          callId: this.callId,
+          candidate,
+        });
+      } catch (err) {
+        console.error("SEND ICE:", err.response?.data || err);
+      }
+    };
 
-  /* ==========================
+    /* ==========================
       CONNECTION STATE
   ========================== */
 
-  peer.onconnectionstatechange = () => {
-    this.connectionState = peer.connectionState;
+    peer.onconnectionstatechange = () => {
+      this.connectionState = peer.connectionState;
 
-    this.emit("connection_state", {
-      state: peer.connectionState,
-    });
+      this.emit("connection_state", {
+        state: peer.connectionState,
+      });
 
-    switch (peer.connectionState) {
-      case "connected":
-        this.emit("call_connected");
-        break;
+      switch (peer.connectionState) {
+        case "connected":
+          this.emit("call_connected");
+          break;
 
-      case "failed":
-      case "closed":
-      case "disconnected":
-        this.cleanup();
-        break;
+        case "failed":
+        case "closed":
+        case "disconnected":
+          this.cleanup();
+          break;
 
-      default:
-        break;
-    }
-  };
+        default:
+          break;
+      }
+    };
 
-  return peer;
-}
+    return peer;
+  }
 
   /* ===========================================
       PEER EVENTS
@@ -199,25 +196,24 @@ class CallService {
     /* ---------- ICE Candidate ---------- */
 
     this.peer.onicecandidate = async (event) => {
-      if (!event.candidate || !this.callId) {
-        return;
-      }
+  if (!event.candidate || !this.callId) {
+    return;
+  }
 
-      try {
-        await sendIceCandidate(
-          this.callId,
-          event.candidate
-        );
-      } catch (err) {
-        console.error("ICE:", err);
-      }
-    };
+  try {
+    await sendIceCandidate({
+      callId: this.callId,
+      candidate: event.candidate,
+    });
+  } catch (err) {
+    console.error("ICE:", err.response?.data || err);
+  }
+};
 
     /* ---------- Connection ---------- */
 
     this.peer.onconnectionstatechange = () => {
-      this.connectionState =
-        this.peer.connectionState;
+      this.connectionState = this.peer.connectionState;
 
       this.emit("connection_state", {
         state: this.connectionState,
@@ -242,8 +238,7 @@ class CallService {
     /* ---------- ICE Connection ---------- */
 
     this.peer.oniceconnectionstatechange = () => {
-      this.iceConnectionState =
-        this.peer.iceConnectionState;
+      this.iceConnectionState = this.peer.iceConnectionState;
 
       this.emit("ice_state", {
         state: this.iceConnectionState,
@@ -261,8 +256,7 @@ class CallService {
     /* ---------- Signaling ---------- */
 
     this.peer.onsignalingstatechange = () => {
-      this.signalingState =
-        this.peer.signalingState;
+      this.signalingState = this.peer.signalingState;
 
       this.emit("signaling_state", {
         state: this.signalingState,
@@ -289,719 +283,648 @@ class CallService {
     LOCAL MEDIA
 =========================================== */
 
-async createLocalStream(video = false) {
-  await this.createPeer();
+  async createLocalStream(video = false) {
+    await this.createPeer();
 
-  if (this.localStream) {
-    return this.localStream;
-  }
+    if (this.localStream) {
+      return this.localStream;
+    }
 
-  this.callType = video ? "video" : "voice";
+    this.callType = video ? "video" : "voice";
 
-  this.localStream =
-    await navigator.mediaDevices.getUserMedia({
+    this.localStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
       video,
     });
 
-  this.localStream.getTracks().forEach((track) => {
-    this.peer.addTrack(
-      track,
-      this.localStream
-    );
-  });
+    this.localStream.getTracks().forEach((track) => {
+      this.peer.addTrack(track, this.localStream);
+    });
 
-  this.emit("local_stream", {
-    stream: this.localStream,
-  });
+    this.emit("local_stream", {
+      stream: this.localStream,
+    });
 
-  return this.localStream;
-}
+    return this.localStream;
+  }
 
-/* ===========================================
+  /* ===========================================
     REPLACE TRACK
 =========================================== */
 
-async replaceTrack(kind, newTrack) {
-  if (!this.peer) return;
+  async replaceTrack(kind, newTrack) {
+    if (!this.peer) return;
 
-  const sender =
-    this.peer
+    const sender = this.peer
       .getSenders()
-      .find(
-        (sender) =>
-          sender.track?.kind === kind
-      );
+      .find((sender) => sender.track?.kind === kind);
 
-  if (!sender) return;
+    if (!sender) return;
 
-  await sender.replaceTrack(newTrack);
+    await sender.replaceTrack(newTrack);
 
-  if (!this.localStream) return;
+    if (!this.localStream) return;
 
-  const oldTrack =
-    this.localStream
+    const oldTrack = this.localStream
       .getTracks()
       .find((track) => track.kind === kind);
 
-  if (oldTrack) {
-    oldTrack.stop();
-    this.localStream.removeTrack(oldTrack);
+    if (oldTrack) {
+      oldTrack.stop();
+      this.localStream.removeTrack(oldTrack);
+    }
+
+    this.localStream.addTrack(newTrack);
+
+    this.emit("local_stream", {
+      stream: this.localStream,
+    });
   }
 
-  this.localStream.addTrack(newTrack);
-
-  this.emit("local_stream", {
-    stream: this.localStream,
-  });
-}
-
-/* ===========================================
+  /* ===========================================
     DEVICES
 =========================================== */
 
-async getDevices() {
-  return navigator.mediaDevices.enumerateDevices();
-}
+  async getDevices() {
+    return navigator.mediaDevices.enumerateDevices();
+  }
 
-async getCameras() {
-  const devices =
-    await this.getDevices();
+  async getCameras() {
+    const devices = await this.getDevices();
 
-  return devices.filter(
-    (device) =>
-      device.kind === "videoinput"
-  );
-}
+    return devices.filter((device) => device.kind === "videoinput");
+  }
 
-async getMicrophones() {
-  const devices =
-    await this.getDevices();
+  async getMicrophones() {
+    const devices = await this.getDevices();
 
-  return devices.filter(
-    (device) =>
-      device.kind === "audioinput"
-  );
-}
+    return devices.filter((device) => device.kind === "audioinput");
+  }
 
-/* ===========================================
+  /* ===========================================
     SWITCH CAMERA
 =========================================== */
 
-async switchCamera() {
-  if (!this.localStream) return;
+  async switchCamera() {
+    if (!this.localStream) return;
 
-  const currentTrack =
-    this.localStream.getVideoTracks()[0];
+    const currentTrack = this.localStream.getVideoTracks()[0];
 
-  if (!currentTrack) return;
+    if (!currentTrack) return;
 
-  const cameras =
-    await this.getCameras();
+    const cameras = await this.getCameras();
 
-  if (cameras.length < 2) {
-    return;
-  }
+    if (cameras.length < 2) {
+      return;
+    }
 
-  const currentId =
-    currentTrack.getSettings().deviceId;
+    const currentId = currentTrack.getSettings().deviceId;
 
-  const currentIndex =
-    cameras.findIndex(
-      (camera) =>
-        camera.deviceId === currentId
+    const currentIndex = cameras.findIndex(
+      (camera) => camera.deviceId === currentId,
     );
 
-  const nextCamera =
-    cameras[
-      (currentIndex + 1) %
-        cameras.length
-    ];
+    const nextCamera = cameras[(currentIndex + 1) % cameras.length];
 
-  const stream =
-    await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         deviceId: {
-          exact:
-            nextCamera.deviceId,
+          exact: nextCamera.deviceId,
         },
       },
       audio: false,
     });
 
-  const newTrack =
-    stream.getVideoTracks()[0];
+    const newTrack = stream.getVideoTracks()[0];
 
-  await this.replaceTrack(
-    "video",
-    newTrack
-  );
-}
+    await this.replaceTrack("video", newTrack);
+  }
 
-/* ===========================================
+  /* ===========================================
     ENABLE AUDIO
 =========================================== */
 
-setMuted(muted) {
-  if (!this.localStream) return;
+  setMuted(muted) {
+    if (!this.localStream) return;
 
-  this.localStream
-    .getAudioTracks()
-    .forEach((track) => {
+    this.localStream.getAudioTracks().forEach((track) => {
       track.enabled = !muted;
     });
 
-  this.emit("mute_changed", {
-    muted,
-  });
-}
+    this.emit("mute_changed", {
+      muted,
+    });
+  }
 
-/* ===========================================
+  /* ===========================================
     TOGGLE MUTE
 =========================================== */
 
-toggleMute() {
-  if (!this.localStream) return;
+  toggleMute() {
+    if (!this.localStream) return;
 
-  const track =
-    this.localStream.getAudioTracks()[0];
+    const track = this.localStream.getAudioTracks()[0];
 
-  if (!track) return;
+    if (!track) return;
 
-  track.enabled =
-    !track.enabled;
+    track.enabled = !track.enabled;
 
-  this.emit("mute_changed", {
-    muted: !track.enabled,
-  });
+    this.emit("mute_changed", {
+      muted: !track.enabled,
+    });
 
-  return !track.enabled;
-}
+    return !track.enabled;
+  }
 
-/* ===========================================
+  /* ===========================================
     ENABLE VIDEO
 =========================================== */
 
-setVideoEnabled(enabled) {
-  if (!this.localStream) return;
+  setVideoEnabled(enabled) {
+    if (!this.localStream) return;
 
-  this.localStream
-    .getVideoTracks()
-    .forEach((track) => {
+    this.localStream.getVideoTracks().forEach((track) => {
       track.enabled = enabled;
     });
 
-  this.emit("video_changed", {
-    enabled,
-  });
-}
+    this.emit("video_changed", {
+      enabled,
+    });
+  }
 
-/* ===========================================
+  /* ===========================================
     TOGGLE VIDEO
 =========================================== */
 
-toggleVideo() {
-  if (!this.localStream) return;
+  toggleVideo() {
+    if (!this.localStream) return;
 
-  const track =
-    this.localStream.getVideoTracks()[0];
+    const track = this.localStream.getVideoTracks()[0];
 
-  if (!track) return;
+    if (!track) return;
 
-  track.enabled =
-    !track.enabled;
+    track.enabled = !track.enabled;
 
-  this.emit("video_changed", {
-    enabled: track.enabled,
-  });
+    this.emit("video_changed", {
+      enabled: track.enabled,
+    });
 
-  return track.enabled;
-}
+    return track.enabled;
+  }
 
-/* ===========================================
+  /* ===========================================
     STREAM HELPERS
 =========================================== */
 
-hasAudio() {
-  return !!this.localStream?.getAudioTracks()
-    .length;
-}
+  hasAudio() {
+    return !!this.localStream?.getAudioTracks().length;
+  }
 
-hasVideo() {
-  return !!this.localStream?.getVideoTracks()
-    .length;
-}
+  hasVideo() {
+    return !!this.localStream?.getVideoTracks().length;
+  }
 
-isMuted() {
-  const track =
-    this.localStream
-      ?.getAudioTracks()[0];
+  isMuted() {
+    const track = this.localStream?.getAudioTracks()[0];
 
-  return track
-    ? !track.enabled
-    : false;
-}
+    return track ? !track.enabled : false;
+  }
 
-isVideoEnabled() {
-  const track =
-    this.localStream
-      ?.getVideoTracks()[0];
+  isVideoEnabled() {
+    const track = this.localStream?.getVideoTracks()[0];
 
-  return track
-    ? track.enabled
-    : false;
-}
+    return track ? track.enabled : false;
+  }
   /* ===========================================
     START CALL
 =========================================== */
 
-async start(receiverId, type = "voice") {
-  try {
-    this.isCaller = true;
-    this.callType = type;
+  async start(receiverId, type = "voice") {
+    try {
+      this.isCaller = true;
+      this.callType = type;
 
-    // Start the call
-    const { call } = await startCall({
-      receiverId,
-      type,
-    });
+      // Start the call
+      const { call } = await startCall({
+        receiverId,
+        type,
+      });
 
-    this.call = call;
-    this.callId = call.id;
+      this.call = call;
+      this.callId = call.id;
 
-    // Notify UI that we're ringing
-    this.emit("calling", {
-      call,
-    });
+      // Notify UI that we're ringing
+      this.emit("calling", {
+        call,
+      });
 
-    // Wait for "call_accepted" SSE event
-    // createOffer() will be called from onAccepted()
+      // Wait for "call_accepted" SSE event
+      // createOffer() will be called from onAccepted()
 
-    return call;
-  } catch (err) {
-    console.error("START CALL:", err);
+      return call;
+    } catch (err) {
+      console.error("START CALL:", err);
 
-    this.emit("error", {
-      error: err,
-    });
+      this.emit("error", {
+        error: err,
+      });
 
-    throw err;
-  }
-}
-
-async onAccepted() {
-  if (!this.isCaller) return;
-
-  if (!this.peer) {
-    await this.createPeer();
-  }
-
-  if (!this.localStream) {
-    await this.createLocalStream(
-      this.callType === "video"
-    );
-  }
-
-  await this.createOffer();
-
-  this.emit("call_accepted");
-}
-/* ===========================================
-    ACCEPT CALL
-=========================================== */
-
-async accept(video = false) {
-  try {
-    if (!this.callId) {
-      throw new Error(
-        "Missing call id"
-      );
+      throw err;
     }
-
-    this.isCaller = false;
-
-    this.callType = video
-      ? "video"
-      : "voice";
-
-    await acceptCall({
-      callId: this.callId,
-    });
-
-    await this.createPeer();
-
-    await this.createLocalStream(
-      video
-    );
-
-    this.emit("call_accepted");
-  } catch (err) {
-    console.error("ACCEPT:", err);
-
-    this.emit("error", {
-      error: err,
-    });
-
-    throw err;
-  }
-}
-
-/* ===========================================
-    REJECT CALL
-=========================================== */
-
-async reject() {
-  try {
-    if (!this.callId) {
-      return;
-    }
-
-    await rejectCall(this.callId);
-
-    this.emit("call_rejected");
-
-    this.cleanup();
-  } catch (err) {
-    console.error("REJECT:", err);
-
-    this.emit("error", {
-      error: err,
-    });
-
-    throw err;
-  }
-}
-
-/* ===========================================
-    END CALL
-=========================================== */
-
-async end() {
-  try {
-    if (this.callId) {
-      await endCall(this.callId);
-    }
-  } catch (err) {
-    console.error("END CALL:", err);
-  } finally {
-    this.cleanup();
-
-    this.emit("call_ended");
-  }
-}
-
-/* ===========================================
-    CREATE OFFER
-=========================================== */
-
-async createOffer() {
-  if (!this.peer) {
-    throw new Error(
-      "Peer not created"
-    );
   }
 
-  const offer =
-    await this.peer.createOffer({
-      offerToReceiveAudio: true,
-      offerToReceiveVideo:
-        this.callType === "video",
-    });
-
-  await this.peer.setLocalDescription(
-    offer
-  );
-
-  await sendOffer({
-    callId: this.callId,
-    offer,
-  });
-
-  return offer;
-}
-
-/* ===========================================
-    CREATE ANSWER
-=========================================== */
-
-async createAnswer() {
-  if (!this.peer) {
-    throw new Error("Peer not created");
-  }
-
-  if (!this.callId) {
-    throw new Error("Missing call ID");
-  }
-
-  const answer = await this.peer.createAnswer();
-
-  await this.peer.setLocalDescription(answer);
-
-  await sendAnswer({
-    callId: this.callId,
-    answer,
-  });
-
-  this.emit("answer_sent", {
-    call: this.call,
-  });
-
-  return answer;
-}
-/* ===========================================
-    RECEIVE OFFER
-=========================================== */
-
-async receiveOffer(call, offer) {
-  try {
-    if (!offer) {
-      throw new Error("Missing SDP offer");
-    }
-
-    this.call = call;
-    this.callId = call.id;
-    this.callType = call.type;
-    this.isCaller = false;
+  async onAccepted() {
+    if (!this.isCaller) return;
 
     if (!this.peer) {
       await this.createPeer();
     }
 
     if (!this.localStream) {
-      await this.createLocalStream(
-        call.type === "video"
-      );
+      await this.createLocalStream(this.callType === "video");
     }
 
-    // Ignore duplicate offers
-    if (
-      this.peer.signalingState !== "stable" ||
-      this.peer.remoteDescription
-    ) {
-      return;
-    }
+    await this.createOffer();
 
-    await this.peer.setRemoteDescription(
-      new RTCSessionDescription(offer)
-    );
-
-    await this.createAnswer();
-
-    this.emit("offer_received", {
-      call,
-    });
-
-  } catch (err) {
-    console.error("RECEIVE OFFER:", err);
-
-    this.emit("error", {
-      error: err,
-    });
-
-    throw err;
+    this.emit("call_accepted");
   }
-}
-
-/* ===========================================
-    RECEIVE ANSWER
+  /* ===========================================
+    ACCEPT CALL
 =========================================== */
 
-async receiveAnswer(answer) {
-  try {
+  async accept(video = false) {
+    try {
+      if (!this.callId) {
+        throw new Error("Missing call id");
+      }
+
+      this.isCaller = false;
+
+      this.callType = video ? "video" : "voice";
+
+      await acceptCall({
+        callId: this.callId,
+      });
+
+      await this.createPeer();
+
+      await this.createLocalStream(video);
+
+      this.emit("call_accepted");
+    } catch (err) {
+      console.error("ACCEPT:", err);
+
+      this.emit("error", {
+        error: err,
+      });
+
+      throw err;
+    }
+  }
+
+  /* ===========================================
+    REJECT CALL
+=========================================== */
+
+  async reject() {
+    try {
+      if (!this.callId) {
+        return;
+      }
+
+      await rejectCall(this.callId);
+
+      this.emit("call_rejected");
+
+      this.cleanup();
+    } catch (err) {
+      console.error("REJECT:", err);
+
+      this.emit("error", {
+        error: err,
+      });
+
+      throw err;
+    }
+  }
+
+  /* ===========================================
+    END CALL
+=========================================== */
+
+  async end() {
+    try {
+      if (this.callId) {
+        await endCall({
+          callId: this.callId,
+        });
+      }
+    } catch (err) {
+      console.error("END CALL:", err);
+    } finally {
+      this.cleanup();
+
+      this.emit("call_ended");
+    }
+  }
+
+  /* ===========================================
+    CREATE OFFER
+=========================================== */
+
+  async createOffer() {
     if (!this.peer) {
       throw new Error("Peer not created");
     }
 
-    if (!answer) {
-      throw new Error("Missing SDP answer");
+    const offer = await this.peer.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: this.callType === "video",
+    });
+
+    await this.peer.setLocalDescription(offer);
+
+    await sendOffer({
+      callId: this.callId,
+      offer,
+    });
+
+    return offer;
+  }
+
+  /* ===========================================
+    CREATE ANSWER
+=========================================== */
+
+  async createAnswer() {
+    if (!this.peer) {
+      throw new Error("Peer not created");
     }
 
-    if (this.peer.signalingState !== "have-local-offer") {
-      return;
+    if (!this.callId) {
+      throw new Error("Missing call ID");
     }
 
-    await this.peer.setRemoteDescription(
-      new RTCSessionDescription(answer)
-    );
+    const answer = await this.peer.createAnswer();
 
-    this.emit("call_connected", {
+    await this.peer.setLocalDescription(answer);
+
+    await sendAnswer({
+      callId: this.callId,
+      answer,
+    });
+
+    this.emit("answer_sent", {
       call: this.call,
     });
-  } catch (err) {
-    console.error("RECEIVE ANSWER:", err);
 
-    this.emit("error", {
-      error: err,
-    });
-
-    throw err;
+    return answer;
   }
-}
+  /* ===========================================
+    RECEIVE OFFER
+=========================================== */
 
-/* ===========================================
+  async receiveOffer(call, offer) {
+    try {
+      if (!offer) {
+        throw new Error("Missing SDP offer");
+      }
+
+      this.call = call;
+      this.callId = call.id;
+      this.callType = call.type;
+      this.isCaller = false;
+
+      if (!this.peer) {
+        await this.createPeer();
+      }
+
+      if (!this.localStream) {
+        await this.createLocalStream(call.type === "video");
+      }
+
+      // Ignore duplicate offers
+      if (
+        this.peer.signalingState !== "stable" ||
+        this.peer.remoteDescription
+      ) {
+        return;
+      }
+
+      await this.peer.setRemoteDescription(new RTCSessionDescription(offer));
+
+      await this.createAnswer();
+
+      this.emit("offer_received", {
+        call,
+      });
+    } catch (err) {
+      console.error("RECEIVE OFFER:", err);
+
+      this.emit("error", {
+        error: err,
+      });
+
+      throw err;
+    }
+  }
+
+  /* ===========================================
+    RECEIVE ANSWER
+=========================================== */
+
+  async receiveAnswer(answer) {
+    try {
+      if (!this.peer) {
+        throw new Error("Peer not created");
+      }
+
+      if (!answer) {
+        throw new Error("Missing SDP answer");
+      }
+
+      if (this.peer.signalingState !== "have-local-offer") {
+        return;
+      }
+
+      await this.peer.setRemoteDescription(new RTCSessionDescription(answer));
+
+      this.emit("call_connected", {
+        call: this.call,
+      });
+    } catch (err) {
+      console.error("RECEIVE ANSWER:", err);
+
+      this.emit("error", {
+        error: err,
+      });
+
+      throw err;
+    }
+  }
+
+  /* ===========================================
     RECEIVE ICE
 =========================================== */
 
-async receiveIceCandidate(candidate) {
-  try {
-    if (!this.peer) {
-      return;
+  async receiveIceCandidate(candidate) {
+    try {
+      if (!this.peer) {
+        return;
+      }
+
+      if (!candidate) {
+        return;
+      }
+
+      // Remote description not ready yet
+      if (!this.peer.remoteDescription) {
+        this.pendingCandidates.push(candidate);
+        return;
+      }
+
+      await this.peer.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch (err) {
+      console.error("RECEIVE ICE:", err);
+
+      this.emit("error", {
+        error: err,
+      });
     }
-
-    if (!candidate) {
-      return;
-    }
-
-    // Remote description not ready yet
-    if (!this.peer.remoteDescription) {
-      this.pendingCandidates.push(candidate);
-      return;
-    }
-
-    await this.peer.addIceCandidate(
-      new RTCIceCandidate(candidate)
-    );
-
-  } catch (err) {
-    console.error("RECEIVE ICE:", err);
-
-    this.emit("error", {
-      error: err,
-    });
   }
-}
 
-/* ===========================================
+  /* ===========================================
     REMOTE HANGUP
 =========================================== */
 
-remoteEnded() {
-  this.cleanup();
+  remoteEnded() {
+    this.cleanup();
 
-  this.emit("call_ended");
-}
+    this.emit("call_ended");
+  }
 
-/* ===========================================
+  /* ===========================================
     RESET
 =========================================== */
 
-resetState() {
-  this.call = null;
+  resetState() {
+    this.call = null;
 
-  this.callId = null;
+    this.callId = null;
 
-  this.callType = "voice";
+    this.callType = "voice";
 
-  this.isCaller = false;
+    this.isCaller = false;
 
-  this.connectionState = "new";
+    this.connectionState = "new";
 
-  this.signalingState = "stable";
+    this.signalingState = "stable";
 
-  this.iceConnectionState = "new";
-}
-
-async cancel() {
-  if (!this.callId) return;
-
-  try {
-    await endCall(this.callId);
-
-    this.emit("call_cancelled", {
-      callId: this.callId,
-    });
-
-    this.cleanup();
-  } catch (err) {
-    console.error("Cancel call failed:", err);
-    throw err;
+    this.iceConnectionState = "new";
   }
-}
 
-/* ===========================================
+  async cancel() {
+    if (!this.callId) return;
+
+    try {
+      await endCall({
+        callId: this.callId,
+      });
+
+      this.emit("call_cancelled", {
+        callId: this.callId,
+      });
+
+      this.cleanup();
+    } catch (err) {
+      console.error("Cancel call failed:", err);
+      throw err;
+    }
+  }
+
+  /* ===========================================
     CLEANUP
 =========================================== */
 
-cleanup() {
-  /* ==========================
+  cleanup() {
+    /* ==========================
       PEER
   ========================== */
 
-  if (this.peer) {
-    this.peer.ontrack = null;
-    this.peer.onicecandidate = null;
-    this.peer.onconnectionstatechange = null;
-    this.peer.oniceconnectionstatechange = null;
-    this.peer.onsignalingstatechange = null;
-    this.peer.onnegotiationneeded = null;
-    this.peer.ondatachannel = null;
+    if (this.peer) {
+      this.peer.ontrack = null;
+      this.peer.onicecandidate = null;
+      this.peer.onconnectionstatechange = null;
+      this.peer.oniceconnectionstatechange = null;
+      this.peer.onsignalingstatechange = null;
+      this.peer.onnegotiationneeded = null;
+      this.peer.ondatachannel = null;
 
-    this.peer.getSenders().forEach((sender) => {
+      this.peer.getSenders().forEach((sender) => {
+        try {
+          sender.replaceTrack(null);
+        } catch (_) {}
+      });
+
       try {
-        sender.replaceTrack(null);
+        this.peer.close();
       } catch (_) {}
-    });
 
-    try {
-      this.peer.close();
-    } catch (_) {}
+      this.peer = null;
+    }
 
-    this.peer = null;
-  }
-
-  /* ==========================
+    /* ==========================
       LOCAL STREAM
   ========================== */
 
-  if (this.localStream) {
-    this.localStream.getTracks().forEach((track) => {
-      track.stop();
-    });
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => {
+        track.stop();
+      });
 
-    this.localStream = null;
-  }
+      this.localStream = null;
+    }
 
-  /* ==========================
+    /* ==========================
       REMOTE STREAM
   ========================== */
 
-  if (this.remoteStream) {
-    this.remoteStream.getTracks().forEach((track) => {
-      track.stop();
-    });
+    if (this.remoteStream) {
+      this.remoteStream.getTracks().forEach((track) => {
+        track.stop();
+      });
 
-    this.remoteStream = null;
-  }
+      this.remoteStream = null;
+    }
 
-  /* ==========================
+    /* ==========================
       RESET CALL STATE
   ========================== */
 
-  this.pendingCandidates = [];
+    this.pendingCandidates = [];
 
-  this.call = null;
-  this.callId = null;
-  this.callType = "voice";
+    this.call = null;
+    this.callId = null;
+    this.callType = "voice";
 
-  this.isCaller = false;
+    this.isCaller = false;
 
-  this.connectionState = "new";
+    this.connectionState = "new";
 
-  this.resetState();
+    this.resetState();
 
-  this.emit("cleanup");
-}
+    this.emit("cleanup");
+  }
 
-/* ===========================================
+  /* ===========================================
     DESTROY
 =========================================== */
 
-destroy() {
+  destroy() {
+    this.cleanup();
 
-  this.cleanup();
-
-  this.listeners.clear();
-}
+    this.listeners.clear();
+  }
 }
 
 export default new CallService();
