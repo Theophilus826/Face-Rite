@@ -128,19 +128,39 @@ class CallService {
   ========================== */
 
     this.peer.onicecandidate = async ({ candidate }) => {
-      if (!candidate || !this.callId) {
-        return;
-      }
+  console.log("========== ICE EVENT ==========");
+  console.log("Call ID:", this.callId);
+  console.log("Candidate:", candidate);
 
-      try {
-        await sendIceCandidate({
-          callId: this.callId,
-          candidate,
-        });
-      } catch (err) {
-        console.error("SEND ICE:", err.response?.data || err);
-      }
+  if (!candidate || !this.callId) {
+    console.warn("Skipping ICE:", {
+      hasCallId: !!this.callId,
+      hasCandidate: !!candidate,
+    });
+    return;
+  }
+
+  try {
+    const payload = {
+      callId: this.callId,
+      candidate,
     };
+
+    console.log("Sending ICE:", payload);
+
+    const res = await sendIceCandidate(payload);
+
+    console.log("ICE sent:", res);
+  } catch (err) {
+    console.error("SEND ICE ERROR:");
+    console.error("Payload:", {
+      callId: this.callId,
+      candidate,
+    });
+    console.error("Response:", err.response?.data);
+    console.error(err);
+  }
+};
 
     /* ==========================
       CONNECTION STATE
@@ -196,19 +216,24 @@ class CallService {
     /* ---------- ICE Candidate ---------- */
 
     this.peer.onicecandidate = async (event) => {
-      if (!event.candidate || !this.callId) {
-        return;
-      }
+  console.log("ICE EVENT", {
+    callId: this.callId,
+    candidate: event.candidate,
+  });
 
-      try {
-        await sendIceCandidate({
-          callId: this.callId,
-          candidate: event.candidate,
-        });
-      } catch (err) {
-        console.error("ICE:", err.response?.data || err);
-      }
-    };
+  if (!event.candidate || !this.callId) {
+    return;
+  }
+
+  try {
+    await sendIceCandidate({
+      callId: this.callId,
+      candidate: event.candidate,
+    });
+  } catch (err) {
+    console.error("ICE:", err.response?.data || err);
+  }
+};
 
     /* ---------- Connection ---------- */
 

@@ -192,10 +192,14 @@ export const sendAnswer = async ({ callId, answer }) => {
 
 // Send ICE Candidate
 export const sendIceCandidate = async ({ callId, candidate }) => {
-  const res = await API.post("/call/ice", {
+  const body = {
     callId,
     candidate,
-  });
+  };
+
+  console.log("POST /call/ice", body);
+
+  const res = await API.post("/call/ice", body);
 
   return res.data;
 };
