@@ -128,39 +128,39 @@ class CallService {
   ========================== */
 
     this.peer.onicecandidate = async ({ candidate }) => {
-  console.log("========== ICE EVENT ==========");
-  console.log("Call ID:", this.callId);
-  console.log("Candidate:", candidate);
+      console.log("========== ICE EVENT ==========");
+      console.log("Call ID:", this.callId);
+      console.log("Candidate:", candidate);
 
-  if (!candidate || !this.callId) {
-    console.warn("Skipping ICE:", {
-      hasCallId: !!this.callId,
-      hasCandidate: !!candidate,
-    });
-    return;
-  }
+      if (!candidate || !this.callId) {
+        console.warn("Skipping ICE:", {
+          hasCallId: !!this.callId,
+          hasCandidate: !!candidate,
+        });
+        return;
+      }
 
-  try {
-    const payload = {
-      callId: this.callId,
-      candidate,
+      try {
+        const payload = {
+          callId: this.callId,
+          candidate,
+        };
+
+        console.log("Sending ICE:", payload);
+
+        const res = await sendIceCandidate(payload);
+
+        console.log("ICE sent:", res);
+      } catch (err) {
+        console.error("SEND ICE ERROR:");
+        console.error("Payload:", {
+          callId: this.callId,
+          candidate,
+        });
+        console.error("Response:", err.response?.data);
+        console.error(err);
+      }
     };
-
-    console.log("Sending ICE:", payload);
-
-    const res = await sendIceCandidate(payload);
-
-    console.log("ICE sent:", res);
-  } catch (err) {
-    console.error("SEND ICE ERROR:");
-    console.error("Payload:", {
-      callId: this.callId,
-      candidate,
-    });
-    console.error("Response:", err.response?.data);
-    console.error(err);
-  }
-};
 
     /* ==========================
       CONNECTION STATE
@@ -216,25 +216,26 @@ class CallService {
     /* ---------- ICE Candidate ---------- */
 
     this.peer.onicecandidate = async (event) => {
-  console.log("ICE EVENT", {
-    callId: this.callId,
-    candidate: event.candidate,
-  });
+      console.log("ICE EVENT", {
+        callId: this.callId,
+        candidate: event.candidate,
+      });
 
-  if (!event.candidate || !this.callId) {
-    return;
-  }
+      if (!event.candidate || !this.callId) {
+        return;
+      }
 
-  try {
-    await sendIceCandidate({
-      callId: this.callId,
-      candidate: event.candidate,
-    });
-  } catch (err) {
-    console.error("ICE:", err.response?.data || err);
-  }
-};
+      try {
+        await sendIceCandidate({
+          callId: this.callId,
+          candidate: event.candidate,
+        });
+      } catch (err) {
+        console.error("ICE:", err.response?.data || err);
+      }
+    };
 
+    /* ---------- Connection ---------- */
     /* ---------- Connection ---------- */
 
     this.peer.onconnectionstatechange = async () => {
@@ -242,6 +243,8 @@ class CallService {
 
       console.log("========== CONNECTION STATE ==========");
       console.log("State:", this.connectionState);
+      console.log("ICE:", this.peer.iceConnectionState);
+      console.log("Signaling:", this.peer.signalingState);
       console.log("Call ID:", this.callId);
 
       this.emit("connection_state", {
@@ -251,15 +254,17 @@ class CallService {
       switch (this.connectionState) {
         case "connected":
           console.log("✅ Peer connected");
+
           this.emit("call_connected");
           break;
 
-        case "failed":
-        case "disconnected":
-        case "closed":
-          console.log("❌ Peer disconnected");
+        case "connecting":
+          console.log("⏳ Peer connecting...");
+          break;
 
-          // Notify backend before clearing local state
+        case "failed":
+          console.log("❌ Peer failed");
+
           if (this.callId) {
             try {
               await endCall({
@@ -275,7 +280,30 @@ class CallService {
           this.cleanup();
           break;
 
+        case "disconnected":
+          console.log("⚠️ Peer disconnected");
+
+          if (this.callId) {
+            try {
+              await endCall({
+                callId: this.callId,
+              });
+            } catch (err) {
+              console.error("END CALL:", err.response?.data || err);
+            }
+          }
+
+          this.cleanup();
+          break;
+
+        case "closed":
+          console.log("🔒 Peer closed");
+
+          this.cleanup();
+          break;
+
         default:
+          console.log("Connection state:", this.connectionState);
           break;
       }
     };
@@ -285,6 +313,9 @@ class CallService {
     this.peer.oniceconnectionstatechange = () => {
       this.iceConnectionState = this.peer.iceConnectionState;
 
+      console.log("========== ICE CONNECTION ==========");
+      console.log("ICE State:", this.iceConnectionState);
+
       this.emit("ice_state", {
         state: this.iceConnectionState,
       });
@@ -293,6 +324,9 @@ class CallService {
     /* ---------- ICE Gathering ---------- */
 
     this.peer.onicegatheringstatechange = () => {
+      console.log("========== ICE GATHERING ==========");
+      console.log("Gathering:", this.peer.iceGatheringState);
+
       this.emit("ice_gathering_state", {
         state: this.peer.iceGatheringState,
       });
@@ -303,6 +337,9 @@ class CallService {
     this.peer.onsignalingstatechange = () => {
       this.signalingState = this.peer.signalingState;
 
+      console.log("========== SIGNALING ==========");
+      console.log("State:", this.signalingState);
+
       this.emit("signaling_state", {
         state: this.signalingState,
       });
@@ -311,12 +348,17 @@ class CallService {
     /* ---------- Negotiation ---------- */
 
     this.peer.onnegotiationneeded = () => {
+      console.log("========== NEGOTIATION NEEDED ==========");
+
       this.emit("negotiation_needed");
     };
 
     /* ---------- Data Channel ---------- */
 
     this.peer.ondatachannel = (event) => {
+      console.log("========== DATA CHANNEL ==========");
+      console.log(event.channel.label);
+
       this.emit("data_channel", {
         channel: event.channel,
       });
