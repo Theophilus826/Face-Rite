@@ -58,7 +58,6 @@ class CallService {
     =========================================== */
 
     this.listeners = new Set();
-    this.pendingCandidates = [];
   }
 
   /* ===========================================
@@ -786,18 +785,6 @@ async receiveOffer(call, offer) {
       new RTCSessionDescription(offer)
     );
 
-    // flush any ICE candidates received before remote description was set
-    if (Array.isArray(this.pendingCandidates) && this.pendingCandidates.length) {
-      for (const c of this.pendingCandidates) {
-        try {
-          await this.peer.addIceCandidate(new RTCIceCandidate(c));
-        } catch (err) {
-          console.error('ADD PENDING ICE (offer):', err);
-        }
-      }
-
-      this.pendingCandidates = [];
-    }
     await this.createAnswer();
 
     this.emit("offer_received", {
@@ -837,18 +824,6 @@ async receiveAnswer(answer) {
       new RTCSessionDescription(answer)
     );
 
-    // flush any ICE candidates that arrived before remote description
-    if (Array.isArray(this.pendingCandidates) && this.pendingCandidates.length) {
-      for (const c of this.pendingCandidates) {
-        try {
-          await this.peer.addIceCandidate(new RTCIceCandidate(c));
-        } catch (err) {
-          console.error('ADD PENDING ICE (answer):', err);
-        }
-      }
-
-      this.pendingCandidates = [];
-    }
     this.emit("call_connected", {
       call: this.call,
     });
@@ -869,25 +844,23 @@ async receiveAnswer(answer) {
 
 async receiveIceCandidate(candidate) {
   try {
-      if (!candidate) {
-        return;
-      }
+    if (!this.peer) {
+      return;
+    }
 
-      // If peer isn't created yet, queue the candidate
-      if (!this.peer) {
-        this.pendingCandidates.push(candidate);
-        return;
-      }
+    if (!candidate) {
+      return;
+    }
 
-      // Remote description not ready yet -> queue
-      if (!this.peer.remoteDescription) {
-        this.pendingCandidates.push(candidate);
-        return;
-      }
+    // Remote description not ready yet
+    if (!this.peer.remoteDescription) {
+      this.pendingCandidates.push(candidate);
+      return;
+    }
 
-      await this.peer.addIceCandidate(
-        new RTCIceCandidate(candidate)
-      );
+    await this.peer.addIceCandidate(
+      new RTCIceCandidate(candidate)
+    );
 
   } catch (err) {
     console.error("RECEIVE ICE:", err);
