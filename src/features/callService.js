@@ -557,47 +557,35 @@ isVideoEnabled() {
 
 async start(receiverId, type = "voice") {
   try {
-      this.isCaller = true;
-      this.callType = type;
+    this.isCaller = true;
+    this.callType = type;
 
-      // Start the call
-      const { call } = await startCall({
-        receiverId,
-        type,
-      });
+    // Start the call
+    const { call } = await startCall({
+      receiverId,
+      type,
+    });
 
-      this.call = call;
-      this.callId = call.id;
+    this.call = call;
+    this.callId = call.id;
 
-      // Notify UI that we're ringing
-      this.emit("calling", {
-        call,
-      });
+    // Notify UI that we're ringing
+    this.emit("calling", {
+      call,
+    });
 
-      // Wait for "call_accepted" SSE event
-      // createOffer() will be called from onAccepted()
+    // Wait for "call_accepted" SSE event
+    // createOffer() will be called from onAccepted()
 
-      return call;
+    return call;
   } catch (err) {
-      console.error("START CALL:", err);
+    console.error("START CALL:", err);
 
-      // revert caller flag on failure
-      this.isCaller = false;
+    this.emit("error", {
+      error: err,
+    });
 
-      // handle busy (409) specifically
-      if (err?.response?.status === 409) {
-        const msg = err.response?.data?.message || err.response?.data?.error || "User busy";
-        this.emit("call_busy", { message: msg });
-        const e = new Error(msg);
-        e.response = err.response;
-        throw e;
-      }
-
-      this.emit("error", {
-        error: err,
-      });
-
-      throw err;
+    throw err;
   }
 }
 
