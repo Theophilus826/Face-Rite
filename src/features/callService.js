@@ -196,67 +196,64 @@ class CallService {
     /* ---------- ICE Candidate ---------- */
 
     this.peer.onicecandidate = async (event) => {
-  if (!event.candidate || !this.callId) {
-    return;
-  }
+      if (!event.candidate || !this.callId) {
+        return;
+      }
 
-  try {
-    await sendIceCandidate({
-      callId: this.callId,
-      candidate: event.candidate,
-    });
-  } catch (err) {
-    console.error("ICE:", err.response?.data || err);
-  }
-};
+      try {
+        await sendIceCandidate({
+          callId: this.callId,
+          candidate: event.candidate,
+        });
+      } catch (err) {
+        console.error("ICE:", err.response?.data || err);
+      }
+    };
 
     /* ---------- Connection ---------- */
 
     this.peer.onconnectionstatechange = async () => {
-  this.connectionState = this.peer.connectionState;
+      this.connectionState = this.peer.connectionState;
 
-  console.log("========== CONNECTION STATE ==========");
-  console.log("State:", this.connectionState);
-  console.log("Call ID:", this.callId);
+      console.log("========== CONNECTION STATE ==========");
+      console.log("State:", this.connectionState);
+      console.log("Call ID:", this.callId);
 
-  this.emit("connection_state", {
-    state: this.connectionState,
-  });
+      this.emit("connection_state", {
+        state: this.connectionState,
+      });
 
-  switch (this.connectionState) {
-    case "connected":
-      console.log("✅ Peer connected");
-      this.emit("call_connected");
-      break;
+      switch (this.connectionState) {
+        case "connected":
+          console.log("✅ Peer connected");
+          this.emit("call_connected");
+          break;
 
-    case "failed":
-    case "disconnected":
-    case "closed":
-      console.log("❌ Peer disconnected");
+        case "failed":
+        case "disconnected":
+        case "closed":
+          console.log("❌ Peer disconnected");
 
-      // Notify backend before clearing local state
-      if (this.callId) {
-        try {
-          await endCall({
-            callId: this.callId,
-          });
+          // Notify backend before clearing local state
+          if (this.callId) {
+            try {
+              await endCall({
+                callId: this.callId,
+              });
 
-          console.log("Backend call ended");
-        } catch (err) {
-          console.error(
-            "END CALL:",
-            err.response?.data || err
-          );
-        }
+              console.log("Backend call ended");
+            } catch (err) {
+              console.error("END CALL:", err.response?.data || err);
+            }
+          }
+
+          this.cleanup();
+          break;
+
+        default:
+          break;
       }
-
-      this.cleanup();
-      break;
-
-    default:
-      break;
-  }
-};
+    };
 
     /* ---------- ICE Connection ---------- */
 
@@ -636,32 +633,28 @@ class CallService {
 =========================================== */
 
   async end() {
-  console.log("========== END ==========");
-  console.log("Call ID:", this.callId);
+    console.log("========== END ==========");
+    console.log("Call ID:", this.callId);
 
-  try {
-    if (this.callId) {
-      console.log("Sending /call/end");
+    try {
+      if (this.callId) {
+        console.log("Sending /call/end");
 
-      const res = await endCall({
-        callId: this.callId,
-      });
+        const res = await endCall({
+          callId: this.callId,
+        });
 
-      console.log("END RESPONSE:", res);
-    } else {
-      console.log("No callId");
+        console.log("END RESPONSE:", res);
+      } else {
+        console.log("No callId");
+      }
+    } catch (err) {
+      console.error("END CALL:", err.response?.status, err.response?.data);
+    } finally {
+      this.cleanup();
+      this.emit("call_ended");
     }
-  } catch (err) {
-    console.error(
-      "END CALL:",
-      err.response?.status,
-      err.response?.data
-    );
-  } finally {
-    this.cleanup();
-    this.emit("call_ended");
   }
-}
 
   /* ===========================================
     CREATE OFFER
@@ -721,6 +714,11 @@ class CallService {
 
   async receiveOffer(call, offer) {
     try {
+      console.log("========== RECEIVE OFFER ==========");
+      console.log("Call:", call.id);
+      console.log("Signaling:", this.peer?.signalingState);
+      console.log("RemoteDescription:", !!this.peer?.remoteDescription);
+
       if (!offer) {
         throw new Error("Missing SDP offer");
       }
@@ -731,35 +729,47 @@ class CallService {
       this.isCaller = false;
 
       if (!this.peer) {
+        console.log("Creating peer...");
         await this.createPeer();
       }
 
       if (!this.localStream) {
+        console.log("Creating local stream...");
         await this.createLocalStream(call.type === "video");
       }
 
-      // Ignore duplicate offers
+      console.log("Before duplicate check");
+      console.log("State:", this.peer.signalingState);
+
       if (
         this.peer.signalingState !== "stable" ||
         this.peer.remoteDescription
       ) {
+        console.warn("Ignoring duplicate offer");
         return;
       }
 
+      console.log("Setting remote description...");
       await this.peer.setRemoteDescription(new RTCSessionDescription(offer));
 
+      if (!this.pendingCandidates) {
+        this.pendingCandidates = [];
+      }
+
+      while (this.pendingCandidates.length) {
+        const candidate = this.pendingCandidates.shift();
+
+        await this.peer.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+      console.log("Creating answer...");
       await this.createAnswer();
 
-      this.emit("offer_received", {
-        call,
-      });
+      console.log("Answer sent");
+
+      this.emit("offer_received", { call });
     } catch (err) {
       console.error("RECEIVE OFFER:", err);
-
-      this.emit("error", {
-        error: err,
-      });
-
+      this.emit("error", { error: err });
       throw err;
     }
   }
@@ -784,6 +794,19 @@ class CallService {
 
       await this.peer.setRemoteDescription(new RTCSessionDescription(answer));
 
+      // Process queued ICE candidates
+      if (!this.pendingCandidates) {
+        this.pendingCandidates = [];
+      }
+
+      while (this.pendingCandidates.length) {
+        const candidate = this.pendingCandidates.shift();
+
+        await this.peer.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+
+      console.log("Remote description set. Pending ICE processed.");
+
       this.emit("call_connected", {
         call: this.call,
       });
@@ -804,21 +827,28 @@ class CallService {
 
   async receiveIceCandidate(candidate) {
     try {
-      if (!this.peer) {
-        return;
-      }
-
       if (!candidate) {
         return;
       }
 
-      // Remote description not ready yet
+      if (!this.pendingCandidates) {
+        this.pendingCandidates = [];
+      }
+
+      if (!this.peer) {
+        this.pendingCandidates.push(candidate);
+        return;
+      }
+
+      // Wait until remote description is set
       if (!this.peer.remoteDescription) {
         this.pendingCandidates.push(candidate);
         return;
       }
 
       await this.peer.addIceCandidate(new RTCIceCandidate(candidate));
+
+      console.log("ICE candidate added");
     } catch (err) {
       console.error("RECEIVE ICE:", err);
 
@@ -882,85 +912,85 @@ class CallService {
 =========================================== */
 
   cleanup() {
-  console.log("========== CLEANUP ==========");
-  console.log("Call ID:", this.callId);
+    console.log("========== CLEANUP ==========");
+    console.log("Call ID:", this.callId);
 
-  /* ==========================
+    /* ==========================
      PEER
   ========================== */
 
-  if (this.peer) {
-    this.peer.ontrack = null;
-    this.peer.onicecandidate = null;
-    this.peer.onconnectionstatechange = null;
-    this.peer.oniceconnectionstatechange = null;
-    this.peer.onsignalingstatechange = null;
-    this.peer.onnegotiationneeded = null;
-    this.peer.ondatachannel = null;
+    if (this.peer) {
+      this.peer.ontrack = null;
+      this.peer.onicecandidate = null;
+      this.peer.onconnectionstatechange = null;
+      this.peer.oniceconnectionstatechange = null;
+      this.peer.onsignalingstatechange = null;
+      this.peer.onnegotiationneeded = null;
+      this.peer.ondatachannel = null;
 
-    this.peer.getSenders().forEach((sender) => {
+      this.peer.getSenders().forEach((sender) => {
+        try {
+          sender.replaceTrack(null);
+        } catch (err) {
+          console.warn("replaceTrack:", err);
+        }
+      });
+
       try {
-        sender.replaceTrack(null);
+        this.peer.close();
       } catch (err) {
-        console.warn("replaceTrack:", err);
+        console.warn("peer.close:", err);
       }
-    });
 
-    try {
-      this.peer.close();
-    } catch (err) {
-      console.warn("peer.close:", err);
+      this.peer = null;
     }
 
-    this.peer = null;
-  }
-
-  /* ==========================
+    /* ==========================
      LOCAL STREAM
   ========================== */
 
-  if (this.localStream) {
-    this.localStream.getTracks().forEach((track) => track.stop());
-    this.localStream = null;
-  }
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => track.stop());
+      this.localStream = null;
+    }
 
-  /* ==========================
+    /* ==========================
      REMOTE STREAM
   ========================== */
 
-  if (this.remoteStream) {
-    this.remoteStream.getTracks().forEach((track) => track.stop());
-    this.remoteStream = null;
-  }
+    if (this.remoteStream) {
+      this.remoteStream.getTracks().forEach((track) => track.stop());
+      this.remoteStream = null;
+    }
 
-  /* ==========================
+    /* ==========================
      RESET STATE
   ========================== */
 
-  this.pendingCandidates = [];
+    this.pendingCandidates = [];
 
-  // Keep the values until the very end for debugging
-  const oldCall = this.call;
-  const oldCallId = this.callId;
+    // Keep the values until the very end for debugging
+    const oldCall = this.call;
+    const oldCallId = this.callId;
 
-  this.call = null;
-  this.callId = null;
-  this.callType = "voice";
-  this.isCaller = false;
+    this.call = null;
+    this.callId = null;
+    this.callType = "voice";
+    this.isCaller = false;
 
-  this.connectionState = "new";
-  this.signalingState = "stable";
-  this.iceConnectionState = "new";
+    this.connectionState = "new";
+    this.signalingState = "stable";
+    this.iceConnectionState = "new";
 
-  this.resetState();
+    this.resetState();
 
-  console.log("Cleanup complete:", oldCallId);
+    console.log("Cleanup complete:", oldCallId);
 
-  this.emit("cleanup", {
-    call: oldCall,
-    callId: oldCallId,
-  });
-}
+    this.emit("cleanup", {
+      call: oldCall,
+      callId: oldCallId,
+    });
+  }
 
   /* ===========================================
     DESTROY
