@@ -140,12 +140,12 @@ export default function CallPage() {
   }, [call]);
 
   const avatar = useMemo(() => {
-    return (
-      call?.receiver?.profilePicture ||
-      call?.caller?.profilePicture ||
-      "/default-avatar.png"
-    );
-  }, [call]);
+  const otherUser = callService.isCaller
+    ? call?.receiver
+    : call?.caller;
+
+  return otherUser?.avatar || "https://swordgame-5.onrender.com/default-avatar.jpg";
+}, [call]);
 
   const statusText = useMemo(() => {
     switch (status) {
