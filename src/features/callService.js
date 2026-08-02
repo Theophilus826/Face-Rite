@@ -103,7 +103,7 @@ class CallService {
     }
 
     const { success, iceServers } = await getIceServers();
-
+    console.log(iceServers);
     if (!success) {
       throw new Error("Failed to load ICE servers");
     }
