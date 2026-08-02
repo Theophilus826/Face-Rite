@@ -203,9 +203,40 @@ export const sendIceCandidate = async ({ callId, candidate }) => {
 
   return res.data;
 };
+
+const defaultIceServers = [
+  {
+    urls: [
+      "stun:stun.l.google.com:19302",
+      "stun:stun1.l.google.com:19302",
+    ],
+  },
+];
+
 export const getIceServers = async () => {
-  const res = await API.get("/ice/ice-servers");
-  return res.data;
+  const endpoints = ["/ice/ice-servers", "/ice"];
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await API.get(endpoint);
+      console.log(`Loaded ICE servers from ${endpoint}`);
+      return res.data;
+    } catch (err) {
+      if (err.response?.status === 404) {
+        console.warn(`ICE endpoint not found: ${endpoint}`);
+        continue;
+      }
+
+      console.error("Failed to load ICE servers:", err.response?.data || err.message);
+      throw err;
+    }
+  }
+
+  console.warn("Falling back to default ICE servers.");
+  return {
+    success: false,
+    iceServers: defaultIceServers,
+  };
 };
 
 export default API;
