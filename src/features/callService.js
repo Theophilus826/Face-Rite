@@ -886,34 +886,37 @@ class CallService {
 =========================================== */
 
   async accept(video = false) {
-    try {
-      if (!this.callId) {
-        throw new Error("Missing call id");
-      }
-
-      this.isCaller = false;
-
-      this.callType = video ? "video" : "voice";
-
-      await acceptCall({
-        callId: this.callId,
-      });
-
-      await this.createPeer();
-
-      await this.createLocalStream(video);
-
-      this.emit("call_accepted");
-    } catch (err) {
-      console.error("ACCEPT:", err);
-
-      this.emit("error", {
-        error: err,
-      });
-
-      throw err;
+  try {
+    if (!this.callId) {
+      throw new Error("Missing call id");
     }
+
+    this.isCaller = false;
+    this.callType = video ? "video" : "voice";
+
+    await acceptCall({
+      callId: this.callId,
+    });
+
+    // Create local media first
+    await this.createLocalStream(video);
+
+    // Then create the peer so tracks are included immediately
+    await this.createPeer();
+
+    this.emit("call_accepted");
+  } catch (err) {
+    console.error("========== ACCEPT ERROR ==========");
+    console.error("Call ID:", this.callId);
+    console.error(err.response?.data || err);
+
+    this.emit("error", {
+      error: err,
+    });
+
+    throw err;
   }
+}
 
   /* ===========================================
     REJECT CALL
