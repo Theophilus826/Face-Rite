@@ -105,17 +105,41 @@ class CallService {
       LOCAL TRACKS
   ========================== */
 
-    if (this.localStream) {
+    const addLocalTracks = () => {
+      if (!this.localStream) {
+        console.warn("No local stream available when creating peer");
+        return;
+      }
+
+      const senders = peer.getSenders();
+
       this.localStream.getTracks().forEach((track) => {
-        peer.addTrack(track, this.localStream);
+        const exists = senders.some((sender) => sender.track?.id === track.id);
+
+        if (!exists) {
+          peer.addTrack(track, this.localStream);
+
+          console.log("Added local track:", {
+            id: track.id,
+            kind: track.kind,
+          });
+        }
       });
-    }
+
+      console.log("Total senders:", peer.getSenders().length);
+    };
+
+    addLocalTracks();
 
     /* ==========================
       REMOTE STREAM
   ========================== */
 
     peer.ontrack = (event) => {
+      console.log("========== REMOTE TRACK ==========");
+      console.log("Streams:", event.streams.length);
+      console.log("Track:", event.track.kind);
+
       this.remoteStream = event.streams[0];
 
       this.emit("remote_stream", {
@@ -127,7 +151,7 @@ class CallService {
       ICE
   ========================== */
 
-    this.peer.onicecandidate = async ({ candidate }) => {
+    peer.onicecandidate = async ({ candidate }) => {
       console.log("========== ICE EVENT ==========");
       console.log("Call ID:", this.callId);
       console.log("Candidate:", candidate);
@@ -167,6 +191,11 @@ class CallService {
   ========================== */
 
     peer.onconnectionstatechange = () => {
+      console.log("========== CONNECTION ==========");
+      console.log("Connection:", peer.connectionState);
+      console.log("ICE:", peer.iceConnectionState);
+      console.log("Signaling:", peer.signalingState);
+
       this.connectionState = peer.connectionState;
 
       this.emit("connection_state", {
@@ -175,18 +204,36 @@ class CallService {
 
       switch (peer.connectionState) {
         case "connected":
+          console.log("✅ Peer connected");
           this.emit("call_connected");
           break;
 
         case "failed":
         case "closed":
         case "disconnected":
+          console.log("❌ Peer closed");
           this.cleanup();
           break;
 
         default:
           break;
       }
+    };
+
+    /* ==========================
+      ICE STATE
+  ========================== */
+
+    peer.oniceconnectionstatechange = () => {
+      console.log("ICE Connection:", peer.iceConnectionState);
+    };
+
+    peer.onicegatheringstatechange = () => {
+      console.log("ICE Gathering:", peer.iceGatheringState);
+    };
+
+    peer.onsignalingstatechange = () => {
+      console.log("Signaling:", peer.signalingState);
     };
 
     return peer;
@@ -371,29 +418,64 @@ class CallService {
 =========================================== */
 
   async createLocalStream(video = false) {
-    await this.createPeer();
-
-    if (this.localStream) {
-      return this.localStream;
-    }
-
-    this.callType = video ? "video" : "voice";
-
-    this.localStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video,
-    });
-
-    this.localStream.getTracks().forEach((track) => {
-      this.peer.addTrack(track, this.localStream);
-    });
-
-    this.emit("local_stream", {
-      stream: this.localStream,
-    });
-
+  if (this.localStream) {
     return this.localStream;
   }
+
+  console.log("========== CREATE LOCAL STREAM ==========");
+
+  this.localStream = await navigator.mediaDevices.getUserMedia({
+    audio: true,
+    video,
+  });
+
+  console.log(
+    "Local tracks:",
+    this.localStream.getTracks().map((track) => ({
+      id: track.id,
+      kind: track.kind,
+      enabled: track.enabled,
+      readyState: track.readyState,
+    }))
+  );
+
+  this.emit("local_stream", {
+    stream: this.localStream,
+  });
+
+  /* ==========================
+      ADD TRACKS TO EXISTING PEER
+  ========================== */
+
+  if (this.peer) {
+    console.log("Peer already exists. Adding local tracks...");
+
+    this.localStream.getTracks().forEach((track) => {
+      const exists = this.peer
+        .getSenders()
+        .some((sender) => sender.track?.id === track.id);
+
+      if (exists) {
+        console.log("Track already added:", track.kind);
+        return;
+      }
+
+      this.peer.addTrack(track, this.localStream);
+
+      console.log("Added track:", {
+        id: track.id,
+        kind: track.kind,
+      });
+    });
+
+    console.log(
+      "Total senders:",
+      this.peer.getSenders().length
+    );
+  }
+
+  return this.localStream;
+}
 
   /* ===========================================
     REPLACE TRACK
