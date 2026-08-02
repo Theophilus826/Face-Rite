@@ -87,363 +87,221 @@ class CallService {
   =========================================== */
 
   async createPeer() {
-    if (this.peer) {
-      return this.peer;
-    }
+  if (this.peer) {
+    return this.peer;
+  }
 
-    const peer = new RTCPeerConnection({
-      iceServers: [
-        {
-          urls: "stun:stun.l.google.com:19302",
-        },
-      ],
-    });
-
-    this.peer = peer;
-
-    /* ==========================
-      LOCAL TRACKS
-  ========================== */
-
-    const addLocalTracks = () => {
-      if (!this.localStream) {
-        console.warn("No local stream available when creating peer");
-        return;
-      }
-
-      const senders = peer.getSenders();
-
-      this.localStream.getTracks().forEach((track) => {
-        const exists = senders.some((sender) => sender.track?.id === track.id);
-
-        if (!exists) {
-          peer.addTrack(track, this.localStream);
-
-          console.log("Added local track:", {
-            id: track.id,
-            kind: track.kind,
-          });
-        }
-      });
-
-      console.log("Total senders:", peer.getSenders().length);
-    };
-
-    addLocalTracks();
-
-    /* ==========================
-   REMOTE TRACK
-========================== */
-
-    peer.ontrack = (event) => {
-      console.log("========== REMOTE TRACK ==========");
-      console.log("Call ID:", this.callId);
-      console.log("Streams:", event.streams.length);
-      console.log("Track:", event.track.kind);
-      console.log("Track ID:", event.track.id);
-      console.log("Track State:", event.track.readyState);
-
-      if (event.streams.length) {
-        this.remoteStream = event.streams[0];
-
-        console.log(
-          "Remote tracks:",
-          this.remoteStream.getTracks().map((t) => ({
-            kind: t.kind,
-            enabled: t.enabled,
-            readyState: t.readyState,
-          })),
-        );
-
-        this.emit("remote_stream", {
-          stream: this.remoteStream,
-        });
-      } else {
-        console.warn("No remote stream received");
-      }
-
-      event.track.onunmute = () => {
-        console.log("Remote track unmuted:", event.track.kind);
-      };
-
-      event.track.onmute = () => {
-        console.log("Remote track muted:", event.track.kind);
-      };
-
-      event.track.onended = () => {
-        console.log("Remote track ended:", event.track.kind);
-      };
-    };
-
-    /* ==========================
-      ICE
-  ========================== */
-
-    peer.onicecandidate = async ({ candidate }) => {
-      console.log("========== ICE EVENT ==========");
-      console.log("Call ID:", this.callId);
-      console.log("Candidate:", candidate);
-
-      if (!candidate || !this.callId) {
-        console.warn("Skipping ICE:", {
-          hasCallId: !!this.callId,
-          hasCandidate: !!candidate,
-        });
-        return;
-      }
-
-      try {
-        const payload = {
-          callId: this.callId,
-          candidate,
-        };
-
-        console.log("Sending ICE:", payload);
-
-        const res = await sendIceCandidate(payload);
-
-        console.log("ICE sent:", res);
-      } catch (err) {
-        console.error("SEND ICE ERROR:");
-        console.error("Payload:", {
-          callId: this.callId,
-          candidate,
-        });
-        console.error("Response:", err.response?.data);
-        console.error(err);
-      }
-    };
-
-    /* ==========================
-      CONNECTION STATE
-  ========================== */
-
-    peer.onconnectionstatechange = () => {
-  this.connectionState = peer.connectionState;
-
-  console.log("========== CONNECTION ==========");
-  console.log("Call ID:", this.callId);
-  console.log("Connection State:", peer.connectionState);
-  console.log("ICE State:", peer.iceConnectionState);
-  console.log("Signaling State:", peer.signalingState);
-  console.log("ICE Gathering:", peer.iceGatheringState);
-  console.log(
-    "Local Description:",
-    peer.localDescription?.type || "none"
-  );
-  console.log(
-    "Remote Description:",
-    peer.remoteDescription?.type || "none"
-  );
-  console.log("Senders:", peer.getSenders().length);
-  console.log("Receivers:", peer.getReceivers().length);
-  console.log("Transceivers:", peer.getTransceivers().length);
-
-  this.emit("connection_state", {
-    state: peer.connectionState,
+  const peer = new RTCPeerConnection({
+    iceServers: [
+      {
+        urls: [
+          "stun:stun.l.google.com:19302",
+          "stun:stun1.l.google.com:19302",
+        ],
+      },
+    ],
   });
 
-  switch (peer.connectionState) {
-    case "new":
-      console.log("Peer created.");
-      break;
+  this.peer = peer;
 
-    case "connecting":
-      console.log("Connecting...");
-      break;
+  /* ==========================
+     LOCAL TRACKS
+  ========================== */
 
-    case "connected":
-      console.log("✅ Peer connected.");
+  const addLocalTracks = () => {
+    if (!this.localStream) {
+      console.warn("No local stream available when creating peer");
+      return;
+    }
 
-      this.emit("call_connected", {
-        call: this.call,
-      });
+    const senders = peer.getSenders();
 
-      break;
+    this.localStream.getTracks().forEach((track) => {
+      const exists = senders.some(
+        (sender) => sender.track?.id === track.id
+      );
 
-    case "disconnected":
-      console.warn("⚠️ Peer temporarily disconnected.");
-      // Do not cleanup here.
-      // Wait to see if ICE reconnects or transitions to failed.
-      break;
+      if (!exists) {
+        peer.addTrack(track, this.localStream);
 
-    case "failed":
-      console.error("❌ Peer connection failed.");
-
-      this.cleanup();
-
-      break;
-
-    case "closed":
-      console.warn("❌ Peer connection closed.");
-
-      this.cleanup();
-
-      break;
-
-    default:
-      console.log("Unhandled connection state:", peer.connectionState);
-      break;
-  }
-};
-
-    /* ==========================
-   ICE CONNECTION
-========================== */
-
-    peer.oniceconnectionstatechange = () => {
-      this.iceConnectionState = peer.iceConnectionState;
-
-      console.log("========== ICE CONNECTION ==========");
-      console.log("Call ID:", this.callId);
-      console.log("ICE State:", peer.iceConnectionState);
-      console.log("Connection State:", peer.connectionState);
-      console.log("Signaling State:", peer.signalingState);
-      console.log("ICE Gathering:", peer.iceGatheringState);
-
-      console.log("Local Description:", peer.localDescription?.type || null);
-
-      console.log("Remote Description:", peer.remoteDescription?.type || null);
-
-      console.log("Pending ICE:", this.pendingCandidates?.length || 0);
-
-      this.emit("ice_state", {
-        state: peer.iceConnectionState,
-      });
-
-      switch (peer.iceConnectionState) {
-        case "new":
-          console.log("ICE has not started.");
-          break;
-
-        case "checking":
-          console.log("ICE is checking connectivity...");
-          break;
-
-        case "connected":
-          console.log("✅ ICE connected");
-          break;
-
-        case "completed":
-          console.log("✅ ICE completed");
-          break;
-
-        case "failed":
-          console.error("❌ ICE failed");
-          break;
-
-        case "disconnected":
-          console.warn("⚠️ ICE disconnected");
-          break;
-
-        case "closed":
-          console.warn("⚠️ ICE closed");
-          break;
+        console.log("Added local track:", {
+          id: track.id,
+          kind: track.kind,
+        });
       }
-    };
+    });
 
-    /* ==========================
-   CONNECTION STATE
-========================== */
+    console.log("Total senders:", peer.getSenders().length);
+  };
 
-    peer.onconnectionstatechange = () => {
-      this.connectionState = peer.connectionState;
+  addLocalTracks();
 
-      console.log("========== CONNECTION ==========");
-      console.log("Call ID:", this.callId);
-      console.log("Connection:", peer.connectionState);
-      console.log("ICE:", peer.iceConnectionState);
-      console.log("Signaling:", peer.signalingState);
+  /* ==========================
+     REMOTE TRACK
+  ========================== */
 
-      console.log("Senders:", peer.getSenders().length);
+  peer.ontrack = (event) => {
+    console.log("========== REMOTE TRACK ==========");
 
-      console.log("Receivers:", peer.getReceivers().length);
+    this.remoteStream = event.streams[0];
 
-      console.log("Transceivers:", peer.getTransceivers().length);
+    console.log("Track:", event.track.kind);
 
-      this.emit("connection_state", {
-        state: peer.connectionState,
+    this.emit("remote_stream", {
+      stream: this.remoteStream,
+    });
+  };
+
+  /* ==========================
+     SIGNALING
+  ========================== */
+
+  peer.onsignalingstatechange = () => {
+    this.signalingState = peer.signalingState;
+
+    console.log("========== SIGNALING ==========");
+    console.log("State:", peer.signalingState);
+    console.log("Local:", peer.localDescription?.type);
+    console.log("Remote:", peer.remoteDescription?.type);
+
+    this.emit("signaling_state", {
+      state: peer.signalingState,
+    });
+  };
+
+  /* ==========================
+     ICE GATHERING
+  ========================== */
+
+  peer.onicegatheringstatechange = () => {
+    console.log("========== ICE GATHERING ==========");
+    console.log("State:", peer.iceGatheringState);
+
+    this.emit("ice_gathering_state", {
+      state: peer.iceGatheringState,
+    });
+  };
+
+  /* ==========================
+     SEND ICE
+  ========================== */
+
+  peer.onicecandidate = async ({ candidate }) => {
+    if (!candidate) return;
+
+    if (!this.callId) return;
+
+    // Wait until SDP has been sent
+    if (!peer.localDescription) return;
+
+    try {
+      await sendIceCandidate({
+        callId: this.callId,
+        candidate,
       });
 
-      switch (peer.connectionState) {
-        case "new":
-          console.log("Peer created.");
-          break;
+      console.log("ICE sent");
+    } catch (err) {
+      console.error(
+        "SEND ICE:",
+        err.response?.data || err.message
+      );
+    }
+  };
 
-        case "connecting":
-          console.log("Connecting...");
-          break;
+  /* ==========================
+     ICE CONNECTION
+  ========================== */
 
-        case "connected":
-          console.log("✅ Peer connected");
-          this.emit("call_connected");
-          break;
+  peer.oniceconnectionstatechange = () => {
+    this.iceConnectionState = peer.iceConnectionState;
 
-        case "disconnected":
-          console.warn("Peer disconnected");
-          break;
+    console.log("========== ICE CONNECTION ==========");
+    console.log("ICE:", peer.iceConnectionState);
 
-        case "failed":
-          console.error("Peer failed");
-          break;
+    this.emit("ice_state", {
+      state: peer.iceConnectionState,
+    });
 
-        case "closed":
-          console.warn("Peer closed");
-          break;
-      }
-    };
+    switch (peer.iceConnectionState) {
+      case "checking":
+        console.log("ICE checking...");
+        break;
 
-    /* ==========================
-   SIGNALING STATE
-========================== */
+      case "connected":
+        console.log("ICE connected");
+        break;
 
-    peer.onsignalingstatechange = () => {
-      this.signalingState = peer.signalingState;
+      case "completed":
+        console.log("ICE completed");
+        break;
 
-      console.log("========== SIGNALING ==========");
-      console.log("Call ID:", this.callId);
-      console.log("State:", peer.signalingState);
-      console.log("Local SDP:", peer.localDescription?.type);
-      console.log("Remote SDP:", peer.remoteDescription?.type);
+      case "disconnected":
+        console.warn("ICE disconnected");
+        break;
 
-      this.emit("signaling_state", {
-        state: peer.signalingState,
-      });
-    };
+      case "failed":
+        console.error("ICE failed");
+        break;
 
-    /* ==========================
-   ICE GATHERING
-========================== */
+      case "closed":
+        console.warn("ICE closed");
+        break;
+    }
+  };
 
-    peer.onicegatheringstatechange = () => {
-      console.log("========== ICE GATHERING ==========");
-      console.log("Call ID:", this.callId);
-      console.log("State:", peer.iceGatheringState);
+  /* ==========================
+     CONNECTION
+  ========================== */
 
-      this.emit("ice_gathering_state", {
-        state: peer.iceGatheringState,
-      });
-    };
+  peer.onconnectionstatechange = () => {
+    this.connectionState = peer.connectionState;
 
-    /* ==========================
-   REMOTE TRACK
-========================== */
+    console.log("========== CONNECTION ==========");
+    console.log("Connection:", peer.connectionState);
+    console.log("ICE:", peer.iceConnectionState);
+    console.log("Signaling:", peer.signalingState);
 
-    peer.ontrack = (event) => {
-      console.log("========== REMOTE TRACK ==========");
-      console.log("Call ID:", this.callId);
-      console.log("Streams:", event.streams.length);
-      console.log("Track:", event.track.kind);
-      console.log("Track State:", event.track.readyState);
+    this.emit("connection_state", {
+      state: peer.connectionState,
+    });
 
-      this.remoteStream = event.streams[0];
+    switch (peer.connectionState) {
+      case "new":
+        console.log("Peer created.");
+        break;
 
-      this.emit("remote_stream", {
-        stream: this.remoteStream,
-      });
-    };
-    return peer;
-  }
+      case "connecting":
+        console.log("Connecting...");
+        break;
+
+      case "connected":
+        console.log("✅ Peer connected");
+
+        this.emit("call_connected", {
+          call: this.call,
+        });
+
+        break;
+
+      case "disconnected":
+        console.warn("Peer disconnected");
+        break;
+
+      case "failed":
+        console.error("Peer failed");
+        this.cleanup();
+        break;
+
+      case "closed":
+        console.warn("Peer closed");
+        this.cleanup();
+        break;
+    }
+  };
+
+  return peer;
+}
 
   /* ===========================================
       PEER EVENTS
