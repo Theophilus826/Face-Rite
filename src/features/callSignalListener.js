@@ -102,8 +102,7 @@ class CallSignalListener {
           ICE
       =========================== */
 
-      case "ice_candidate":
-        await callService.receiveIceCandidate(
+      case "ice_candidate":      case "ice":        await callService.receiveIceCandidate(
           event.candidate
         );
         break;

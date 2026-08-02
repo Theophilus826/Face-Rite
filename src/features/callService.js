@@ -1163,8 +1163,13 @@ class CallService {
 
       console.log("Signaling state:", this.peer.signalingState);
 
-      if (this.peer.signalingState !== "have-local-offer") {
-        console.warn("Ignoring answer. Unexpected signaling state.");
+if (this.peer.remoteDescription) {
+      console.warn("Ignoring duplicate answer.");
+      return;
+    }
+
+    if (!this.peer.localDescription) {
+      console.warn("Ignoring answer because local description is missing.");
         return;
       }
 
