@@ -920,141 +920,238 @@ class CallService {
 =========================================== */
 
   async createAnswer() {
-    if (!this.peer) {
-      throw new Error("Peer not created");
-    }
+  console.log("========== CREATE ANSWER ==========");
 
-    if (!this.callId) {
-      throw new Error("Missing call ID");
-    }
+  if (!this.peer) {
+    throw new Error("Peer not created");
+  }
+
+  if (!this.callId) {
+    throw new Error("Missing call ID");
+  }
+
+  try {
+    console.log("Signaling state:", this.peer.signalingState);
+    console.log(
+      "Remote description:",
+      this.peer.remoteDescription?.type
+    );
+
+    console.log("Creating SDP answer...");
 
     const answer = await this.peer.createAnswer();
 
+    console.log("Answer created.");
+
+    console.log("Setting local description...");
+
     await this.peer.setLocalDescription(answer);
 
-    await sendAnswer({
+    console.log(
+      "Local description set:",
+      this.peer.localDescription?.type
+    );
+
+    console.log("Sending answer to server...");
+
+    const res = await sendAnswer({
       callId: this.callId,
       answer,
     });
+
+    console.log("Answer sent:", res);
 
     this.emit("answer_sent", {
       call: this.call,
     });
 
     return answer;
+  } catch (err) {
+    console.error("========== CREATE ANSWER ERROR ==========");
+    console.error("Call ID:", this.callId);
+    console.error("Signaling state:", this.peer?.signalingState);
+    console.error("Remote description:", this.peer?.remoteDescription);
+    console.error("Local description:", this.peer?.localDescription);
+    console.error("Response:", err.response?.data);
+    console.error(err);
+
+    this.emit("error", {
+      error: err,
+    });
+
+    throw err;
   }
+}
   /* ===========================================
     RECEIVE OFFER
 =========================================== */
 
   async receiveOffer(call, offer) {
-    try {
-      console.log("========== RECEIVE OFFER ==========");
-      console.log("Call:", call.id);
-      console.log("Signaling:", this.peer?.signalingState);
-      console.log("RemoteDescription:", !!this.peer?.remoteDescription);
+  try {
+    console.log("========== RECEIVE OFFER ==========");
+    console.log("Call ID:", call?.id);
+    console.log("Peer exists:", !!this.peer);
+    console.log("Local stream:", !!this.localStream);
 
-      if (!offer) {
-        throw new Error("Missing SDP offer");
-      }
-
-      this.call = call;
-      this.callId = call.id;
-      this.callType = call.type;
-      this.isCaller = false;
-
-      if (!this.peer) {
-        console.log("Creating peer...");
-        await this.createPeer();
-      }
-
-      if (!this.localStream) {
-        console.log("Creating local stream...");
-        await this.createLocalStream(call.type === "video");
-      }
-
-      console.log("Before duplicate check");
-      console.log("State:", this.peer.signalingState);
-
-      if (
-        this.peer.signalingState !== "stable" ||
-        this.peer.remoteDescription
-      ) {
-        console.warn("Ignoring duplicate offer");
-        return;
-      }
-
-      console.log("Setting remote description...");
-      await this.peer.setRemoteDescription(new RTCSessionDescription(offer));
-
-      if (!this.pendingCandidates) {
-        this.pendingCandidates = [];
-      }
-
-      while (this.pendingCandidates.length) {
-        const candidate = this.pendingCandidates.shift();
-
-        await this.peer.addIceCandidate(new RTCIceCandidate(candidate));
-      }
-      console.log("Creating answer...");
-      await this.createAnswer();
-
-      console.log("Answer sent");
-
-      this.emit("offer_received", { call });
-    } catch (err) {
-      console.error("RECEIVE OFFER:", err);
-      this.emit("error", { error: err });
-      throw err;
+    if (!offer) {
+      throw new Error("Missing SDP offer");
     }
+
+    this.call = call;
+    this.callId = call.id;
+    this.callType = call.type;
+    this.isCaller = false;
+
+    if (!this.peer) {
+      console.log("Creating peer...");
+      await this.createPeer();
+    }
+
+    if (!this.localStream) {
+      console.log("Creating local stream...");
+      await this.createLocalStream(call.type === "video");
+    }
+
+    console.log("Signaling state:", this.peer.signalingState);
+    console.log("Remote description:", !!this.peer.remoteDescription);
+
+    // Ignore duplicate offers
+    if (
+      this.peer.signalingState !== "stable" ||
+      this.peer.remoteDescription
+    ) {
+      console.warn("Ignoring duplicate offer.");
+      return;
+    }
+
+    console.log("Setting remote description...");
+
+    await this.peer.setRemoteDescription(
+      new RTCSessionDescription(offer)
+    );
+
+    console.log("Remote description set.");
+
+    /* ==========================
+       PROCESS PENDING ICE
+    ========================== */
+
+    if (!this.pendingCandidates) {
+      this.pendingCandidates = [];
+    }
+
+    console.log(
+      `Pending ICE candidates: ${this.pendingCandidates.length}`
+    );
+
+    while (this.pendingCandidates.length) {
+      const candidate = this.pendingCandidates.shift();
+
+      try {
+        await this.peer.addIceCandidate(
+          new RTCIceCandidate(candidate)
+        );
+
+        console.log("Added pending ICE:", candidate);
+      } catch (err) {
+        console.error("Pending ICE failed:", err);
+      }
+    }
+
+    console.log("Creating answer...");
+
+    await this.createAnswer();
+
+    console.log("Answer created and sent.");
+
+    this.emit("offer_received", {
+      call,
+    });
+  } catch (err) {
+    console.error("========== RECEIVE OFFER ERROR ==========");
+    console.error(err);
+
+    this.emit("error", {
+      error: err,
+    });
+
+    throw err;
   }
+}
 
   /* ===========================================
     RECEIVE ANSWER
 =========================================== */
 
   async receiveAnswer(answer) {
-    try {
-      if (!this.peer) {
-        throw new Error("Peer not created");
-      }
+  try {
+    console.log("========== RECEIVE ANSWER ==========");
 
-      if (!answer) {
-        throw new Error("Missing SDP answer");
-      }
-
-      if (this.peer.signalingState !== "have-local-offer") {
-        return;
-      }
-
-      await this.peer.setRemoteDescription(new RTCSessionDescription(answer));
-
-      // Process queued ICE candidates
-      if (!this.pendingCandidates) {
-        this.pendingCandidates = [];
-      }
-
-      while (this.pendingCandidates.length) {
-        const candidate = this.pendingCandidates.shift();
-
-        await this.peer.addIceCandidate(new RTCIceCandidate(candidate));
-      }
-
-      console.log("Remote description set. Pending ICE processed.");
-
-      this.emit("call_connected", {
-        call: this.call,
-      });
-    } catch (err) {
-      console.error("RECEIVE ANSWER:", err);
-
-      this.emit("error", {
-        error: err,
-      });
-
-      throw err;
+    if (!this.peer) {
+      throw new Error("Peer not created");
     }
+
+    if (!answer) {
+      throw new Error("Missing SDP answer");
+    }
+
+    console.log("Signaling state:", this.peer.signalingState);
+
+    if (this.peer.signalingState !== "have-local-offer") {
+      console.warn("Ignoring answer. Unexpected signaling state.");
+      return;
+    }
+
+    console.log("Setting remote description...");
+
+    await this.peer.setRemoteDescription(
+      new RTCSessionDescription(answer)
+    );
+
+    console.log("Remote description set.");
+
+    /* ==========================
+       PROCESS PENDING ICE
+    ========================== */
+
+    if (!this.pendingCandidates) {
+      this.pendingCandidates = [];
+    }
+
+    console.log(
+      `Pending ICE candidates: ${this.pendingCandidates.length}`
+    );
+
+    while (this.pendingCandidates.length) {
+      const candidate = this.pendingCandidates.shift();
+
+      try {
+        await this.peer.addIceCandidate(
+          new RTCIceCandidate(candidate)
+        );
+
+        console.log("Added pending ICE:", candidate);
+      } catch (err) {
+        console.error("Failed to add pending ICE:", err);
+      }
+    }
+
+    console.log("Pending ICE processed.");
+
+    this.emit("call_connected", {
+      call: this.call,
+    });
+  } catch (err) {
+    console.error("========== RECEIVE ANSWER ERROR ==========");
+    console.error(err);
+
+    this.emit("error", {
+      error: err,
+    });
+
+    throw err;
   }
+}
 
   /* ===========================================
     RECEIVE ICE
