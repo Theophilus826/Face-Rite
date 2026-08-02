@@ -249,11 +249,7 @@ class CallService {
     };
 
     /* ==========================
-      ICE STATE
-  ========================== */
-
-    /* ==========================
-   ICE CONNECTION STATE
+   ICE CONNECTION
 ========================== */
 
     peer.oniceconnectionstatechange = () => {
@@ -262,36 +258,98 @@ class CallService {
       console.log("========== ICE CONNECTION ==========");
       console.log("Call ID:", this.callId);
       console.log("ICE State:", peer.iceConnectionState);
-      console.log("Connection:", peer.connectionState);
-      console.log("Signaling:", peer.signalingState);
+      console.log("Connection State:", peer.connectionState);
+      console.log("Signaling State:", peer.signalingState);
+      console.log("ICE Gathering:", peer.iceGatheringState);
+
+      console.log("Local Description:", peer.localDescription?.type || null);
+
+      console.log("Remote Description:", peer.remoteDescription?.type || null);
+
+      console.log("Pending ICE:", this.pendingCandidates?.length || 0);
 
       this.emit("ice_state", {
         state: peer.iceConnectionState,
       });
 
       switch (peer.iceConnectionState) {
+        case "new":
+          console.log("ICE has not started.");
+          break;
+
         case "checking":
           console.log("ICE is checking connectivity...");
           break;
 
         case "connected":
-          console.log("ICE connected");
+          console.log("✅ ICE connected");
           break;
 
         case "completed":
-          console.log("ICE completed");
+          console.log("✅ ICE completed");
           break;
 
         case "failed":
-          console.error("ICE failed");
+          console.error("❌ ICE failed");
           break;
 
         case "disconnected":
-          console.warn("ICE disconnected");
+          console.warn("⚠️ ICE disconnected");
           break;
 
         case "closed":
-          console.warn("ICE closed");
+          console.warn("⚠️ ICE closed");
+          break;
+      }
+    };
+
+    /* ==========================
+   CONNECTION STATE
+========================== */
+
+    peer.onconnectionstatechange = () => {
+      this.connectionState = peer.connectionState;
+
+      console.log("========== CONNECTION ==========");
+      console.log("Call ID:", this.callId);
+      console.log("Connection:", peer.connectionState);
+      console.log("ICE:", peer.iceConnectionState);
+      console.log("Signaling:", peer.signalingState);
+
+      console.log("Senders:", peer.getSenders().length);
+
+      console.log("Receivers:", peer.getReceivers().length);
+
+      console.log("Transceivers:", peer.getTransceivers().length);
+
+      this.emit("connection_state", {
+        state: peer.connectionState,
+      });
+
+      switch (peer.connectionState) {
+        case "new":
+          console.log("Peer created.");
+          break;
+
+        case "connecting":
+          console.log("Connecting...");
+          break;
+
+        case "connected":
+          console.log("✅ Peer connected");
+          this.emit("call_connected");
+          break;
+
+        case "disconnected":
+          console.warn("Peer disconnected");
+          break;
+
+        case "failed":
+          console.error("Peer failed");
+          break;
+
+        case "closed":
+          console.warn("Peer closed");
           break;
       }
     };
@@ -301,11 +359,13 @@ class CallService {
 ========================== */
 
     peer.onsignalingstatechange = () => {
+      this.signalingState = peer.signalingState;
+
       console.log("========== SIGNALING ==========");
       console.log("Call ID:", this.callId);
       console.log("State:", peer.signalingState);
-
-      this.signalingState = peer.signalingState;
+      console.log("Local SDP:", peer.localDescription?.type);
+      console.log("Remote SDP:", peer.remoteDescription?.type);
 
       this.emit("signaling_state", {
         state: peer.signalingState,
@@ -318,6 +378,7 @@ class CallService {
 
     peer.onicegatheringstatechange = () => {
       console.log("========== ICE GATHERING ==========");
+      console.log("Call ID:", this.callId);
       console.log("State:", peer.iceGatheringState);
 
       this.emit("ice_gathering_state", {
@@ -325,6 +386,23 @@ class CallService {
       });
     };
 
+    /* ==========================
+   REMOTE TRACK
+========================== */
+
+    peer.ontrack = (event) => {
+      console.log("========== REMOTE TRACK ==========");
+      console.log("Call ID:", this.callId);
+      console.log("Streams:", event.streams.length);
+      console.log("Track:", event.track.kind);
+      console.log("Track State:", event.track.readyState);
+
+      this.remoteStream = event.streams[0];
+
+      this.emit("remote_stream", {
+        stream: this.remoteStream,
+      });
+    };
     return peer;
   }
 
@@ -920,238 +998,220 @@ class CallService {
 =========================================== */
 
   async createAnswer() {
-  console.log("========== CREATE ANSWER ==========");
+    console.log("========== CREATE ANSWER ==========");
 
-  if (!this.peer) {
-    throw new Error("Peer not created");
+    if (!this.peer) {
+      throw new Error("Peer not created");
+    }
+
+    if (!this.callId) {
+      throw new Error("Missing call ID");
+    }
+
+    try {
+      console.log("Signaling state:", this.peer.signalingState);
+      console.log("Remote description:", this.peer.remoteDescription?.type);
+
+      console.log("Creating SDP answer...");
+
+      const answer = await this.peer.createAnswer();
+
+      console.log("Answer created.");
+
+      console.log("Setting local description...");
+
+      await this.peer.setLocalDescription(answer);
+
+      console.log("Local description set:", this.peer.localDescription?.type);
+
+      console.log("Sending answer to server...");
+
+      const res = await sendAnswer({
+        callId: this.callId,
+        answer,
+      });
+
+      console.log("Answer sent:", res);
+
+      this.emit("answer_sent", {
+        call: this.call,
+      });
+
+      return answer;
+    } catch (err) {
+      console.error("========== CREATE ANSWER ERROR ==========");
+      console.error("Call ID:", this.callId);
+      console.error("Signaling state:", this.peer?.signalingState);
+      console.error("Remote description:", this.peer?.remoteDescription);
+      console.error("Local description:", this.peer?.localDescription);
+      console.error("Response:", err.response?.data);
+      console.error(err);
+
+      this.emit("error", {
+        error: err,
+      });
+
+      throw err;
+    }
   }
-
-  if (!this.callId) {
-    throw new Error("Missing call ID");
-  }
-
-  try {
-    console.log("Signaling state:", this.peer.signalingState);
-    console.log(
-      "Remote description:",
-      this.peer.remoteDescription?.type
-    );
-
-    console.log("Creating SDP answer...");
-
-    const answer = await this.peer.createAnswer();
-
-    console.log("Answer created.");
-
-    console.log("Setting local description...");
-
-    await this.peer.setLocalDescription(answer);
-
-    console.log(
-      "Local description set:",
-      this.peer.localDescription?.type
-    );
-
-    console.log("Sending answer to server...");
-
-    const res = await sendAnswer({
-      callId: this.callId,
-      answer,
-    });
-
-    console.log("Answer sent:", res);
-
-    this.emit("answer_sent", {
-      call: this.call,
-    });
-
-    return answer;
-  } catch (err) {
-    console.error("========== CREATE ANSWER ERROR ==========");
-    console.error("Call ID:", this.callId);
-    console.error("Signaling state:", this.peer?.signalingState);
-    console.error("Remote description:", this.peer?.remoteDescription);
-    console.error("Local description:", this.peer?.localDescription);
-    console.error("Response:", err.response?.data);
-    console.error(err);
-
-    this.emit("error", {
-      error: err,
-    });
-
-    throw err;
-  }
-}
   /* ===========================================
     RECEIVE OFFER
 =========================================== */
 
   async receiveOffer(call, offer) {
-  try {
-    console.log("========== RECEIVE OFFER ==========");
-    console.log("Call ID:", call?.id);
-    console.log("Peer exists:", !!this.peer);
-    console.log("Local stream:", !!this.localStream);
+    try {
+      console.log("========== RECEIVE OFFER ==========");
+      console.log("Call ID:", call?.id);
+      console.log("Peer exists:", !!this.peer);
+      console.log("Local stream:", !!this.localStream);
 
-    if (!offer) {
-      throw new Error("Missing SDP offer");
-    }
+      if (!offer) {
+        throw new Error("Missing SDP offer");
+      }
 
-    this.call = call;
-    this.callId = call.id;
-    this.callType = call.type;
-    this.isCaller = false;
+      this.call = call;
+      this.callId = call.id;
+      this.callType = call.type;
+      this.isCaller = false;
 
-    if (!this.peer) {
-      console.log("Creating peer...");
-      await this.createPeer();
-    }
+      if (!this.peer) {
+        console.log("Creating peer...");
+        await this.createPeer();
+      }
 
-    if (!this.localStream) {
-      console.log("Creating local stream...");
-      await this.createLocalStream(call.type === "video");
-    }
+      if (!this.localStream) {
+        console.log("Creating local stream...");
+        await this.createLocalStream(call.type === "video");
+      }
 
-    console.log("Signaling state:", this.peer.signalingState);
-    console.log("Remote description:", !!this.peer.remoteDescription);
+      console.log("Signaling state:", this.peer.signalingState);
+      console.log("Remote description:", !!this.peer.remoteDescription);
 
-    // Ignore duplicate offers
-    if (
-      this.peer.signalingState !== "stable" ||
-      this.peer.remoteDescription
-    ) {
-      console.warn("Ignoring duplicate offer.");
-      return;
-    }
+      // Ignore duplicate offers
+      if (
+        this.peer.signalingState !== "stable" ||
+        this.peer.remoteDescription
+      ) {
+        console.warn("Ignoring duplicate offer.");
+        return;
+      }
 
-    console.log("Setting remote description...");
+      console.log("Setting remote description...");
 
-    await this.peer.setRemoteDescription(
-      new RTCSessionDescription(offer)
-    );
+      await this.peer.setRemoteDescription(new RTCSessionDescription(offer));
 
-    console.log("Remote description set.");
+      console.log("Remote description set.");
 
-    /* ==========================
+      /* ==========================
        PROCESS PENDING ICE
     ========================== */
 
-    if (!this.pendingCandidates) {
-      this.pendingCandidates = [];
-    }
-
-    console.log(
-      `Pending ICE candidates: ${this.pendingCandidates.length}`
-    );
-
-    while (this.pendingCandidates.length) {
-      const candidate = this.pendingCandidates.shift();
-
-      try {
-        await this.peer.addIceCandidate(
-          new RTCIceCandidate(candidate)
-        );
-
-        console.log("Added pending ICE:", candidate);
-      } catch (err) {
-        console.error("Pending ICE failed:", err);
+      if (!this.pendingCandidates) {
+        this.pendingCandidates = [];
       }
+
+      console.log(`Pending ICE candidates: ${this.pendingCandidates.length}`);
+
+      while (this.pendingCandidates.length) {
+        const candidate = this.pendingCandidates.shift();
+
+        try {
+          await this.peer.addIceCandidate(new RTCIceCandidate(candidate));
+
+          console.log("Added pending ICE:", candidate);
+        } catch (err) {
+          console.error("Pending ICE failed:", err);
+        }
+      }
+
+      console.log("Creating answer...");
+
+      await this.createAnswer();
+
+      console.log("Answer created and sent.");
+
+      this.emit("offer_received", {
+        call,
+      });
+    } catch (err) {
+      console.error("========== RECEIVE OFFER ERROR ==========");
+      console.error(err);
+
+      this.emit("error", {
+        error: err,
+      });
+
+      throw err;
     }
-
-    console.log("Creating answer...");
-
-    await this.createAnswer();
-
-    console.log("Answer created and sent.");
-
-    this.emit("offer_received", {
-      call,
-    });
-  } catch (err) {
-    console.error("========== RECEIVE OFFER ERROR ==========");
-    console.error(err);
-
-    this.emit("error", {
-      error: err,
-    });
-
-    throw err;
   }
-}
 
   /* ===========================================
     RECEIVE ANSWER
 =========================================== */
 
   async receiveAnswer(answer) {
-  try {
-    console.log("========== RECEIVE ANSWER ==========");
+    try {
+      console.log("========== RECEIVE ANSWER ==========");
 
-    if (!this.peer) {
-      throw new Error("Peer not created");
-    }
+      if (!this.peer) {
+        throw new Error("Peer not created");
+      }
 
-    if (!answer) {
-      throw new Error("Missing SDP answer");
-    }
+      if (!answer) {
+        throw new Error("Missing SDP answer");
+      }
 
-    console.log("Signaling state:", this.peer.signalingState);
+      console.log("Signaling state:", this.peer.signalingState);
 
-    if (this.peer.signalingState !== "have-local-offer") {
-      console.warn("Ignoring answer. Unexpected signaling state.");
-      return;
-    }
+      if (this.peer.signalingState !== "have-local-offer") {
+        console.warn("Ignoring answer. Unexpected signaling state.");
+        return;
+      }
 
-    console.log("Setting remote description...");
+      console.log("Setting remote description...");
 
-    await this.peer.setRemoteDescription(
-      new RTCSessionDescription(answer)
-    );
+      await this.peer.setRemoteDescription(new RTCSessionDescription(answer));
 
-    console.log("Remote description set.");
+      console.log("Remote description set.");
 
-    /* ==========================
+      /* ==========================
        PROCESS PENDING ICE
     ========================== */
 
-    if (!this.pendingCandidates) {
-      this.pendingCandidates = [];
-    }
-
-    console.log(
-      `Pending ICE candidates: ${this.pendingCandidates.length}`
-    );
-
-    while (this.pendingCandidates.length) {
-      const candidate = this.pendingCandidates.shift();
-
-      try {
-        await this.peer.addIceCandidate(
-          new RTCIceCandidate(candidate)
-        );
-
-        console.log("Added pending ICE:", candidate);
-      } catch (err) {
-        console.error("Failed to add pending ICE:", err);
+      if (!this.pendingCandidates) {
+        this.pendingCandidates = [];
       }
+
+      console.log(`Pending ICE candidates: ${this.pendingCandidates.length}`);
+
+      while (this.pendingCandidates.length) {
+        const candidate = this.pendingCandidates.shift();
+
+        try {
+          await this.peer.addIceCandidate(new RTCIceCandidate(candidate));
+
+          console.log("Added pending ICE:", candidate);
+        } catch (err) {
+          console.error("Failed to add pending ICE:", err);
+        }
+      }
+
+      console.log("Pending ICE processed.");
+
+      this.emit("call_connected", {
+        call: this.call,
+      });
+    } catch (err) {
+      console.error("========== RECEIVE ANSWER ERROR ==========");
+      console.error(err);
+
+      this.emit("error", {
+        error: err,
+      });
+
+      throw err;
     }
-
-    console.log("Pending ICE processed.");
-
-    this.emit("call_connected", {
-      call: this.call,
-    });
-  } catch (err) {
-    console.error("========== RECEIVE ANSWER ERROR ==========");
-    console.error(err);
-
-    this.emit("error", {
-      error: err,
-    });
-
-    throw err;
   }
-}
 
   /* ===========================================
     RECEIVE ICE
