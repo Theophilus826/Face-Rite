@@ -203,5 +203,9 @@ export const sendIceCandidate = async ({ callId, candidate }) => {
 
   return res.data;
 };
+export const getIceServers = async () => {
+  const res = await API.get("/ice");
+  return res.data;
+};
 
 export default API;

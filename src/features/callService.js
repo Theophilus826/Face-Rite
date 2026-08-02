@@ -6,22 +6,23 @@ import {
   sendOffer,
   sendAnswer,
   sendIceCandidate,
+  getIceServers,
 } from "./Api";
 
 const configuration = {
   iceServers: [
     {
-      urls: ["stun:global.relay.metered.ca:80"],
+      urls: "stun:openrelay.metered.ca:80",
     },
     {
-      urls: ["turn:global.relay.metered.ca:80"],
-      username: "4b4f3d5e7c8...", // Provided by Metered
-      credential: "A8dJk9L2...", // Provided by Metered
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject",
     },
     {
-      urls: ["turn:global.relay.metered.ca:443?transport=tcp"],
-      username: "4b4f3d5e7c8...",
-      credential: "A8dJk9L2...",
+      urls: "turn:openrelay.metered.ca:443",
+      username: "openrelayproject",
+      credential: "openrelayproject",
     },
   ],
 };
@@ -101,15 +102,14 @@ class CallService {
       return this.peer;
     }
 
+    const { success, iceServers } = await getIceServers();
+
+    if (!success) {
+      throw new Error("Failed to load ICE servers");
+    }
+
     const peer = new RTCPeerConnection({
-      iceServers: [
-        {
-          urls: [
-            "stun:stun.l.google.com:19302",
-            "stun:stun1.l.google.com:19302",
-          ],
-        },
-      ],
+      iceServers,
     });
 
     this.peer = peer;
