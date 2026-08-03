@@ -146,14 +146,14 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, tempMessage]);
 
       try {
-        const res = await API.post("/chat/messages/share", {
+        const res = await API.post("/chat/messages", {
           toUserId: chatUserId,
           image: payload.image,
           text: payload.text,
         });
 
         setMessages((prev) =>
-          prev.map((m) => (m._id === tempId ? res.data.message : m)),
+          prev.map((m) => (m._id === tempId ? { ...res.data.message, _id: res.data.message._id } : m)),
         );
       } catch (err) {
         console.error(
