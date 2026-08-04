@@ -7,7 +7,7 @@ export default function AdminBubble() {
 
   const [form, setForm] = useState({
     title: "",
-    image: "/multA.jpg",
+    image: "/bub.png",
     betAmount: "",
     rewardAmount: "",
     maxPlayers: "",
@@ -67,7 +67,7 @@ export default function AdminBubble() {
 
         setForm({
           title: "",
-          image: "/multA.jpg",
+          image: "/bub.png",
           betAmount: "",
           rewardAmount: "",
           maxPlayers: "",
@@ -131,7 +131,7 @@ export default function AdminBubble() {
               name="image"
               value={form.image}
               onChange={handleChange}
-              placeholder="/multA.jpg"
+              placeholder="/bub.png"
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
             />
           </div>

@@ -218,7 +218,7 @@ function AppContent() {
   return (
     <div
       className="min-h-screen w-full bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: `url(${globle})` }}
+      style={{ backgroundImage: 'url(/backgd.jpg)' }}
     >
       <ToastContainer position="top-right" autoClose={3000} />
 

@@ -134,7 +134,7 @@ export default function BubbleGames() {
             >
               <div className="relative">
                 <img
-                  src={game.image || "/multA.jpg"}
+                  src={game.image || "/bub.png"}
                   alt={game.title}
                   className="w-full h-48 object-cover"
                 />
