@@ -11,13 +11,10 @@ import {
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import backgd from "./backgd.jpg";
-
 import type { AppDispatch, RootState } from "./app/store";
 
 // Redux
 import { fetchCoins } from "./features/coins/CoinSlice";
-
 // Pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -218,7 +215,7 @@ function AppContent() {
   return (
     <div
       className="min-h-screen w-full bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: `url(${backgd})` }}
+      style={{ backgroundImage: "url('/backgd.jpg')" }}
     >
       <ToastContainer position="top-right" autoClose={3000} />
 
