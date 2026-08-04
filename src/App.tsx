@@ -11,7 +11,7 @@ import {
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import globle from "/globle.png";
+import backgd from "./backgd.jpg";
 
 import type { AppDispatch, RootState } from "./app/store";
 
@@ -218,7 +218,7 @@ function AppContent() {
   return (
     <div
       className="min-h-screen w-full bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: 'url(/backgd.jpg)' }}
+      style={{ backgroundImage: `url(${backgd})` }}
     >
       <ToastContainer position="top-right" autoClose={3000} />
 
