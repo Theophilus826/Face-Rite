@@ -9,13 +9,14 @@ import { Effects } from "./Effects.js";
 import { StateManager, GameState } from "./GameState.js";
 
 export class Game {
-  constructor(engine, canvas, gameId, socket) {
+  constructor(engine, canvas, gameId, socket, onHome) {
     this.engine = engine;
     this.canvas = canvas;
     this.gameId = gameId;
     this.scene = null;
     this.camera = null;
     this.socket = socket;
+    this.onHome = onHome;
     // Game Systems
     this.board = null;
     this.shooter = null;
@@ -260,22 +261,20 @@ export class Game {
   createHUD() {
     this.ui = GUI.AdvancedDynamicTexture.CreateFullscreenUI(
       "HUD",
-
       true,
-
       this.scene,
     );
+
+    //==========================================================
+    // Score
+    //==========================================================
 
     this.scoreText = new GUI.TextBlock();
 
     this.scoreText.text = "Score : 0";
-
     this.scoreText.color = "white";
-
     this.scoreText.fontSize = 28;
-
     this.scoreText.top = "-46%";
-
     this.scoreText.left = "-40%";
 
     this.scoreText.textHorizontalAlignment =
@@ -283,14 +282,15 @@ export class Game {
 
     this.ui.addControl(this.scoreText);
 
+    //==========================================================
+    // Timer
+    //==========================================================
+
     this.timerText = new GUI.TextBlock();
 
     this.timerText.text = "03:00";
-
     this.timerText.color = "white";
-
     this.timerText.fontSize = 28;
-
     this.timerText.top = "-46%";
 
     this.timerText.textHorizontalAlignment =
@@ -298,17 +298,49 @@ export class Game {
 
     this.ui.addControl(this.timerText);
 
+    //==========================================================
+    // Message
+    //==========================================================
+
     this.messageText = new GUI.TextBlock();
 
     this.messageText.fontSize = 72;
-
     this.messageText.color = "white";
-
     this.messageText.fontWeight = "bold";
-
     this.messageText.isVisible = false;
 
     this.ui.addControl(this.messageText);
+
+    //==========================================================
+    // Home Button
+    //==========================================================
+
+    this.homeButton = GUI.Button.CreateSimpleButton("homeButton", "🏠 Home");
+
+    this.homeButton.width = "140px";
+    this.homeButton.height = "50px";
+
+    this.homeButton.color = "white";
+    this.homeButton.fontSize = 22;
+
+    this.homeButton.background = "#2563eb";
+
+    this.homeButton.cornerRadius = 10;
+    this.homeButton.thickness = 2;
+
+    this.homeButton.horizontalAlignment =
+      GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+
+    this.homeButton.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+
+    this.homeButton.top = "20px";
+    this.homeButton.left = "-20px";
+
+    this.homeButton.onPointerUpObservable.add(() => {
+      this.onHome?.();
+    });
+
+    this.ui.addControl(this.homeButton);
   }
 
   bindEvents() {

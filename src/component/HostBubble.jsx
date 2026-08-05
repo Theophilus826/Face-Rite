@@ -117,7 +117,9 @@ export default function HostBubble() {
 
         if (gameRef.current) return;
 
-        const game = new Game(engine, canvas, gameId, socket);
+        const game = new Game(engine, canvas, gameId, socket, () =>
+          navigate("/"),
+        );
 
         gameRef.current = game;
 
