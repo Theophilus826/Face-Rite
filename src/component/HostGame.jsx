@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { io } from "socket.io-client";
-
+import { IoArrowBack } from "react-icons/io5";
 import { buyItem } from "../features/coins/CoinSlice.js";
 import gameScene from "../scenes/gameScene.js";
 
@@ -356,63 +356,78 @@ export default function HostGame() {
   /* =========================================================
      HOST UI
   ========================================================= */
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl shadow-xl p-6 text-white">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 font-bold text-lg shadow-lg">
-            AI
-          </div>
+    <div className="relative min-h-screen bg-black text-white">
+      {/* Back Button */}
+      <button
+        onClick={() => window.history.back()}
+        className="absolute top-4 left-4 z-50 p-2 text-white bg-transparent hover:text-gray-300 transition-colors"
+        aria-label="Go back"
+      >
+        ←
+      </button>
 
-          <div>
-            <h2 className="text-xl font-semibold">Spirit Sword</h2>
-            <p className="text-xs text-gray-400">AI Powered Game</p>
-          </div>
-        </div>
-
-        {/* Input */}
-        <div className="mb-5">
-          <label className="block text-sm text-gray-400 mb-2">
-            Enter Amount
-          </label>
-
-          <input
-            type="number"
-            min={1}
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white"
-          />
-
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-              <p className="text-xs text-gray-400">Pot</p>
-              <p className="text-xl font-bold text-yellow-400">
-                {previewPot} Coins
-              </p>
+      {/* Main Content */}
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="w-full max-w-md rounded-2xl bg-gray-950 p-6 shadow-xl">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 font-bold text-lg shadow-lg">
+              AI
             </div>
 
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-              <p className="text-xs text-gray-400">Enemies</p>
-              <p className="text-xl font-bold text-red-400">{previewEnemies}</p>
+            <div>
+              <h2 className="text-xl font-semibold">Spirit Sword</h2>
+              <p className="text-xs text-gray-400">AI Powered Game</p>
             </div>
           </div>
+
+          {/* Input */}
+          <div className="mb-5">
+            <label className="block text-sm text-gray-400 mb-2">
+              Enter Amount
+            </label>
+
+            <input
+              type="number"
+              min={1}
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white"
+            />
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                <p className="text-xs text-gray-400">Pot</p>
+                <p className="text-xl font-bold text-yellow-400">
+                  {previewPot} Coins
+                </p>
+              </div>
+
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                <p className="text-xs text-gray-400">Enemies</p>
+                <p className="text-xl font-bold text-red-400">
+                  {previewEnemies}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Play Button */}
+          <button
+            onClick={handlePlaySolo}
+            disabled={loading}
+            className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 transition-all font-medium shadow-md disabled:opacity-50"
+          >
+            {loading ? "Creating Game..." : "Play Game 🎮"}
+          </button>
+
+          {/* Footer */}
+          <p className="text-center text-xs text-gray-500 mt-4">
+            Powered by AI • Fast • Secure
+          </p>
         </div>
-
-        {/* Play Button */}
-        <button
-          onClick={handlePlaySolo}
-          disabled={loading}
-          className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 transition-all font-medium shadow-md disabled:opacity-50"
-        >
-          {loading ? "Creating Game..." : "Play Game 🎮"}
-        </button>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-500 mt-4">
-          Powered by AI • Fast • Secure
-        </p>
       </div>
     </div>
   );

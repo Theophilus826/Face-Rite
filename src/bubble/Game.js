@@ -323,7 +323,7 @@ export class Game {
     this.homeButton.color = "white";
     this.homeButton.fontSize = 22;
 
-    this.homeButton.background = "#2563eb";
+    this.homeButton.background = "#2f635a";
 
     this.homeButton.cornerRadius = 10;
     this.homeButton.thickness = 2;
