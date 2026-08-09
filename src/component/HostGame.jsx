@@ -362,7 +362,7 @@ export default function HostGame() {
       {/* Back Button */}
       <button
         onClick={() => window.history.back()}
-        className="absolute top-4 left-4 z-50 p-2 text-white bg-transparent hover:text-gray-300 transition-colors"
+        className="absolute top-4 left-4 z-50 p-2 text-white bg-transparent border border-gray-600 rounded-lg hover:border-white hover:text-gray-300 transition-colors"
         aria-label="Go back"
       >
         ←
