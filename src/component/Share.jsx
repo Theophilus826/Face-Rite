@@ -31,11 +31,9 @@ function Share({ user }) {
   // REFERRAL LINK
   // ================================
 
-  const referralLink = referralCode
-    ? `${window.location.origin}/register?ref=${encodeURIComponent(
-        referralCode
-      )}`
-    : "";
+  const referralLink =
+    `${window.location.origin}/register` +
+    (referralCode ? `?ref=${encodeURIComponent(referralCode)}` : "");
 
   // ================================
   // UPDATE REFERRAL CODE FROM USER
@@ -103,14 +101,15 @@ function Share({ user }) {
   // ================================
 
   const handleInvite = async () => {
+    const text = referralCode
+      ? `Join using my referral link and earn rewards!\n\nReferral Code: ${referralCode}\n\n${referralLink}`
+      : `Join our app and sign up here!\n\n${referralLink}`;
+
     if (!referralCode) {
       setMessage(
-        "Referral code not available. Please refresh the page."
+        "Referral code is not available yet, so a general signup link is being shared."
       );
-      return;
     }
-
-    const text = `Join using my referral link and earn rewards!\n\nReferral Code: ${referralCode}\n\n${referralLink}`;
 
     try {
       // Mobile/browser share
@@ -400,9 +399,7 @@ function Share({ user }) {
         <button
           className="invite-btn"
           onClick={handleInvite}
-          disabled={
-            loading || !referralCode
-          }
+          disabled={loading}
         >
           {copied ? (
             <>
