@@ -171,6 +171,24 @@ export default function AdminDeposit() {
                 <p>
                   <b>Method:</b> {d.method}
                 </p>
+                {d.paymentLink && (
+                  <p className="break-all">
+                    <b>Payment Link:</b>{" "}
+                    <a
+                      href={d.paymentLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      {d.paymentLink}
+                    </a>
+                  </p>
+                )}
+                {d.accountNumber && (
+                  <p>
+                    <b>Account:</b> {d.accountNumber}
+                  </p>
+                )}
               </div>
 
               {/* RECEIPT */}

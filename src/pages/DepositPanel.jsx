@@ -6,6 +6,12 @@ const amounts = [2000, 3000, 5000, 10000, 20000, 50000, 100000, 200000];
 export default function DepositPanel() {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("opay");
+  const [customDetails, setCustomDetails] = useState({
+    bankName: "",
+    accountName: "",
+    accountNumber: "",
+    paymentLink: "",
+  });
 
   const [loading, setLoading] = useState(false);
   const [account, setAccount] = useState(null);
@@ -25,10 +31,33 @@ export default function DepositPanel() {
       return;
     }
 
+    if (["bank", "custom", "manual"].includes(method) && !customDetails.accountNumber && !customDetails.paymentLink) {
+      alert("Enter an account number or payment link");
+      return;
+    }
+
+    if (method === "link" && !customDetails.paymentLink) {
+      alert("Enter a valid payment link");
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const data = await generateDepositAccount({ amount, method });
+      const payload = {
+        amount,
+        method,
+        ...((method === "link")
+          ? { paymentLink: customDetails.paymentLink }
+          : {
+              bankName: customDetails.bankName,
+              accountName: customDetails.accountName,
+              accountNumber: customDetails.accountNumber,
+              paymentLink: customDetails.paymentLink,
+            }),
+      };
+
+      const data = await generateDepositAccount(payload);
 
       setAccount(data);
       setStatus("waiting");
@@ -89,8 +118,11 @@ export default function DepositPanel() {
   // COPY ACCOUNT
   // ===============================
   const copyAccount = () => {
-    navigator.clipboard.writeText(account?.accountNumber);
-    alert("Copied!");
+    const value = account?.accountNumber || account?.paymentLink || "";
+    if (!value) return;
+
+    navigator.clipboard.writeText(value);
+    alert(account?.accountNumber ? "Account copied!" : "Payment link copied!");
   };
 
   return (
@@ -100,7 +132,7 @@ export default function DepositPanel() {
 
         {/* METHOD */}
         {!account && (
-          <div className="mb-4">
+          <div className="mb-4 space-y-3">
             <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
@@ -108,7 +140,65 @@ export default function DepositPanel() {
             >
               <option value="opay">OPay</option>
               <option value="palmpay">PalmPay</option>
+              <option value="bank">Bank Account</option>
+              <option value="link">Payment Link</option>
             </select>
+
+            {method === "bank" && (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Bank name"
+                  value={customDetails.bankName}
+                  onChange={(e) =>
+                    setCustomDetails((prev) => ({
+                      ...prev,
+                      bankName: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 border rounded"
+                />
+                <input
+                  type="text"
+                  placeholder="Account name"
+                  value={customDetails.accountName}
+                  onChange={(e) =>
+                    setCustomDetails((prev) => ({
+                      ...prev,
+                      accountName: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 border rounded"
+                />
+                <input
+                  type="text"
+                  placeholder="Account number"
+                  value={customDetails.accountNumber}
+                  onChange={(e) =>
+                    setCustomDetails((prev) => ({
+                      ...prev,
+                      accountNumber: e.target.value,
+                    }))
+                  }
+                  className="w-full p-3 border rounded"
+                />
+              </div>
+            )}
+
+            {(method === "link" || method === "custom") && (
+              <input
+                type="url"
+                placeholder="Payment link"
+                value={customDetails.paymentLink}
+                onChange={(e) =>
+                  setCustomDetails((prev) => ({
+                    ...prev,
+                    paymentLink: e.target.value,
+                  }))
+                }
+                className="w-full p-3 border rounded"
+              />
+            )}
           </div>
         )}
 
@@ -154,18 +244,39 @@ export default function DepositPanel() {
               ⏱ Time Left: {formatTime(timeLeft)}
             </p>
 
-            <p>
-              <b>Bank:</b> {account.bankName}
-            </p>
-            <p>
-              <b>Name:</b> {account.accountName}
-            </p>
+            {account.paymentLink ? (
+              <>
+                <p>
+                  <b>Method:</b> {account.bankName || "Payment Link"}
+                </p>
+                <a
+                  href={account.paymentLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block mt-3 text-blue-600 underline break-all"
+                >
+                  {account.paymentLink}
+                </a>
+                <button onClick={copyAccount} className="text-blue-500 mt-2 block">
+                  Copy Payment Link
+                </button>
+              </>
+            ) : (
+              <>
+                <p>
+                  <b>Bank:</b> {account.bankName}
+                </p>
+                <p>
+                  <b>Name:</b> {account.accountName}
+                </p>
 
-            <h2 className="text-xl font-bold mt-2">{account.accountNumber}</h2>
+                <h2 className="text-xl font-bold mt-2">{account.accountNumber}</h2>
 
-            <button onClick={copyAccount} className="text-blue-500 mt-2">
-              Copy Account
-            </button>
+                <button onClick={copyAccount} className="text-blue-500 mt-2">
+                  Copy Account
+                </button>
+              </>
+            )}
 
             {/* WAITING */}
             {status === "waiting" && (
