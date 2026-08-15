@@ -12,8 +12,15 @@ export default function DepositPanel() {
     accountNumber: "",
     paymentLink: "",
   });
+  const [paymentConfig, setPaymentConfig] = useState({
+    bankName: "",
+    accountName: "",
+    accountNumber: "",
+    paymentLink: "",
+  });
 
   const [loading, setLoading] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
   const [account, setAccount] = useState(null);
 
   const [status, setStatus] = useState("idle");
@@ -21,6 +28,36 @@ export default function DepositPanel() {
 
   const [timeLeft, setTimeLeft] = useState(180);
   const [file, setFile] = useState(null);
+
+  useEffect(() => {
+    const fetchPaymentSettings = async () => {
+      try {
+        const res = await API.get("/admin/payment-settings");
+        const data = res.data?.data || res.data || {};
+
+        const nextConfig = {
+          bankName: data.bankName || "",
+          accountName: data.accountName || "",
+          accountNumber: data.accountNumber || "",
+          paymentLink: data.paymentLink || "",
+        };
+
+        setPaymentConfig(nextConfig);
+
+        if (nextConfig.paymentLink && !nextConfig.accountNumber) {
+          setMethod("link");
+        } else if (nextConfig.accountNumber) {
+          setMethod("bank");
+        }
+      } catch (err) {
+        console.error("❌ Fetch payment settings error:", err);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+
+    fetchPaymentSettings();
+  }, []);
 
   // ===============================
   // HANDLE DEPOSIT
@@ -31,12 +68,30 @@ export default function DepositPanel() {
       return;
     }
 
-    if (["bank", "custom", "manual"].includes(method) && !customDetails.accountNumber && !customDetails.paymentLink) {
+    const activeMethod =
+      paymentConfig.paymentLink && !paymentConfig.accountNumber
+        ? "link"
+        : paymentConfig.accountNumber
+          ? "bank"
+          : method;
+
+    const activeDetails = {
+      bankName:
+        paymentConfig.bankName || customDetails.bankName,
+      accountName:
+        paymentConfig.accountName || customDetails.accountName,
+      accountNumber:
+        paymentConfig.accountNumber || customDetails.accountNumber,
+      paymentLink:
+        paymentConfig.paymentLink || customDetails.paymentLink,
+    };
+
+    if (["bank", "custom", "manual"].includes(activeMethod) && !activeDetails.accountNumber && !activeDetails.paymentLink) {
       alert("Enter an account number or payment link");
       return;
     }
 
-    if (method === "link" && !customDetails.paymentLink) {
+    if (activeMethod === "link" && !activeDetails.paymentLink) {
       alert("Enter a valid payment link");
       return;
     }
@@ -46,24 +101,20 @@ export default function DepositPanel() {
 
       const payload = {
         amount,
-        method,
-        ...((method === "link")
-          ? { paymentLink: customDetails.paymentLink }
-          : {
-              bankName: customDetails.bankName,
-              accountName: customDetails.accountName,
-              accountNumber: customDetails.accountNumber,
-              paymentLink: customDetails.paymentLink,
-            }),
+        method: activeMethod,
+        bankName: activeDetails.bankName,
+        accountName: activeDetails.accountName,
+        accountNumber: activeDetails.accountNumber,
+        paymentLink: activeDetails.paymentLink,
       };
 
       const data = await generateDepositAccount(payload);
 
-      setAccount(data);
+      setAccount(data.deposit || data);
       setStatus("waiting");
       setTimeLeft(180);
     } catch (err) {
-      alert(err.message || "Failed to generate account");
+      alert(err.response?.data?.message || err.message || "Failed to generate account");
     } finally {
       setLoading(false);
     }
@@ -131,74 +182,113 @@ export default function DepositPanel() {
         <h2 className="text-2xl font-bold text-center mb-4">Deposit</h2>
 
         {/* METHOD */}
-        {!account && (
+        {!account && !loadingSettings && (
           <div className="mb-4 space-y-3">
-            <select
-              value={method}
-              onChange={(e) => setMethod(e.target.value)}
-              className="w-full p-3 rounded-lg border"
-            >
-              <option value="opay">OPay</option>
-              <option value="palmpay">PalmPay</option>
-              <option value="bank">Bank Account</option>
-              <option value="link">Payment Link</option>
-            </select>
+            {paymentConfig.accountNumber || paymentConfig.paymentLink ? (
+              <div className="rounded-xl border bg-slate-50 p-3">
+                <p className="text-sm font-semibold text-gray-700">Configured payment method</p>
 
-            {method === "bank" && (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Bank name"
-                  value={customDetails.bankName}
-                  onChange={(e) =>
-                    setCustomDetails((prev) => ({
-                      ...prev,
-                      bankName: e.target.value,
-                    }))
-                  }
-                  className="w-full p-3 border rounded"
-                />
-                <input
-                  type="text"
-                  placeholder="Account name"
-                  value={customDetails.accountName}
-                  onChange={(e) =>
-                    setCustomDetails((prev) => ({
-                      ...prev,
-                      accountName: e.target.value,
-                    }))
-                  }
-                  className="w-full p-3 border rounded"
-                />
-                <input
-                  type="text"
-                  placeholder="Account number"
-                  value={customDetails.accountNumber}
-                  onChange={(e) =>
-                    setCustomDetails((prev) => ({
-                      ...prev,
-                      accountNumber: e.target.value,
-                    }))
-                  }
-                  className="w-full p-3 border rounded"
-                />
+                {paymentConfig.paymentLink && (
+                  <a
+                    href={paymentConfig.paymentLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 block text-sm text-blue-600 underline break-all"
+                  >
+                    {paymentConfig.paymentLink}
+                  </a>
+                )}
+
+                {paymentConfig.accountNumber && (
+                  <div className="mt-2 text-sm text-gray-700">
+                    <p>
+                      <b>Bank:</b> {paymentConfig.bankName || "N/A"}
+                    </p>
+                    <p>
+                      <b>Name:</b> {paymentConfig.accountName || "N/A"}
+                    </p>
+                    <p>
+                      <b>Account:</b> {paymentConfig.accountNumber}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            ) : (
+              <>
+                <select
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                  className="w-full p-3 rounded-lg border"
+                >
+                  <option value="opay">OPay</option>
+                  <option value="palmpay">PalmPay</option>
+                  <option value="bank">Bank Account</option>
+                  <option value="link">Payment Link</option>
+                </select>
 
-            {(method === "link" || method === "custom") && (
-              <input
-                type="url"
-                placeholder="Payment link"
-                value={customDetails.paymentLink}
-                onChange={(e) =>
-                  setCustomDetails((prev) => ({
-                    ...prev,
-                    paymentLink: e.target.value,
-                  }))
-                }
-                className="w-full p-3 border rounded"
-              />
+                {method === "bank" && (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Bank name"
+                      value={customDetails.bankName}
+                      onChange={(e) =>
+                        setCustomDetails((prev) => ({
+                          ...prev,
+                          bankName: e.target.value,
+                        }))
+                      }
+                      className="w-full p-3 border rounded"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Account name"
+                      value={customDetails.accountName}
+                      onChange={(e) =>
+                        setCustomDetails((prev) => ({
+                          ...prev,
+                          accountName: e.target.value,
+                        }))
+                      }
+                      className="w-full p-3 border rounded"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Account number"
+                      value={customDetails.accountNumber}
+                      onChange={(e) =>
+                        setCustomDetails((prev) => ({
+                          ...prev,
+                          accountNumber: e.target.value,
+                        }))
+                      }
+                      className="w-full p-3 border rounded"
+                    />
+                  </div>
+                )}
+
+                {(method === "link" || method === "custom") && (
+                  <input
+                    type="url"
+                    placeholder="Payment link"
+                    value={customDetails.paymentLink}
+                    onChange={(e) =>
+                      setCustomDetails((prev) => ({
+                        ...prev,
+                        paymentLink: e.target.value,
+                      }))
+                    }
+                    className="w-full p-3 border rounded"
+                  />
+                )}
+              </>
             )}
+          </div>
+        )}
+
+        {loadingSettings && !account && (
+          <div className="mb-4 text-center text-sm text-gray-500">
+            Loading payment details...
           </div>
         )}
 
