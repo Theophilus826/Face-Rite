@@ -68,22 +68,21 @@ export default function DepositPanel() {
       return;
     }
 
+    const hasAdminAccount = Boolean(paymentConfig.accountNumber);
+    const hasAdminLink = Boolean(paymentConfig.paymentLink);
+
     const activeMethod =
-      paymentConfig.paymentLink && !paymentConfig.accountNumber
+      hasAdminLink && !hasAdminAccount
         ? "link"
-        : paymentConfig.accountNumber
+        : hasAdminAccount
           ? "bank"
           : method;
 
     const activeDetails = {
-      bankName:
-        paymentConfig.bankName || customDetails.bankName,
-      accountName:
-        paymentConfig.accountName || customDetails.accountName,
-      accountNumber:
-        paymentConfig.accountNumber || customDetails.accountNumber,
-      paymentLink:
-        paymentConfig.paymentLink || customDetails.paymentLink,
+      bankName: paymentConfig.bankName || customDetails.bankName,
+      accountName: paymentConfig.accountName || customDetails.accountName,
+      accountNumber: paymentConfig.accountNumber || customDetails.accountNumber,
+      paymentLink: paymentConfig.paymentLink || customDetails.paymentLink,
     };
 
     if (["bank", "custom", "manual"].includes(activeMethod) && !activeDetails.accountNumber && !activeDetails.paymentLink) {
@@ -102,15 +101,13 @@ export default function DepositPanel() {
       const payload = {
         amount,
         method: activeMethod,
-        bankName: activeDetails.bankName,
-        accountName: activeDetails.accountName,
-        accountNumber: activeDetails.accountNumber,
-        paymentLink: activeDetails.paymentLink,
       };
 
       const data = await generateDepositAccount(payload);
 
-      setAccount(data.deposit || data);
+      const deposit = data?.deposit || data;
+
+      setAccount(deposit);
       setStatus("waiting");
       setTimeLeft(180);
     } catch (err) {
