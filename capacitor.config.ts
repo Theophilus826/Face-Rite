@@ -5,11 +5,16 @@ const config: CapacitorConfig = {
   appName: 'TinkReward',
   webDir: 'dist',
 
+  server: {
+    url: 'https://face-rite.onrender.com',
+    cleartext: false,
+  },
+
   plugins: {
     PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"]
-    }
-  }
+      presentationOptions: ['badge', 'sound', 'alert', 'banner', 'list'],
+    },
+  },
 };
 
 export default config;

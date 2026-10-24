@@ -1,27 +1,29 @@
+
 import axios from "axios";
 
 // ===============================
-// Helpers
+// HELPERS
 // ===============================
-const getStoredUser = () => {
+export const getStoredUser = () => {
   try {
-    return JSON.parse(localStorage.getItem("user"));
+    return JSON.parse(localStorage.getItem("user") || "null");
   } catch {
     return null;
   }
 };
 
 // ===============================
-// Axios Instance
+// AXIOS INSTANCE
 // ===============================
 export const API = axios.create({
   baseURL:
-    import.meta.env.VITE_API_URL || "https://swordgame-5.onrender.com/api",
+    import.meta.env.VITE_API_URL ||
+    "https://swordgame-5.onrender.com/api",
   withCredentials: true,
 });
 
 // ===============================
-// Request Interceptor
+// REQUEST INTERCEPTOR
 // ===============================
 API.interceptors.request.use(
   (config) => {
@@ -32,41 +34,50 @@ API.interceptors.request.use(
     }
 
     if (import.meta.env.DEV) {
-      console.log("➡️ Request:", `${config.baseURL}${config.url}`);
+      console.log(
+        "➡️ Request:",
+        `${config.baseURL}${config.url}`
+      );
     }
 
     return config;
   },
-  (error) => Promise.reject(error),
+  (error) => Promise.reject(error)
 );
 
 // ===============================
-// Response Interceptor
+// RESPONSE INTERCEPTOR
 // ===============================
 API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (import.meta.env.DEV) {
-      console.error("⛔ API Error:", error.response || error.message);
+      console.error(
+        "⛔ API Error:",
+        error.response || error.message
+      );
     }
 
     if (error.response?.status === 401) {
       console.warn("Unauthorized request");
 
-      // only clear, DO NOT reload immediately
       localStorage.removeItem("user");
       localStorage.removeItem("token");
     }
 
     return Promise.reject(error);
-  },
+  }
 );
 
 // ===============================
-// Post Helpers
-// =============================
+// POST HELPERS
+// ===============================
+
+// Upload post media
 export const uploadMedia = async (postId, file) => {
-  if (!file) throw new Error("No file provided");
+  if (!file) {
+    throw new Error("No file provided");
+  }
 
   const formData = new FormData();
   formData.append("file", file);
@@ -77,26 +88,31 @@ export const uploadMedia = async (postId, file) => {
       ? "video"
       : null;
 
-  if (!fileType) throw new Error("Unsupported file type");
+  if (!fileType) {
+    throw new Error("Unsupported file type");
+  }
 
   formData.append("type", fileType);
 
-  const res = await API.post(`/post/${postId}/media`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  const res = await API.post(
+    `/post/${postId}/media`,
+    formData
+  );
 
   return res.data;
 };
 
 // React to a post
 export const reactToPost = async (postId, type) => {
-  if (!["like", "love"].includes(type))
+  if (!["like", "love"].includes(type)) {
     throw new Error("Invalid reaction type");
+  }
 
-  // Backend expects POST /post/:id/react
-  const res = await API.post(`/post/${postId}/react`, { type });
+  const res = await API.post(
+    `/post/${postId}/react`,
+    { type }
+  );
+
   return res.data;
 };
 
@@ -105,39 +121,128 @@ export const fetchPosts = async () => {
   const res = await API.get("/post");
   return res.data.posts || [];
 };
+
 // ===============================
-// Deposit / Wallet Helpers
+// WALLET / DEPOSIT HELPERS
 // ===============================
 
-// Generate Virtual Deposit Account
+// Generate virtual deposit account
 export const generateDepositAccount = async (data) => {
-  const res = await API.post("/wallet/deposit-account", data);
+  const res = await API.post(
+    "/wallet/deposit-account",
+    data
+  );
+
   return res.data;
 };
 
-// Get User Wallet Balance
+// Get wallet balance
 export const getWalletBalance = async () => {
   const res = await API.get("/wallet/balance");
   return res.data;
 };
 
-// Get Deposit History
+// Get deposit history
 export const getDepositHistory = async () => {
   const res = await API.get("/wallet/deposit-history");
   return res.data;
 };
 
-// Verify Deposit
+// Verify existing bank deposit
 export const verifyDeposit = async (reference) => {
-  const res = await API.post("/wallet/verify-deposit", { reference });
+  if (!reference?.trim()) {
+    throw new Error("Deposit reference is required");
+  }
+
+  const res = await API.post(
+    "/wallet/verify-deposit",
+    { reference }
+  );
+
   return res.data;
 };
 
 // ===============================
-// Call Helpers
+// PAYSTACK LIVE WALLET FUNDING
+// Conversion: ₦1 = 1 coin
 // ===============================
-// Start Call
-export const startCall = async ({ receiverId, type = "voice" }) => {
+
+// Initialize Paystack wallet funding
+export const initializeWalletFunding = async (amount) => {
+  if (
+    !Number.isSafeInteger(amount) ||
+    amount < 100
+  ) {
+    throw new Error(
+      "Enter a whole naira amount of at least ₦100"
+    );
+  }
+
+  const res = await API.post(
+    "/wallet/paystack/fund",
+    { amount }
+  );
+
+  const payment = res.data;
+
+  if (
+    !payment.success ||
+    !payment.authorizationUrl ||
+    !payment.reference
+  ) {
+    throw new Error(
+      "Unable to initialize Paystack payment"
+    );
+  }
+
+  return payment;
+};
+
+// Redirect user to Paystack checkout
+export const fundWalletWithPaystack = async (amount) => {
+  const payment = await initializeWalletFunding(amount);
+
+  window.location.assign(payment.authorizationUrl);
+};
+
+// Verify payment after checkout
+export const verifyWalletFunding = async (reference) => {
+  if (
+    typeof reference !== "string" ||
+    !reference.trim()
+  ) {
+    throw new Error(
+      "Paystack payment reference is required"
+    );
+  }
+
+  const res = await API.post(
+    "/wallet/paystack/verify",
+    { reference }
+  );
+
+  return res.data;
+};
+
+// Get Paystack funding history
+// Requires GET /wallet/paystack/history on your backend.
+export const getPaystackFundingHistory = async () => {
+  const res = await API.get(
+    "/wallet/paystack/history"
+  );
+
+  return res.data;
+};
+
+// ===============================
+// CALL HELPERS
+// ===============================
+
+// Start call
+export const startCall = async ({
+  receiverId,
+  type = "voice",
+}) => {
   const res = await API.post("/call/start", {
     receiverId,
     type,
@@ -146,31 +251,43 @@ export const startCall = async ({ receiverId, type = "voice" }) => {
   return res.data;
 };
 
-// Accept Call
+// Accept call
 export const acceptCall = async ({ callId }) => {
-  const res = await API.post("/call/accept", { callId });
+  const res = await API.post("/call/accept", {
+    callId,
+  });
+
   return res.data;
 };
 
-// Reject Call
+// Reject call
 export const rejectCall = async ({ callId }) => {
-  const res = await API.post("/call/reject", { callId });
+  const res = await API.post("/call/reject", {
+    callId,
+  });
+
   return res.data;
 };
 
-// Cancel Call
+// Cancel call
 export const cancelCall = async ({ callId }) => {
-  const res = await API.post("/call/cancel", { callId });
+  const res = await API.post("/call/cancel", {
+    callId,
+  });
+
   return res.data;
 };
 
-// End Call
+// End call
 export const endCall = async ({ callId }) => {
-  const res = await API.post("/call/end", { callId });
+  const res = await API.post("/call/end", {
+    callId,
+  });
+
   return res.data;
 };
 
-// Send SDP Offer
+// Send SDP offer
 export const sendOffer = async ({ callId, offer }) => {
   const res = await API.post("/call/offer", {
     callId,
@@ -180,7 +297,7 @@ export const sendOffer = async ({ callId, offer }) => {
   return res.data;
 };
 
-// Send SDP Answer
+// Send SDP answer
 export const sendAnswer = async ({ callId, answer }) => {
   const res = await API.post("/call/answer", {
     callId,
@@ -190,20 +307,28 @@ export const sendAnswer = async ({ callId, answer }) => {
   return res.data;
 };
 
-// Send ICE Candidate
-export const sendIceCandidate = async ({ callId, candidate }) => {
+// Send ICE candidate
+export const sendIceCandidate = async ({
+  callId,
+  candidate,
+}) => {
   const body = {
     callId,
     candidate,
   };
 
-  console.log("POST /call/ice", body);
+  if (import.meta.env.DEV) {
+    console.log("POST /call/ice", body);
+  }
 
   const res = await API.post("/call/ice", body);
 
   return res.data;
 };
 
+// ===============================
+// WEBRTC ICE SERVERS
+// ===============================
 const defaultIceServers = [
   {
     urls: [
@@ -214,29 +339,51 @@ const defaultIceServers = [
 ];
 
 export const getIceServers = async () => {
-  const endpoints = ["/ice/ice-servers", "/ice"];
+  const endpoints = [
+    "/ice/ice-servers",
+    "/ice",
+  ];
 
   for (const endpoint of endpoints) {
     try {
       const res = await API.get(endpoint);
-      console.log(`Loaded ICE servers from ${endpoint}`);
+
+      if (import.meta.env.DEV) {
+        console.log(
+          `Loaded ICE servers from ${endpoint}`
+        );
+      }
+
       return res.data;
     } catch (err) {
       if (err.response?.status === 404) {
-        console.warn(`ICE endpoint not found: ${endpoint}`);
+        console.warn(
+          `ICE endpoint not found: ${endpoint}`
+        );
+
         continue;
       }
 
-      console.error("Failed to load ICE servers:", err.response?.data || err.message);
+      console.error(
+        "Failed to load ICE servers:",
+        err.response?.data || err.message
+      );
+
       throw err;
     }
   }
 
-  console.warn("Falling back to default ICE servers.");
+  console.warn(
+    "Falling back to default ICE servers."
+  );
+
   return {
     success: false,
     iceServers: defaultIceServers,
   };
 };
 
+// ===============================
+// DEFAULT EXPORT
+// ===============================
 export default API;

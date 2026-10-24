@@ -1,3 +1,4 @@
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { API } from "../Api";
 
@@ -8,14 +9,15 @@ const initialState = {
   balance: 0,
   history: [],
 
-  // separate statuses (IMPORTANT FIX)
   fetchStatus: "idle",
   historyStatus: "idle",
   withdrawStatus: "idle",
   transferStatus: "idle",
   actionStatus: "idle",
+  paystackStatus: "idle",
 
   error: null,
+  paystackError: null,
 };
 
 /* ===============================
@@ -23,36 +25,61 @@ const initialState = {
 ================================ */
 const getAuthHeader = (thunkAPI) => {
   const token = thunkAPI.getState().auth.user?.token;
-  return { headers: { Authorization: `Bearer ${token}` } };
+
+  return token
+    ? { headers: { Authorization: `Bearer ${token}` } }
+    : {};
 };
 
-/* ===============================
-   Thunks
-================================ */
+const getErrorMessage = (err, fallback) =>
+  err.response?.data?.message || err.message || fallback;
 
-// Fetch current coin balance
+/* ===============================
+   FETCH COINS
+================================ */
 export const fetchCoins = createAsyncThunk(
   "coins/fetchCoins",
   async (_, thunkAPI) => {
-    const res = await API.get("/coins/balance", getAuthHeader(thunkAPI));
-    return res.data.coins;
+    try {
+      const res = await API.get(
+        "/coins/balance",
+        getAuthHeader(thunkAPI),
+      );
+
+      return res.data.coins;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        getErrorMessage(err, "Failed to fetch coins"),
+      );
+    }
   },
 );
 
-// Claim daily login reward
+/* ===============================
+   DAILY LOGIN REWARD
+================================ */
 export const claimDailyLogin = createAsyncThunk(
   "coins/claimDailyLogin",
   async (_, thunkAPI) => {
-    const res = await API.post(
-      "/coins/daily-reward",
-      {},
-      getAuthHeader(thunkAPI),
-    );
-    return res.data.coins;
+    try {
+      const res = await API.post(
+        "/coins/daily-reward",
+        {},
+        getAuthHeader(thunkAPI),
+      );
+
+      return res.data.coins;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        getErrorMessage(err, "Failed to claim daily reward"),
+      );
+    }
   },
 );
 
-// Credit user coins (manual or game reward)
+/* ===============================
+   CREDIT COINS
+================================ */
 export const creditCoins = createAsyncThunk(
   "coins/creditCoins",
   async ({ coins }, thunkAPI) => {
@@ -62,16 +89,19 @@ export const creditCoins = createAsyncThunk(
         { coins },
         getAuthHeader(thunkAPI),
       );
-      return res.data; // { coins, transaction }
+
+      return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data?.message || err.message || "Failed to credit coins",
+        getErrorMessage(err, "Failed to credit coins"),
       );
     }
   },
 );
 
-// Buy item (spend coins)
+/* ===============================
+   PURCHASE ITEM
+================================ */
 export const buyItem = createAsyncThunk(
   "coins/buyItem",
   async ({ itemName, cost }, thunkAPI) => {
@@ -81,25 +111,40 @@ export const buyItem = createAsyncThunk(
         { itemName, cost },
         getAuthHeader(thunkAPI),
       );
-      return res.data; // { coins, history }
-    } catch (error) {
+
+      return res.data;
+    } catch (err) {
       return thunkAPI.rejectWithValue(
-        error.response?.data?.message || error.message,
+        getErrorMessage(err, "Failed to purchase item"),
       );
     }
   },
 );
 
-// Fetch coin history
+/* ===============================
+   COIN HISTORY
+================================ */
 export const fetchCoinHistory = createAsyncThunk(
   "coins/fetchCoinHistory",
   async (_, thunkAPI) => {
-    const res = await API.get("/coins/history", getAuthHeader(thunkAPI));
-    return res.data;
+    try {
+      const res = await API.get(
+        "/coins/history",
+        getAuthHeader(thunkAPI),
+      );
+
+      return res.data;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        getErrorMessage(err, "Failed to fetch coin history"),
+      );
+    }
   },
 );
 
-// Credit game win coins
+/* ===============================
+   GAME WIN REWARD
+================================ */
 export const creditGameWin = createAsyncThunk(
   "coins/creditGameWin",
   async ({ coins }, thunkAPI) => {
@@ -109,16 +154,19 @@ export const creditGameWin = createAsyncThunk(
         { coins },
         getAuthHeader(thunkAPI),
       );
-      return res.data; // { coins, transaction }
+
+      return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data?.message || err.message,
+        getErrorMessage(err, "Failed to credit game winnings"),
       );
     }
   },
 );
 
-// ================= USER TO USER TRANSFER =================
+/* ===============================
+   USER-TO-USER TRANSFER
+================================ */
 export const transferCoins = createAsyncThunk(
   "coins/transferCoins",
   async ({ toUserId, coins, description }, thunkAPI) => {
@@ -127,20 +175,24 @@ export const transferCoins = createAsyncThunk(
         "/coins/transfer",
         {
           toUserId,
-          amount: coins, // ✅ FIXED
+          amount: coins,
           description,
         },
         getAuthHeader(thunkAPI),
       );
+
       return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data?.message || err.message,
+        getErrorMessage(err, "Coin transfer failed"),
       );
     }
   },
 );
-// ================= WITHDRAW COINS =================
+
+/* ===============================
+   WITHDRAW COINS
+================================ */
 export const withdrawCoins = createAsyncThunk(
   "coins/withdrawCoins",
   async ({ amount, bankName, accountNumber }, thunkAPI) => {
@@ -154,25 +206,104 @@ export const withdrawCoins = createAsyncThunk(
       return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data?.message || err.message || "Withdrawal failed",
+        getErrorMessage(err, "Withdrawal failed"),
       );
     }
   },
 );
 
 /* ===============================
-   Slice
+   PAYSTACK: INITIALIZE FUNDING
+================================ */
+// Amount is in naira. Backend should convert to kobo.
+export const initializePaystackFunding = createAsyncThunk(
+  "coins/initializePaystackFunding",
+  async ({ amount }, thunkAPI) => {
+    if (!Number.isSafeInteger(amount) || amount < 100) {
+      return thunkAPI.rejectWithValue(
+        "Minimum wallet funding amount is ₦100.",
+      );
+    }
+
+    try {
+      const res = await API.post(
+        "/wallet/paystack/fund",
+        { amount },
+        getAuthHeader(thunkAPI),
+      );
+
+      const payment = res.data;
+
+      if (
+        !payment?.success ||
+        !payment?.authorizationUrl ||
+        !payment?.reference
+      ) {
+        return thunkAPI.rejectWithValue(
+          payment?.message || "Unable to initialize Paystack payment",
+        );
+      }
+
+      return payment;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        getErrorMessage(err, "Could not start Paystack payment"),
+      );
+    }
+  },
+);
+
+/* ===============================
+   PAYSTACK: VERIFY FUNDING
+================================ */
+export const verifyPaystackFunding = createAsyncThunk(
+  "coins/verifyPaystackFunding",
+  async ({ reference }, thunkAPI) => {
+    if (typeof reference !== "string" || !reference.trim()) {
+      return thunkAPI.rejectWithValue(
+        "Paystack payment reference is required.",
+      );
+    }
+
+    try {
+      const res = await API.post(
+        "/wallet/paystack/verify",
+        { reference: reference.trim() },
+        getAuthHeader(thunkAPI),
+      );
+
+      return res.data;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        getErrorMessage(err, "Payment verification failed"),
+      );
+    }
+  },
+);
+
+/* ===============================
+   SLICE
 ================================ */
 const coinsSlice = createSlice({
   name: "coins",
   initialState,
+
   reducers: {
     resetCoinsState: () => ({ ...initialState }),
+
+    clearCoinError: (state) => {
+      state.error = null;
+    },
+
+    clearPaystackError: (state) => {
+      state.paystackError = null;
+    },
   },
+
   extraReducers: (builder) => {
     builder
 
-      /* ================= FETCH COINS ================= */
+      /* FETCH BALANCE */
       .addCase(fetchCoins.pending, (state) => {
         state.fetchStatus = "loading";
       })
@@ -183,67 +314,89 @@ const coinsSlice = createSlice({
       .addCase(fetchCoins.rejected, (state, action) => {
         state.fetchStatus = "failed";
         state.error =
-          action.payload || action.error?.message || "Failed to fetch coins";
+          action.payload || action.error.message || "Failed to fetch coins";
       })
 
-      /* ================= DAILY LOGIN ================= */
+      /* DAILY REWARD */
       .addCase(claimDailyLogin.fulfilled, (state, action) => {
         state.balance = action.payload;
       })
 
-      /* ================= CREDIT COINS ================= */
+      /* MANUAL CREDIT */
       .addCase(creditCoins.fulfilled, (state, action) => {
-        state.balance = action.payload.coins;
+        if (typeof action.payload?.coins === "number") {
+          state.balance = action.payload.coins;
+        }
 
         if (action.payload?.transaction) {
           state.history.unshift(action.payload.transaction);
         }
       })
 
-      /* ================= GAME WIN ================= */
+      /* GAME WIN */
       .addCase(creditGameWin.fulfilled, (state, action) => {
-        state.balance = action.payload.coins;
+        if (typeof action.payload?.coins === "number") {
+          state.balance = action.payload.coins;
+        }
 
         if (action.payload?.transaction) {
           state.history.unshift(action.payload.transaction);
         }
       })
 
-      /* ================= BUY ITEM ================= */
+      /* PURCHASE */
       .addCase(buyItem.fulfilled, (state, action) => {
-        state.balance = action.payload.coins;
+        if (typeof action.payload?.coins === "number") {
+          state.balance = action.payload.coins;
+        }
 
-        if (Array.isArray(action.payload.history)) {
+        if (Array.isArray(action.payload?.history)) {
           state.history = action.payload.history;
-        } else if (action.payload.history) {
+        } else if (action.payload?.history) {
           state.history.unshift(action.payload.history);
         }
       })
 
-      /* ================= HISTORY ================= */
+      /* HISTORY */
       .addCase(fetchCoinHistory.pending, (state) => {
         state.historyStatus = "loading";
       })
       .addCase(fetchCoinHistory.fulfilled, (state, action) => {
         state.historyStatus = "succeeded";
-        state.history = Array.isArray(action.payload) ? action.payload : [];
+        state.history = Array.isArray(action.payload)
+          ? action.payload
+          : Array.isArray(action.payload?.history)
+            ? action.payload.history
+            : [];
       })
       .addCase(fetchCoinHistory.rejected, (state, action) => {
         state.historyStatus = "failed";
         state.error =
-          action.payload || action.error?.message || "History fetch failed";
+          action.payload || action.error.message || "History fetch failed";
       })
 
-      /* ================= TRANSFER ================= */
+      /* TRANSFER */
+      .addCase(transferCoins.pending, (state) => {
+        state.transferStatus = "loading";
+      })
       .addCase(transferCoins.fulfilled, (state, action) => {
-        state.balance = action.payload.coins;
+        state.transferStatus = "succeeded";
+
+        if (typeof action.payload?.coins === "number") {
+          state.balance = action.payload.coins;
+        }
 
         if (action.payload?.transaction) {
           state.history.unshift(action.payload.transaction);
         }
       })
+      .addCase(transferCoins.rejected, (state, action) => {
+        state.transferStatus = "failed";
+        state.error =
+          action.payload || action.error.message || "Transfer failed";
+      })
 
-      /* ================= WITHDRAW ================= */
+      /* WITHDRAWAL */
       .addCase(withdrawCoins.pending, (state) => {
         state.withdrawStatus = "loading";
         state.error = null;
@@ -251,7 +404,9 @@ const coinsSlice = createSlice({
       .addCase(withdrawCoins.fulfilled, (state, action) => {
         state.withdrawStatus = "succeeded";
 
-        state.balance = action.payload.balance ?? state.balance;
+        if (typeof action.payload?.balance === "number") {
+          state.balance = action.payload.balance;
+        }
 
         if (action.payload?.withdrawal) {
           state.history.unshift({
@@ -265,20 +420,84 @@ const coinsSlice = createSlice({
       .addCase(withdrawCoins.rejected, (state, action) => {
         state.withdrawStatus = "failed";
         state.error =
-          action.payload || action.error?.message || "Withdrawal failed";
+          action.payload || action.error.message || "Withdrawal failed";
       })
 
-      /* ================= GLOBAL SAFETY ================= */
+      /* PAYSTACK INITIALIZATION */
+      .addCase(initializePaystackFunding.pending, (state) => {
+        state.paystackStatus = "loading";
+        state.paystackError = null;
+      })
+      .addCase(initializePaystackFunding.fulfilled, (state, action) => {
+        state.paystackStatus = "checkout_ready";
+
+        // The component performs the redirect after dispatching this thunk.
+        // Do not navigate from a Redux reducer.
+      })
+      .addCase(initializePaystackFunding.rejected, (state, action) => {
+        state.paystackStatus = "failed";
+        state.paystackError =
+          action.payload ||
+          action.error.message ||
+          "Could not start Paystack payment";
+      })
+
+      /* PAYSTACK VERIFICATION */
+      .addCase(verifyPaystackFunding.pending, (state) => {
+        state.paystackStatus = "verifying";
+        state.paystackError = null;
+      })
+      .addCase(verifyPaystackFunding.fulfilled, (state, action) => {
+        state.paystackStatus = "succeeded";
+
+        const result = action.payload;
+
+        // Update balance only if the backend returns a confirmed balance.
+        const balance = result?.coins ?? result?.balance;
+
+        if (typeof balance === "number") {
+          state.balance = balance;
+        }
+
+        if (result?.transaction) {
+          state.history.unshift(result.transaction);
+        }
+      })
+      .addCase(verifyPaystackFunding.rejected, (state, action) => {
+        state.paystackStatus = "failed";
+        state.paystackError =
+          action.payload ||
+          action.error.message ||
+          "Payment verification failed";
+      })
+
+      /* GLOBAL REJECTION HANDLING */
       .addMatcher(
         (action) =>
-          action.type.startsWith("coins/") && action.type.endsWith("/rejected"),
+          action.type.startsWith("coins/") &&
+          action.type.endsWith("/rejected"),
         (state, action) => {
+          // Keep Paystack errors separate from general wallet errors.
+          if (
+            action.type === initializePaystackFunding.rejected.type ||
+            action.type === verifyPaystackFunding.rejected.type
+          ) {
+            return;
+          }
+
           state.error =
-            action.payload || action.error?.message || "Something went wrong";
+            action.payload ||
+            action.error?.message ||
+            "Something went wrong";
         },
       );
   },
 });
 
-export const { resetCoinsState } = coinsSlice.actions;
+export const {
+  resetCoinsState,
+  clearCoinError,
+  clearPaystackError,
+} = coinsSlice.actions;
+
 export default coinsSlice.reducer;
