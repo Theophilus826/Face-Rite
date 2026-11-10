@@ -16,6 +16,17 @@ const saveAuth = (data) => {
   }
 };
 
+const getToken = () => localStorage.getItem("token");
+
+const getUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch (error) {
+    console.error("Failed to read stored user:", error);
+    return null;
+  }
+};
+
 const clearAuth = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
@@ -185,6 +196,8 @@ export default {
   register,
   login,
   logout,
+  getToken,
+  getUser,
 
   forgotPassword,
   resetPassword,

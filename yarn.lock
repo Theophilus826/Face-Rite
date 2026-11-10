@@ -930,6 +930,11 @@
   resolved "https://registry.npmjs.org/@capacitor/push-notifications/-/push-notifications-8.1.1.tgz"
   integrity sha512-WqzjPKIbYbARMN+GC0XMAJcxJpUUzqgzS/Ny8RODLrro38pQhm3GXYwX2Mwd+LZlLY39rGImkCkrKyQSNfuikA==
 
+"@capgo/capacitor-native-biometric@^8.9.1":
+  version "8.9.1"
+  resolved "https://registry.npmjs.org/@capgo/capacitor-native-biometric/-/capacitor-native-biometric-8.9.1.tgz"
+  integrity sha512-19WZZ5dqykGgRFGgf+4hhJXyB0w6d+Pybj/mmXphIab1x4DsxadVQi8ooMl0qNfU9Jy1fwJk6Ulrg9ZjKBIWUA==
+
 "@cspotcode/source-map-support@^0.8.0":
   version "0.8.1"
   resolved "https://registry.npmjs.org/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz"
