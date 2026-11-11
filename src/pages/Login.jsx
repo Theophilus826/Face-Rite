@@ -87,107 +87,97 @@ export default function Login() {
   // REDUX AUTHENTICATION EFFECT
   // =====================================================
 
-  useEffect(() => {
-    if (isError) {
-      toast.error(message);
-    }
+  
+useEffect(() => {
+  if (isError) {
+    toast.error(message);
+  }
 
-    if (user) {
-      setShowMode(true);
-    }
+  dispatch(reset());
+}, [isError, message, dispatch]);
 
-    dispatch(reset());
-  }, [user, isError, message, dispatch]);
 
   // =====================================================
   // NORMAL LOGIN + FINGERPRINT ENROLLMENT
   // =====================================================
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (busy) return;
+  if (busy) return;
 
-    const cleanIdentifier = identifier.trim();
+  const cleanIdentifier = identifier.trim();
 
-    if (!cleanIdentifier || !password) {
-      toast.error("Please enter email/phone and password.");
+  if (!cleanIdentifier || !password) {
+    toast.error("Please enter email/phone and password.");
+    return;
+  }
+
+  setSubmitting(true);
+
+  try {
+    const authenticatedUser = await dispatch(
+      loginUser({
+        identifier: cleanIdentifier,
+        password,
+      })
+    ).unwrap();
+
+    if (!authenticatedUser || !authApi.getToken()) {
+      throw new Error("Login did not create a valid session.");
+    }
+
+    toast.success("Login successful.");
+
+    // Check fingerprint availability after authentication.
+    const status = await checkBiometricAvailability();
+
+    setBiometricAvailable(status.available);
+    setBiometricEnabled(status.enabled);
+    setBiometricStatusMessage(status.error || "");
+
+    // If fingerprint is already registered, continue normally.
+    if (status.enabled) {
+      setShowMode(true);
       return;
     }
 
-    setSubmitting(true);
+    // If the device does not support biometrics, continue normally.
+    if (!status.available) {
+      toast.info("Fingerprint authentication is unavailable.");
+      setShowMode(true);
+      return;
+    }
 
-    try {
-      // STEP 1: Authenticate using existing Redux thunk.
-
-      const authenticatedUser = await dispatch(
-        loginUser({
-          identifier: cleanIdentifier,
-          password,
-        })
-      ).unwrap();
-
-      if (!authenticatedUser || !authApi.getToken()) {
-        throw new Error("Login did not create a valid session.");
-      }
-
-      toast.success("Login successful.");
-
-      // STEP 2: Only enroll when the user explicitly allows it.
-
-      if (allowBiometrics !== true) {
-        return;
-      }
-
-      // STEP 3: Check device support.
-
-      const status = await checkBiometricAvailability();
-
-      setBiometricAvailable(status.available);
-      setBiometricEnabled(status.enabled);
-      setBiometricStatusMessage(status.error || "");
-
-      if (!status.available) {
-        toast.warning(
-          status.error || "Fingerprint authentication is unavailable."
-        );
-        return;
-      }
-
-      // STEP 4: Avoid duplicate enrollment.
-
-      if (status.enabled) {
-        toast.success("Fingerprint login is already enabled.");
-        return;
-      }
-
-      // STEP 5: Trigger device fingerprint prompt.
-
-      toast.info("Touch your fingerprint sensor to enable login.");
-
+    // Ask the user to register fingerprint after login.
+    if (allowBiometrics === true) {
       await enableBiometricLogin();
-
-      // STEP 6: Verify enrollment.
 
       const finalStatus = await checkBiometricAvailability();
 
-      setBiometricAvailable(finalStatus.available);
       setBiometricEnabled(finalStatus.enabled);
-      setBiometricStatusMessage(finalStatus.error || "");
 
       if (!finalStatus.enabled) {
-        throw new Error("Fingerprint enrollment could not be confirmed.");
+        throw new Error("Fingerprint registration was not confirmed.");
       }
 
       toast.success("Fingerprint login enabled successfully.");
-
-    } catch (error) {
-      console.error("Login failed:", error);
-      toast.error(getErrorMessage(error));
-    } finally {
-      setSubmitting(false);
+      setShowMode(true);
+      return;
     }
-  };
+
+    // Show fingerprint setup prompt after successful login.
+    setShowBiometricSetup(true);
+
+  } catch (error) {
+    console.error("Login failed:", error);
+    toast.error(getErrorMessage(error));
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   // =====================================================
   // FINGERPRINT LOGIN
