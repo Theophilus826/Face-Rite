@@ -265,7 +265,9 @@ export default function Login() {
           "Please sign in with your password first to enable fingerprint login."
         );
 
-        setShowBiometricSetup(true);
+        if (authApi.getToken()) {
+          setShowBiometricSetup(true);
+        }
         return;
       }
 
@@ -298,7 +300,15 @@ export default function Login() {
     } catch (error) {
       console.error("[LOGIN] Fingerprint login failed:", error);
 
-      toast.error(getErrorMessage(error));
+      if (String(error?.code) === "21") {
+        const recoveryMessage =
+          "Fingerprint credentials need to be registered again. Sign in with your password to re-enable fingerprint login.";
+        setBiometricEnabled(false);
+        setBiometricStatusMessage(recoveryMessage);
+        toast.error(recoveryMessage);
+      } else {
+        toast.error(getErrorMessage(error));
+      }
     } finally {
       setBiometricLoading(false);
     }

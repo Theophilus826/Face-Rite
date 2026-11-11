@@ -1,5 +1,8 @@
 
-import { NativeBiometric } from "@capgo/capacitor-native-biometric";
+import {
+  AccessControl,
+  NativeBiometric,
+} from "@capgo/capacitor-native-biometric";
 import { Capacitor } from "@capacitor/core";
 import api from "./Api";
 import authService from "./AuthService";
@@ -16,7 +19,7 @@ const VAULT_SERVER = (() => {
   }
 })();
 
-const ACCESS_CONTROL = "BIOMETRY_CURRENT_SET";
+const ACCESS_CONTROL = AccessControl.BIOMETRY_CURRENT_SET;
 
 const log = (stage, data = {}) => {
   console.log(`[BIOMETRIC] ${stage}`, data);
@@ -73,6 +76,18 @@ export const checkBiometricAvailability = async () => {
       });
 
       enabled = saved.isSaved === true;
+
+      if (enabled) {
+        try {
+          await NativeBiometric.getCredentials({
+            server: VAULT_SERVER,
+          });
+          enabled = false;
+          log("Unprotected credentials found; biometric re-enrollment is required");
+        } catch (error) {
+          log("No unprotected credentials found", getErrorDetails(error));
+        }
+      }
     } catch (error) {
       log("Credential status check failed", getErrorDetails(error));
     }
@@ -138,6 +153,10 @@ export const enableBiometricLogin = async () => {
     }
 
     log("Saving credentials to native biometric storage");
+
+    await NativeBiometric.deleteCredentials({
+      server: VAULT_SERVER,
+    });
 
     await NativeBiometric.setCredentials({
       username: String(userId),
@@ -227,6 +246,18 @@ export const loginWithBiometrics = async () => {
     return response.data;
   } catch (error) {
     log("Fingerprint authentication failed", getErrorDetails(error));
+
+    if (String(error?.code) === "21") {
+      try {
+        await NativeBiometric.deleteCredentials({
+          server: VAULT_SERVER,
+        });
+        log("Removed stale biometric credentials");
+      } catch (cleanupError) {
+        log("Failed to remove stale biometric credentials", getErrorDetails(cleanupError));
+      }
+    }
+
     throw error;
   }
 };
