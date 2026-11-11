@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, Fingerprint } from "lucide-react";
 import { loginUser, reset, sendMood } from "../features/AuthSlice";
@@ -16,21 +16,28 @@ import {
 } from "../features/BiometricService";
 
 export default function Login() {
+  // =====================================================
+  // STATE
+  // =====================================================
+
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [showMode, setShowMode] = useState(false);
 
   const [allowBiometrics, setAllowBiometrics] = useState(null);
+
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [biometricChecking, setBiometricChecking] = useState(true);
+
   const [submitting, setSubmitting] = useState(false);
 
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [biometricStatusMessage, setBiometricStatusMessage] = useState("");
-
-  const biometricCheckRef = useRef(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -57,143 +64,194 @@ export default function Login() {
   };
 
   // =====================================================
-  // CHECK FINGERPRINT AVAILABILITY
+  // BIOMETRIC AVAILABILITY
   // =====================================================
 
-  useEffect(() => {
-    if (biometricCheckRef.current) return;
+  const refreshBiometricStatus = async () => {
+    console.log("[LOGIN] Checking biometric availability...");
 
-    biometricCheckRef.current = true;
+    try {
+      const status = await checkBiometricAvailability();
+
+      console.log("[LOGIN] Biometric status:", status);
+
+      setBiometricAvailable(status.available);
+      setBiometricEnabled(status.enabled);
+      setBiometricStatusMessage(status.error || "");
+
+      return status;
+    } catch (error) {
+      console.error("[LOGIN] Biometric check failed:", error);
+
+      setBiometricAvailable(false);
+      setBiometricEnabled(false);
+      setBiometricStatusMessage(getErrorMessage(error));
+
+      return {
+        available: false,
+        enabled: false,
+        error: getErrorMessage(error),
+      };
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
 
     const initializeBiometrics = async () => {
+      console.log("[LOGIN] Initializing biometric authentication");
+
       try {
         const status = await checkBiometricAvailability();
+
+        console.log("[LOGIN] Initialization result:", status);
+
+        if (!mounted) return;
 
         setBiometricAvailable(status.available);
         setBiometricEnabled(status.enabled);
         setBiometricStatusMessage(status.error || "");
       } catch (error) {
-        console.error("Biometric initialization failed:", error);
-        setBiometricStatusMessage(
-          "Unable to check fingerprint availability."
-        );
+        console.error("[LOGIN] Initialization error:", error);
+
+        if (!mounted) return;
+
+        setBiometricAvailable(false);
+        setBiometricEnabled(false);
+        setBiometricStatusMessage(getErrorMessage(error));
+      } finally {
+        if (mounted) {
+          setBiometricChecking(false);
+        }
       }
     };
 
     initializeBiometrics();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // =====================================================
-  // REDUX AUTHENTICATION EFFECT
+  // REDUX ERROR HANDLING
   // =====================================================
 
-  
-useEffect(() => {
-  if (isError) {
-    toast.error(message);
-  }
-
-  dispatch(reset());
-}, [isError, message, dispatch]);
-
-
-  // =====================================================
-  // NORMAL LOGIN + FINGERPRINT ENROLLMENT
-  // =====================================================
-
-  
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (busy) return;
-
-  const cleanIdentifier = identifier.trim();
-
-  if (!cleanIdentifier || !password) {
-    toast.error("Please enter email/phone and password.");
-    return;
-  }
-
-  setSubmitting(true);
-
-  try {
-    const authenticatedUser = await dispatch(
-      loginUser({
-        identifier: cleanIdentifier,
-        password,
-      })
-    ).unwrap();
-
-    if (!authenticatedUser || !authApi.getToken()) {
-      throw new Error("Login did not create a valid session.");
+  useEffect(() => {
+    if (isError) {
+      toast.error(message || "Login failed.");
     }
 
-    toast.success("Login successful.");
+    dispatch(reset());
+  }, [isError, message, dispatch]);
 
-    // Check fingerprint availability after authentication.
-    const status = await checkBiometricAvailability();
+  // =====================================================
+  // NORMAL PASSWORD LOGIN
+  // =====================================================
 
-    setBiometricAvailable(status.available);
-    setBiometricEnabled(status.enabled);
-    setBiometricStatusMessage(status.error || "");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    // If fingerprint is already registered, continue normally.
-    if (status.enabled) {
-      setShowMode(true);
+    if (busy) return;
+
+    const cleanIdentifier = identifier.trim();
+
+    if (!cleanIdentifier || !password) {
+      toast.error("Please enter email/phone and password.");
       return;
     }
 
-    // If the device does not support biometrics, continue normally.
-    if (!status.available) {
-      toast.info("Fingerprint authentication is unavailable.");
-      setShowMode(true);
-      return;
-    }
+    console.log("[LOGIN] Starting password authentication");
 
-    // Ask the user to register fingerprint after login.
-    if (allowBiometrics === true) {
-      await enableBiometricLogin();
+    setSubmitting(true);
 
-      const finalStatus = await checkBiometricAvailability();
+    try {
+      const authenticatedUser = await dispatch(
+        loginUser({
+          identifier: cleanIdentifier,
+          password,
+        })
+      ).unwrap();
 
-      setBiometricEnabled(finalStatus.enabled);
+      console.log("[LOGIN] Password authentication completed");
 
-      if (!finalStatus.enabled) {
-        throw new Error("Fingerprint registration was not confirmed.");
+      if (!authenticatedUser || !authApi.getToken()) {
+        throw new Error("Login did not create a valid session.");
       }
 
-      toast.success("Fingerprint login enabled successfully.");
-      setShowMode(true);
-      return;
+      toast.success("Login successful.");
+
+      // Refresh biometric status after login.
+      const status = await refreshBiometricStatus();
+
+      // Already registered.
+      if (status.enabled) {
+        console.log("[LOGIN] Biometrics already enabled");
+
+        setShowMode(true);
+        return;
+      }
+
+      // Device does not support biometrics.
+      if (!status.available) {
+        console.log("[LOGIN] Biometrics unavailable");
+
+        toast.info(
+          status.error || "Fingerprint authentication is unavailable."
+        );
+
+        setShowMode(true);
+        return;
+      }
+
+      // User previously selected Allow.
+      if (allowBiometrics === true) {
+        console.log("[LOGIN] User accepted fingerprint enrollment");
+
+        await enableBiometricLogin();
+
+        const finalStatus = await refreshBiometricStatus();
+
+        if (!finalStatus.enabled) {
+          throw new Error(
+            "Fingerprint registration could not be confirmed."
+          );
+        }
+
+        toast.success("Fingerprint login enabled successfully.");
+
+        setShowMode(true);
+        return;
+      }
+
+      // Ask user to enable fingerprint.
+      console.log("[LOGIN] Showing biometric setup modal");
+
+      setShowBiometricSetup(true);
+    } catch (error) {
+      console.error("[LOGIN] Password login failed:", error);
+
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSubmitting(false);
     }
-
-    // Show fingerprint setup prompt after successful login.
-    setShowBiometricSetup(true);
-
-  } catch (error) {
-    console.error("Login failed:", error);
-    toast.error(getErrorMessage(error));
-  } finally {
-    setSubmitting(false);
-  }
-};
-
+  };
 
   // =====================================================
   // FINGERPRINT LOGIN
   // =====================================================
 
   const handleBiometricLogin = async () => {
-    if (busy) return;
+    if (busy || biometricChecking) return;
+
+    console.log("[LOGIN] Fingerprint login clicked");
 
     setBiometricLoading(true);
 
     try {
-      const status = await checkBiometricAvailability();
+      const status = await refreshBiometricStatus();
 
-      setBiometricAvailable(status.available);
-      setBiometricEnabled(status.enabled);
-      setBiometricStatusMessage(status.error || "");
+      console.log("[LOGIN] Fingerprint login status:", status);
 
       if (!status.available) {
         toast.error(
@@ -202,33 +260,43 @@ const handleSubmit = async (e) => {
         return;
       }
 
-      // Not enrolled: require normal login first.
-
       if (!status.enabled) {
+        toast.info(
+          "Please sign in with your password first to enable fingerprint login."
+        );
+
         setShowBiometricSetup(true);
-        toast.info("Sign in with your password to enable fingerprint login.");
         return;
       }
 
-      // Already enrolled: authenticate.
+      console.log("[LOGIN] Requesting native fingerprint authentication");
 
-      await loginWithBiometrics();
+      const result = await loginWithBiometrics();
 
-      // Verify that authentication created a valid session.
+      console.log("[LOGIN] Biometric backend response received");
 
+      // Verify that the biometric service created a session.
       const token = authApi.getToken();
       const currentUser = authApi.getUser();
 
       if (!token || !currentUser) {
-        throw new Error("Fingerprint login did not create a valid session.");
+        console.error("[LOGIN] Session verification failed", {
+          hasToken: !!token,
+          hasUser: !!currentUser,
+          hasResponse: !!result,
+        });
+
+        throw new Error(
+          "Fingerprint authentication succeeded but no valid session was created."
+        );
       }
 
       toast.success("Fingerprint login successful.");
 
       setShowMode(true);
-
     } catch (error) {
-      console.error("Fingerprint login failed:", error);
+      console.error("[LOGIN] Fingerprint login failed:", error);
+
       toast.error(getErrorMessage(error));
     } finally {
       setBiometricLoading(false);
@@ -242,16 +310,22 @@ const handleSubmit = async (e) => {
   const handleEnableBiometrics = async () => {
     if (busy) return;
 
+    console.log("[LOGIN] Starting fingerprint enrollment");
+
     setBiometricLoading(true);
 
     try {
       const token = authApi.getToken();
 
-      if (!token || !user) {
+      console.log("[LOGIN] Session exists:", !!token);
+
+      if (!token) {
         throw new Error("Please sign in with your password first.");
       }
 
-      const status = await checkBiometricAvailability();
+      const status = await refreshBiometricStatus();
+
+      console.log("[LOGIN] Enrollment availability:", status);
 
       if (!status.available) {
         throw new Error(
@@ -260,30 +334,37 @@ const handleSubmit = async (e) => {
       }
 
       if (status.enabled) {
-        setBiometricEnabled(true);
+        console.log("[LOGIN] Fingerprint already registered");
+
         setShowBiometricSetup(false);
+
         toast.success("Fingerprint login is already enabled.");
         return;
       }
 
+      console.log("[LOGIN] Calling biometric enrollment service");
+
       await enableBiometricLogin();
 
-      const finalStatus = await checkBiometricAvailability();
+      console.log("[LOGIN] Enrollment request completed");
 
-      setBiometricEnabled(finalStatus.enabled);
-      setBiometricStatusMessage(finalStatus.error || "");
+      const finalStatus = await refreshBiometricStatus();
+
+      console.log("[LOGIN] Final enrollment status:", finalStatus);
 
       if (!finalStatus.enabled) {
-        throw new Error("Fingerprint registration could not be confirmed.");
+        throw new Error(
+          "Fingerprint registration could not be confirmed."
+        );
       }
 
       setAllowBiometrics(true);
       setShowBiometricSetup(false);
 
       toast.success("Fingerprint login enabled successfully.");
-
     } catch (error) {
-      console.error("Fingerprint enrollment failed:", error);
+      console.error("[LOGIN] Fingerprint enrollment failed:", error);
+
       toast.error(getErrorMessage(error));
     } finally {
       setBiometricLoading(false);
@@ -295,12 +376,15 @@ const handleSubmit = async (e) => {
   // =====================================================
 
   const handleBiometricPreference = (allow) => {
+    console.log("[LOGIN] Biometric preference:", allow);
+
     setAllowBiometrics(allow);
 
     if (allow) {
       toast.info("Fingerprint login selected. Sign in to enable it.");
     } else {
       setShowBiometricSetup(false);
+
       toast.info("Password login only selected.");
     }
   };
@@ -316,6 +400,8 @@ const handleSubmit = async (e) => {
       setShowMode(false);
       navigate("/welcome");
     } catch (error) {
+      console.error("[LOGIN] Mood selection failed:", error);
+
       toast.error("Failed to send mood.");
     }
   };
@@ -353,7 +439,6 @@ const handleSubmit = async (e) => {
       {/* LOGIN PAGE */}
 
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-4">
-
         <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/30 shadow-lg">
 
           <h2 className="text-3xl font-bold text-center mb-3">
@@ -384,7 +469,6 @@ const handleSubmit = async (e) => {
             {/* PASSWORD */}
 
             <div className="relative">
-
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Password"
@@ -408,7 +492,6 @@ const handleSubmit = async (e) => {
                   <Eye size={18} className="text-gray-600" />
                 )}
               </button>
-
             </div>
 
             {/* LOGIN BUTTON */}
@@ -429,7 +512,6 @@ const handleSubmit = async (e) => {
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
 
                 <div className="flex items-center gap-3">
-
                   <Fingerprint
                     size={30}
                     className="shrink-0 text-blue-500"
@@ -444,14 +526,13 @@ const handleSubmit = async (e) => {
                       Would you like to enable fingerprint authentication?
                     </p>
                   </div>
-
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
 
                   <button
                     type="button"
-                    disabled={busy || !biometricAvailable}
+                    disabled={busy || biometricChecking || !biometricAvailable}
                     onClick={() => handleBiometricPreference(true)}
                     aria-pressed={allowBiometrics === true}
                     className={`rounded-lg border py-3 text-sm font-semibold transition ${
@@ -476,22 +557,21 @@ const handleSubmit = async (e) => {
                   >
                     ✕ Disallow
                   </button>
-
                 </div>
 
                 <p className="mt-3 text-center text-xs text-gray-500">
-                  {allowBiometrics === true
-                    ? "Fingerprint verification will follow password login."
-                    : allowBiometrics === false
-                      ? "You selected password login only."
-                      : !biometricAvailable
-                        ? "Fingerprint authentication is unavailable."
-                        : "Select Allow or Disallow."}
+                  {biometricChecking
+                    ? "Checking biometric availability..."
+                    : allowBiometrics === true
+                      ? "Fingerprint verification will follow password login."
+                      : allowBiometrics === false
+                        ? "You selected password login only."
+                        : !biometricAvailable
+                          ? biometricStatusMessage || "Fingerprint authentication is unavailable."
+                          : "Select Allow or Disallow."}
                 </p>
-
               </div>
             )}
-
           </form>
 
           {/* DIVIDER */}
@@ -507,10 +587,9 @@ const handleSubmit = async (e) => {
           <button
             type="button"
             onClick={handleBiometricLogin}
-            disabled={busy || !biometricAvailable}
+            disabled={busy || biometricChecking || !biometricAvailable}
             className="group flex w-full items-center justify-center gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 py-4 font-semibold text-blue-600 transition hover:border-blue-400 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
-
             {biometricLoading ? (
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
             ) : (
@@ -521,13 +600,14 @@ const handleSubmit = async (e) => {
             )}
 
             <span>
-              {biometricLoading
-                ? "Verifying fingerprint..."
-                : biometricEnabled
-                  ? "Login with Fingerprint"
-                  : "Enable / Login with Fingerprint"}
+              {biometricChecking
+                ? "Checking fingerprint..."
+                : biometricLoading
+                  ? "Verifying fingerprint..."
+                  : biometricEnabled
+                    ? "Login with Fingerprint"
+                    : "Enable / Login with Fingerprint"}
             </span>
-
           </button>
 
           <p className="mt-2 text-center text-xs text-gray-500">
@@ -548,9 +628,7 @@ const handleSubmit = async (e) => {
             >
               Create account
             </span>
-
           </p>
-
         </div>
       </div>
 
@@ -565,7 +643,6 @@ const handleSubmit = async (e) => {
             aria-labelledby="biometric-title"
             className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl"
           >
-
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-blue-100">
               <Fingerprint
                 size={55}
@@ -581,25 +658,47 @@ const handleSubmit = async (e) => {
             </h2>
 
             <p className="mt-3 text-sm leading-6 text-gray-600">
-              Sign in using your password first, then register your fingerprint
-              to securely access your account next time.
+              Register your fingerprint to securely access your account
+              without entering your password next time.
             </p>
+
+            {/* ENABLE FINGERPRINT */}
+
+            <button
+              type="button"
+              onClick={handleEnableBiometrics}
+              disabled={busy || !biometricAvailable}
+              className="mt-6 w-full rounded-xl bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {biometricLoading
+                ? "Registering fingerprint..."
+                : "Enable Fingerprint"}
+            </button>
+
+            {/* CONTINUE WITH PASSWORD */}
 
             <button
               type="button"
               onClick={() => {
                 setShowBiometricSetup(false);
-                document.querySelector('input[autocomplete="username"]')?.focus();
+
+                document
+                  .querySelector('input[autocomplete="username"]')
+                  ?.focus();
               }}
-              className="mt-6 w-full rounded-xl bg-blue-500 py-3 font-semibold text-white hover:bg-blue-600"
+              disabled={biometricLoading}
+              className="mt-3 w-full rounded-xl bg-gray-100 py-3 font-semibold text-gray-700 hover:bg-gray-200"
             >
               Continue with Password
             </button>
 
+            {/* MAYBE LATER */}
+
             <button
               type="button"
               onClick={() => setShowBiometricSetup(false)}
-              className="mt-3 w-full rounded-xl py-3 text-sm font-medium text-gray-600 hover:bg-gray-100"
+              disabled={biometricLoading}
+              className="mt-2 w-full rounded-xl py-3 text-sm font-medium text-gray-600 hover:bg-gray-100"
             >
               Maybe Later
             </button>
