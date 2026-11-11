@@ -208,5 +208,5 @@ export default {
   addContact,
   searchUsers,
 
-  updateAvatar,
+  saveAuth,
 };

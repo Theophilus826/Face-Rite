@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, Fingerprint } from "lucide-react";
-import { loginUser, reset, sendMood } from "../features/AuthSlice";
+import { loginUser, reset, sendMood, setSession } from "../features/AuthSlice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Spinner from "../component/Spinner";
@@ -272,6 +272,7 @@ export default function Login() {
       console.log("[LOGIN] Requesting native fingerprint authentication");
 
       const result = await loginWithBiometrics();
+      dispatch(setSession(result));
 
       console.log("[LOGIN] Biometric backend response received");
 

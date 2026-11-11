@@ -2,6 +2,7 @@
 import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 import { Capacitor } from "@capacitor/core";
 import api from "./Api";
+import authService from "./AuthService";
 
 const SERVER =
   import.meta.env.VITE_API_URL ||
@@ -114,11 +115,13 @@ export const checkBiometricAvailability = async () => {
 
 export const enableBiometricLogin = async () => {
   log("Starting biometric enrollment");
+  let backendEnrollmentCreated = false;
 
   try {
     log("Requesting enrollment credentials from backend");
 
     const response = await api.post("/auth/biometric/enroll");
+    backendEnrollmentCreated = true;
 
     log("Enrollment API response", {
       status: response.status,
@@ -163,11 +166,13 @@ export const enableBiometricLogin = async () => {
   } catch (error) {
     log("Biometric enrollment failed", getErrorDetails(error));
 
-    try {
-      await api.delete("/auth/biometric");
-      log("Backend enrollment rollback completed");
-    } catch (rollbackError) {
-      log("Backend rollback failed", getErrorDetails(rollbackError));
+    if (backendEnrollmentCreated) {
+      try {
+        await api.delete("/auth/biometric");
+        log("Backend enrollment rollback completed");
+      } catch (rollbackError) {
+        log("Backend rollback failed", getErrorDetails(rollbackError));
+      }
     }
 
     throw error;
@@ -209,6 +214,8 @@ export const loginWithBiometrics = async () => {
       userId: credentials.username,
       biometricSecret: credentials.password,
     });
+
+    authService.saveAuth(response.data);
 
     log("Backend biometric login response", {
       status: response.status,
