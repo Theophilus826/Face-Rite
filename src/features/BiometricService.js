@@ -115,8 +115,11 @@ export const enableBiometricLogin = async (
 // LOGIN WITH FINGERPRINT
 // =====================================================
 
+
 export const loginWithBiometrics = async () => {
   try {
+    console.log("[BIOMETRIC] Requesting fingerprint...");
+
     const credentials =
       await NativeBiometric.getSecureCredentials({
         server: VAULT_SERVER,
@@ -127,26 +130,42 @@ export const loginWithBiometrics = async () => {
         negativeButtonText: "Cancel",
       });
 
+    console.log("[BIOMETRIC] Fingerprint verified", {
+      hasUsername: !!credentials.username,
+      usernameLength: credentials.username?.length,
+      hasPassword: !!credentials.password,
+      passwordLength: credentials.password?.length,
+    });
+
     if (!credentials.username || !credentials.password) {
-      throw new Error("No saved login credentials found.");
+      throw new Error("Saved login credentials are missing.");
     }
 
-    console.log("[BIOMETRIC] Fingerprint verified.");
+    console.log("[BIOMETRIC] Calling normal login service...");
 
-    // Reuse the existing normal login service.
     const result = await authService.login({
-      identifier: credentials.username,
+      identifier: credentials.username.trim(),
       password: credentials.password,
     });
 
-    console.log("[BIOMETRIC] Normal login completed.");
+    console.log("[BIOMETRIC] Login successful.");
 
     return result;
+
   } catch (error) {
-    console.error("[BIOMETRIC] Login failed:", error);
+    console.error("[BIOMETRIC] Authentication error:", {
+      status: error?.response?.status,
+      serverMessage:
+        error?.response?.data?.message ||
+        error?.response?.data?.error,
+      message: error?.message,
+      code: error?.code,
+    });
+
     throw error;
   }
 };
+
 
 // =====================================================
 // DISABLE FINGERPRINT LOGIN
