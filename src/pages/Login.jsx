@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, Fingerprint } from "lucide-react";
 import { loginUser, reset, sendMood, setSession } from "../features/AuthSlice";
@@ -38,6 +38,7 @@ export default function Login() {
 
   const [showBiometricSetup, setShowBiometricSetup] = useState(false);
   const [biometricStatusMessage, setBiometricStatusMessage] = useState("");
+  const biometricAutoPrompted = useRef(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -313,6 +314,32 @@ export default function Login() {
       setBiometricLoading(false);
     }
   };
+
+  // =====================================================
+// AUTOMATIC FINGERPRINT LOGIN
+// =====================================================
+
+useEffect(() => {
+  if (
+    biometricChecking ||
+    !biometricAvailable ||
+    !biometricEnabled ||
+    biometricAutoPrompted.current
+  ) {
+    return;
+  }
+
+  // Prevent the fingerprint prompt from opening repeatedly.
+  biometricAutoPrompted.current = true;
+
+  console.log("[LOGIN] Automatically requesting fingerprint login");
+
+  handleBiometricLogin();
+}, [
+  biometricChecking,
+  biometricAvailable,
+  biometricEnabled,
+]);
 
   // =====================================================
   // ENABLE FINGERPRINT
