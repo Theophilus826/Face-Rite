@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, Fingerprint } from "lucide-react";
@@ -44,7 +43,7 @@ export default function Login() {
   const navigate = useNavigate();
 
   const { user, isLoading, isError, message } = useSelector(
-    (state) => state.auth
+    (state) => state.auth,
   );
 
   const busy = submitting || isLoading || biometricLoading;
@@ -171,7 +170,7 @@ export default function Login() {
         loginUser({
           identifier: cleanIdentifier,
           password,
-        })
+        }),
       ).unwrap();
 
       console.log("[LOGIN] Password authentication completed");
@@ -198,7 +197,7 @@ export default function Login() {
         console.log("[LOGIN] Biometrics unavailable");
 
         toast.info(
-          status.error || "Fingerprint authentication is unavailable."
+          status.error || "Fingerprint authentication is unavailable.",
         );
 
         setShowMode(true);
@@ -209,14 +208,12 @@ export default function Login() {
       if (allowBiometrics === true) {
         console.log("[LOGIN] User accepted fingerprint enrollment");
 
-        await enableBiometricLogin();
+        await enableBiometricLogin(cleanIdentifier, password);
 
         const finalStatus = await refreshBiometricStatus();
 
         if (!finalStatus.enabled) {
-          throw new Error(
-            "Fingerprint registration could not be confirmed."
-          );
+          throw new Error("Fingerprint registration could not be confirmed.");
         }
 
         toast.success("Fingerprint login enabled successfully.");
@@ -256,14 +253,14 @@ export default function Login() {
 
       if (!status.available) {
         toast.error(
-          status.error || "Biometrics are unavailable on this device."
+          status.error || "Biometrics are unavailable on this device.",
         );
         return;
       }
 
       if (!status.enabled) {
         toast.info(
-          "Please sign in with your password first to enable fingerprint login."
+          "Please sign in with your password first to enable fingerprint login.",
         );
 
         if (authApi.getToken()) {
@@ -291,7 +288,7 @@ export default function Login() {
         });
 
         throw new Error(
-          "Fingerprint authentication succeeded but no valid session was created."
+          "Fingerprint authentication succeeded but no valid session was created.",
         );
       }
 
@@ -316,30 +313,23 @@ export default function Login() {
   };
 
   // =====================================================
-// AUTOMATIC FINGERPRINT LOGIN
-// =====================================================
+  // AUTOMATIC FINGERPRINT LOGIN
+  // =====================================================
 
-useEffect(() => {
-  if (
-    biometricChecking ||
-    !biometricAvailable ||
-    !biometricEnabled ||
-    biometricAutoPrompted.current
-  ) {
-    return;
-  }
+  useEffect(() => {
+    if (
+      biometricChecking ||
+      !biometricAvailable ||
+      !biometricEnabled ||
+      biometricAutoPrompted.current
+    ) {
+      return;
+    }
 
-  // Prevent the fingerprint prompt from opening repeatedly.
-  biometricAutoPrompted.current = true;
+    biometricAutoPrompted.current = true;
 
-  console.log("[LOGIN] Automatically requesting fingerprint login");
-
-  handleBiometricLogin();
-}, [
-  biometricChecking,
-  biometricAvailable,
-  biometricEnabled,
-]);
+    handleBiometricLogin();
+  }, [biometricChecking, biometricAvailable, biometricEnabled]);
 
   // =====================================================
   // ENABLE FINGERPRINT
@@ -367,7 +357,7 @@ useEffect(() => {
 
       if (!status.available) {
         throw new Error(
-          status.error || "Fingerprint authentication is unavailable."
+          status.error || "Fingerprint authentication is unavailable.",
         );
       }
 
@@ -382,7 +372,7 @@ useEffect(() => {
 
       console.log("[LOGIN] Calling biometric enrollment service");
 
-      await enableBiometricLogin();
+      await enableBiometricLogin(identifier.trim(), password);
 
       console.log("[LOGIN] Enrollment request completed");
 
@@ -391,9 +381,7 @@ useEffect(() => {
       console.log("[LOGIN] Final enrollment status:", finalStatus);
 
       if (!finalStatus.enabled) {
-        throw new Error(
-          "Fingerprint registration could not be confirmed."
-        );
+        throw new Error("Fingerprint registration could not be confirmed.");
       }
 
       setAllowBiometrics(true);
@@ -467,10 +455,7 @@ useEffect(() => {
 
       {showMode && (
         <div className="fixed inset-0 z-50">
-          <Mode
-            onSelectMood={handleMoodSelect}
-            onSkip={handleSkip}
-          />
+          <Mode onSelectMood={handleMoodSelect} onSkip={handleSkip} />
         </div>
       )}
 
@@ -478,19 +463,13 @@ useEffect(() => {
 
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-blue-100 via-purple-100 to-pink-100 p-4">
         <div className="w-full max-w-md p-8 rounded-2xl bg-white/30 backdrop-blur-md border border-white/30 shadow-lg">
+          <h2 className="text-3xl font-bold text-center mb-3">Welcome Back</h2>
 
-          <h2 className="text-3xl font-bold text-center mb-3">
-            Welcome Back
-          </h2>
-
-          <p className="text-center text-gray-600 mb-8">
-            Sign in to continue
-          </p>
+          <p className="text-center text-gray-600 mb-8">Sign in to continue</p>
 
           {/* LOGIN FORM */}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-
             {/* IDENTIFIER */}
 
             <input
@@ -539,21 +518,15 @@ useEffect(() => {
               disabled={busy}
               className="py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg disabled:bg-gray-400 transition"
             >
-              {submitting || isLoading
-                ? "Logging in..."
-                : "Login"}
+              {submitting || isLoading ? "Logging in..." : "Login"}
             </button>
 
             {/* BIOMETRIC PREFERENCE */}
 
             {!biometricEnabled && (
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-
                 <div className="flex items-center gap-3">
-                  <Fingerprint
-                    size={30}
-                    className="shrink-0 text-blue-500"
-                  />
+                  <Fingerprint size={30} className="shrink-0 text-blue-500" />
 
                   <div>
                     <p className="text-sm font-semibold text-gray-800">
@@ -567,7 +540,6 @@ useEffect(() => {
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
-
                   <button
                     type="button"
                     disabled={busy || biometricChecking || !biometricAvailable}
@@ -601,12 +573,13 @@ useEffect(() => {
                   {biometricChecking
                     ? "Checking biometric availability..."
                     : allowBiometrics === true
-                      ? "Fingerprint verification will follow password login."
-                      : allowBiometrics === false
-                        ? "You selected password login only."
-                        : !biometricAvailable
-                          ? biometricStatusMessage || "Fingerprint authentication is unavailable."
-                          : "Select Allow or Disallow."}
+                    ? "Fingerprint verification will follow password login."
+                    : allowBiometrics === false
+                    ? "You selected password login only."
+                    : !biometricAvailable
+                    ? biometricStatusMessage ||
+                      "Fingerprint authentication is unavailable."
+                    : "Select Allow or Disallow."}
                 </p>
               </div>
             )}
@@ -641,10 +614,10 @@ useEffect(() => {
               {biometricChecking
                 ? "Checking fingerprint..."
                 : biometricLoading
-                  ? "Verifying fingerprint..."
-                  : biometricEnabled
-                    ? "Login with Fingerprint"
-                    : "Enable / Login with Fingerprint"}
+                ? "Verifying fingerprint..."
+                : biometricEnabled
+                ? "Login with Fingerprint"
+                : "Enable / Login with Fingerprint"}
             </span>
           </button>
 
@@ -659,7 +632,6 @@ useEffect(() => {
 
           <p className="mt-6 text-center text-sm text-gray-700">
             Don't have an account?{" "}
-
             <span
               onClick={() => navigate("/register")}
               className="text-blue-600 cursor-pointer hover:underline"
@@ -674,7 +646,6 @@ useEffect(() => {
 
       {showBiometricSetup && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-
           <section
             role="dialog"
             aria-modal="true"
@@ -682,10 +653,7 @@ useEffect(() => {
             className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl"
           >
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-blue-100">
-              <Fingerprint
-                size={55}
-                className="text-blue-500"
-              />
+              <Fingerprint size={55} className="text-blue-500" />
             </div>
 
             <h2
@@ -696,8 +664,8 @@ useEffect(() => {
             </h2>
 
             <p className="mt-3 text-sm leading-6 text-gray-600">
-              Register your fingerprint to securely access your account
-              without entering your password next time.
+              Register your fingerprint to securely access your account without
+              entering your password next time.
             </p>
 
             {/* ENABLE FINGERPRINT */}
@@ -740,7 +708,6 @@ useEffect(() => {
             >
               Maybe Later
             </button>
-
           </section>
         </div>
       )}

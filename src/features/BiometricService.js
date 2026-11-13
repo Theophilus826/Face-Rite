@@ -3,9 +3,9 @@ import {
   AccessControl,
   NativeBiometric,
 } from "@capgo/capacitor-native-biometric";
+
 import { Capacitor } from "@capacitor/core";
-import api from "./Api";
-import authService from "./AuthService";
+import authService from "../features/AuthService";
 
 const SERVER =
   import.meta.env.VITE_API_URL ||
@@ -21,34 +21,13 @@ const VAULT_SERVER = (() => {
 
 const ACCESS_CONTROL = AccessControl.BIOMETRY_CURRENT_SET;
 
-const log = (stage, data = {}) => {
-  console.log(`[BIOMETRIC] ${stage}`, data);
-};
-
-const getErrorDetails = (error) => ({
-  message: error?.message,
-  code: error?.code,
-  name: error?.name,
-});
-
 // =====================================================
 // CHECK BIOMETRIC AVAILABILITY
 // =====================================================
 
 export const checkBiometricAvailability = async () => {
-  log("Starting availability check");
-
   try {
-    const platform = Capacitor.getPlatform();
-    const isNative = Capacitor.isNativePlatform();
-
-    log("Platform information", {
-      platform,
-      isNative,
-      vaultServer: VAULT_SERVER,
-    });
-
-    if (!isNative) {
+    if (!Capacitor.isNativePlatform()) {
       return {
         available: false,
         enabled: false,
@@ -58,206 +37,132 @@ export const checkBiometricAvailability = async () => {
 
     const availability = await NativeBiometric.isAvailable();
 
-    log("Native biometric availability", availability);
-
-    // isAvailable is the main availability check.
-    // Do not require strongBiometryIsAvailable here.
-    const available = availability.isAvailable === true;
-
-    let enabled = false;
-
-    try {
-      const saved = await NativeBiometric.isCredentialsSaved({
-        server: VAULT_SERVER,
-      });
-
-      log("Saved credentials status", {
-        isSaved: saved.isSaved,
-      });
-
-      enabled = saved.isSaved === true;
-
-      if (enabled) {
-        try {
-          await NativeBiometric.getCredentials({
-            server: VAULT_SERVER,
-          });
-          enabled = false;
-          log("Unprotected credentials found; biometric re-enrollment is required");
-        } catch (error) {
-          log("No unprotected credentials found", getErrorDetails(error));
-        }
-      }
-    } catch (error) {
-      log("Credential status check failed", getErrorDetails(error));
+    if (!availability.isAvailable) {
+      return {
+        available: false,
+        enabled: false,
+        error: "Fingerprint authentication is unavailable.",
+      };
     }
 
-    const result = {
-      available,
-      enabled,
-      error: available
-        ? ""
-        : `Biometrics unavailable. Error code: ${
-            availability.errorCode ?? "unknown"
-          }`,
-      details: {
-        biometryType: availability.biometryType,
-        authenticationStrength: availability.authenticationStrength,
-        strongBiometryIsAvailable:
-          availability.strongBiometryIsAvailable,
-        deviceIsSecure: availability.deviceIsSecure,
-        errorCode: availability.errorCode,
-      },
+    const saved = await NativeBiometric.isCredentialsSaved({
+      server: VAULT_SERVER,
+    });
+
+    return {
+      available: true,
+      enabled: saved.isSaved === true,
+      error: "",
+      details: availability,
     };
-
-    log("Final biometric status", result);
-
-    return result;
   } catch (error) {
-    log("Availability check exception", getErrorDetails(error));
+    console.error("[BIOMETRIC] Availability error:", error);
 
     return {
       available: false,
       enabled: false,
-      error: error?.message || "Unable to check biometric availability.",
+      error: error.message || "Unable to check biometric availability.",
     };
   }
 };
 
 // =====================================================
-// ENABLE BIOMETRIC LOGIN
+// ENABLE FINGERPRINT LOGIN
 // =====================================================
 
-export const enableBiometricLogin = async () => {
-  log("Starting biometric enrollment");
-  let backendEnrollmentCreated = false;
-
+export const enableBiometricLogin = async (
+  identifier,
+  password
+) => {
   try {
-    log("Requesting enrollment credentials from backend");
-
-    const response = await api.post("/auth/biometric/enroll");
-    backendEnrollmentCreated = true;
-
-    log("Enrollment API response", {
-      status: response.status,
-      hasUserId: !!response.data?.userId,
-      hasBiometricSecret: !!response.data?.biometricSecret,
-    });
-
-    const { userId, biometricSecret } = response.data || {};
-
-    if (!userId || !biometricSecret) {
-      throw new Error(
-        "Backend did not provide valid biometric credentials."
-      );
+    if (!identifier || !password) {
+      throw new Error("Please provide your login credentials.");
     }
 
-    log("Saving credentials to native biometric storage");
+    if (!Capacitor.isNativePlatform()) {
+      throw new Error("Fingerprint login requires the mobile app.");
+    }
 
     await NativeBiometric.deleteCredentials({
       server: VAULT_SERVER,
     });
 
     await NativeBiometric.setCredentials({
-      username: String(userId),
-      password: biometricSecret,
+      username: identifier,
+      password,
       server: VAULT_SERVER,
       accessControl: ACCESS_CONTROL,
     });
-
-    log("Native credential storage completed");
 
     const saved = await NativeBiometric.isCredentialsSaved({
       server: VAULT_SERVER,
     });
 
-    log("Enrollment verification", {
-      isSaved: saved.isSaved,
-    });
-
     if (!saved.isSaved) {
-      throw new Error("Biometric credentials were not saved.");
+      throw new Error("Fingerprint credentials could not be saved.");
     }
 
-    log("Biometric enrollment completed successfully");
+    console.log("[BIOMETRIC] Credentials saved successfully.");
 
     return true;
   } catch (error) {
-    log("Biometric enrollment failed", getErrorDetails(error));
-
-    if (backendEnrollmentCreated) {
-      try {
-        await api.delete("/auth/biometric");
-        log("Backend enrollment rollback completed");
-      } catch (rollbackError) {
-        log("Backend rollback failed", getErrorDetails(rollbackError));
-      }
-    }
-
+    console.error("[BIOMETRIC] Enrollment failed:", error);
     throw error;
   }
 };
 
 // =====================================================
-// LOGIN WITH BIOMETRICS
+// LOGIN WITH FINGERPRINT
 // =====================================================
 
 export const loginWithBiometrics = async () => {
-  log("Starting fingerprint login");
-
   try {
-    log("Requesting biometric-protected credentials");
-
-    // This call triggers Android's native biometric prompt.
-    const credentials = await NativeBiometric.getSecureCredentials({
-      server: VAULT_SERVER,
-      reason: "Authenticate to access your account",
-      title: "Fingerprint Login",
-      subtitle: "Welcome back",
-      description: "Verify your identity to continue.",
-      negativeButtonText: "Cancel",
-    });
-
-    log("Native biometric authentication succeeded", {
-      hasUsername: !!credentials.username,
-      hasPassword: !!credentials.password,
-    });
+    const credentials =
+      await NativeBiometric.getSecureCredentials({
+        server: VAULT_SERVER,
+        reason: "Authenticate to access your account",
+        title: "Fingerprint Login",
+        subtitle: "Welcome back",
+        description: "Verify your identity to continue.",
+        negativeButtonText: "Cancel",
+      });
 
     if (!credentials.username || !credentials.password) {
-      throw new Error("No protected biometric credentials found.");
+      throw new Error("No saved login credentials found.");
     }
 
-    log("Sending biometric authentication request to backend");
+    console.log("[BIOMETRIC] Fingerprint verified.");
 
-    const response = await api.post("/auth/biometric/login", {
-      userId: credentials.username,
-      biometricSecret: credentials.password,
+    // Reuse the existing normal login service.
+    const result = await authService.login({
+      identifier: credentials.username,
+      password: credentials.password,
     });
 
-    authService.saveAuth(response.data);
+    console.log("[BIOMETRIC] Normal login completed.");
 
-    log("Backend biometric login response", {
-      status: response.status,
-      success: !!response.data,
-    });
-
-    log("Fingerprint login completed");
-
-    return response.data;
+    return result;
   } catch (error) {
-    log("Fingerprint authentication failed", getErrorDetails(error));
+    console.error("[BIOMETRIC] Login failed:", error);
+    throw error;
+  }
+};
 
-    if (String(error?.code) === "21") {
-      try {
-        await NativeBiometric.deleteCredentials({
-          server: VAULT_SERVER,
-        });
-        log("Removed stale biometric credentials");
-      } catch (cleanupError) {
-        log("Failed to remove stale biometric credentials", getErrorDetails(cleanupError));
-      }
-    }
+// =====================================================
+// DISABLE FINGERPRINT LOGIN
+// =====================================================
 
+export const disableBiometricLogin = async () => {
+  try {
+    await NativeBiometric.deleteCredentials({
+      server: VAULT_SERVER,
+    });
+
+    console.log("[BIOMETRIC] Fingerprint login disabled.");
+
+    return true;
+  } catch (error) {
+    console.error("[BIOMETRIC] Disable failed:", error);
     throw error;
   }
 };
